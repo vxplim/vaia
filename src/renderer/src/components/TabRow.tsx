@@ -39,7 +39,7 @@ export function TabRow({ tab, state, active, zone, spaceId, parentId, index, dep
       className={`tab-row${active ? ' active' : ''}${dragging ? ' dragging' : ''}${closing ? ' closing' : ''}${dropClass}`}
       style={{ paddingLeft: 10 + depth * 14 }}
       role="button"
-      title={tab.url}
+      title={tab.name ? `${tab.title}\n${tab.url}` : tab.url}
       draggable={draggable}
       {...handlers}
       onMouseDown={(e) => {
@@ -59,7 +59,7 @@ export function TabRow({ tab, state, active, zone, spaceId, parentId, index, dep
       </span>
       <span className="tab-title">
         {navigatedAway && <span className="tab-slash">/</span>}
-        {tab.title || tab.url || 'New Tab'}
+        {tab.name || tab.title || tab.url || 'New Tab'}
       </span>
       {navigatedAway && (
         <button

@@ -143,3 +143,56 @@ export const IconBoost = (p: P) => (
     <path d="M9 2.5 4 9h3.5L7 13.5 12 7H8.5L9 2.5Z" />
   </Svg>
 )
+export const IconBroom = (p: P) => (
+  <Svg {...p}>
+    <path d="M12.5 2.5 8.6 6.4" />
+    <path d="M7.4 6.2 9.8 8.6c.3.3.3.8 0 1.1l-.6.6-3.5-3.5.6-.6c.3-.3.8-.3 1.1 0Z" />
+    <path d="M5.7 6.8 2.6 9.9c1.2 2.4 2.5 3.7 4.9 4.6l2-2" />
+    <path d="M4.2 11.6l1.3-1.3M6 13l1.3-1.3" />
+  </Svg>
+)
+export const IconCheckCircle = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="2.5" width="11" height="11" rx="3.2" />
+    <path d="m5.4 8.1 1.8 1.8 3.5-3.6" />
+  </Svg>
+)
+export const IconCheck = (p: P) => (
+  <Svg {...p}>
+    <path d="m3.8 8.3 2.7 2.7 5.7-5.9" />
+  </Svg>
+)
+export const IconCalendar = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="3.5" width="11" height="10" rx="2" />
+    <path d="M2.5 6.5h11M5.5 2v2.5M10.5 2v2.5" />
+  </Svg>
+)
+export const IconLink = (p: P) => (
+  <Svg {...p}>
+    <path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2-2a2.6 2.6 0 0 0-3.7-3.7l-.6.6" />
+    <path d="M9.2 6.8a2.6 2.6 0 0 0-3.7 0l-2 2a2.6 2.6 0 0 0 3.7 3.7l.6-.6" />
+  </Svg>
+)
+export const IconPopout = (p: P) => (
+  <Svg {...p}>
+    <path d="M9.5 2.5h4v4M13.5 2.5 8 8" />
+    <path d="M12 9.5v2.5a1.5 1.5 0 0 1-1.5 1.5h-6A1.5 1.5 0 0 1 3 12V6a1.5 1.5 0 0 1 1.5-1.5H7" />
+  </Svg>
+)
+export const IconPin = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 2.5h4l-.6 3.8 2.3 2.2v1H4.3v-1l2.3-2.2Z" />
+    <path d="M8 9.5v4" />
+  </Svg>
+)
+export const IconTrash = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.2c0 .5.5.8 1 .8h3.8c.5 0 .9-.3 1-.8l.6-8.2" />
+  </Svg>
+)
+export const IconGrip = (p: P) => (
+  <Svg {...p}>
+    <path d="M6 4h.01M10 4h.01M6 8h.01M10 8h.01M6 12h.01M10 12h.01" strokeWidth="2.2" />
+  </Svg>
+)

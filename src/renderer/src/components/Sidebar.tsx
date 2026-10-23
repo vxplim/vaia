@@ -6,9 +6,10 @@ import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
 import { siteKey } from '../../../shared/url'
 import { BoostPanel } from './BoostPanel'
-import { IconBack, IconBoost, IconForward, IconMore, IconPlus, IconReload, IconSidebar, IconStop } from './Icons'
+import { IconBack, IconBoost, IconBroom, IconForward, IconMore, IconPlus, IconReload, IconSidebar, IconStop } from './Icons'
 import { ItemList } from './PinnedList'
 import { SpaceBar } from './SpaceBar'
+import { TodoSection } from './TodoSection'
 import { UrlBar } from './UrlBar'
 
 interface Props {
@@ -153,8 +154,24 @@ export function Sidebar(props: Props) {
           )}
         </section>
 
+        <TodoSection state={state} space={space} onOpen={() => onOpenPanel('todo')} />
+
         <div className="today-divider">
           <span className="divider-line" />
+          {space.today.length > 1 && (
+            <button
+              className="clear-button tidy-button"
+              title={
+                state.settings.aiTidy && state.aiKeySet
+                  ? 'Sort Today tabs into topic folders with Claude'
+                  : 'Group tabs from the same site into folders and close duplicates'
+              }
+              onClick={() => dispatch({ type: 'today/tidy' })}
+            >
+              <IconBroom width={12} height={12} />
+              Tidy
+            </button>
+          )}
           {space.today.length > 0 && (
             <button className="clear-button" title="Close all Today tabs" onClick={() => dispatch({ type: 'today/clear' })}>
               Clear

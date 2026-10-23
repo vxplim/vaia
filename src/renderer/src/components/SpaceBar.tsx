@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import type { AppState, Panel, Space } from '../../../shared/types'
 import { useDnd } from '../dnd'
 import { dispatch } from '../state'
-import { IconArchive, IconDownload, IconPlus } from './Icons'
+import { dueCount } from '../todos'
+import { IconArchive, IconCheckCircle, IconDownload, IconPlus } from './Icons'
 
 interface Props {
   state: AppState
@@ -27,6 +28,7 @@ export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
       >
         <IconDownload />
       </button>
+      <TodoButton state={state} onOpen={() => onOpenPanel('todo')} />
       <div className="space-icons">
         {state.spaces.map((space, i) => (
           <SpaceIcon key={space.id} space={space} index={i} active={space.id === state.activeSpaceId} onEdit={onEdit} />
@@ -43,6 +45,20 @@ export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
         <IconPlus />
       </button>
     </div>
+  )
+}
+
+function TodoButton({ state, onOpen }: { state: AppState; onOpen: () => void }) {
+  const due = dueCount(state)
+  return (
+    <button
+      className="icon-button todo-button"
+      title={due ? `To-do: ${due} due today or overdue (⇧⌘K)` : 'To-do (⇧⌘K)'}
+      onClick={onOpen}
+    >
+      <IconCheckCircle />
+      {due > 0 && <span className="todo-badge">{due > 9 ? '9+' : due}</span>}
+    </button>
   )
 }
 

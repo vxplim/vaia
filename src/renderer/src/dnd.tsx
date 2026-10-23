@@ -53,7 +53,6 @@ export function useDnd(): Dnd {
 /** Can this kind of item be dropped into this area? */
 export function accepts(zone: DropTarget['zone'], kind: Kind, intoFolder = false): boolean {
   if (zone === 'favorites') return kind === 'tab'
-  if (zone === 'today') return kind !== 'folder'
   return !(intoFolder && kind === 'split')
 }
 

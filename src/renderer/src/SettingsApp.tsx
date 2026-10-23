@@ -26,6 +26,7 @@ const SHORTCUTS: [string, string][] = [
   ['⌃1 … ⌃9', 'Switch to Space 1–9'],
   ['⌃⇧=', 'Add a Split View pane'],
   ['⌥⌘N', 'New Little window'],
+  ['⇧⌘K', 'To-do list'],
   ['⌘Y', 'History'],
   ['⇧⌘J', 'Downloads'],
   ['⌘,', 'Settings'],
@@ -45,6 +46,7 @@ export function SettingsApp() {
   const state = useAppState()
   const [clear, setClear] = useState({ history: true, cookies: false, cache: true, archive: false })
   const [cleared, setCleared] = useState(false)
+  const [apiKey, setApiKey] = useState('')
   if (!state) return null
   const s = state.settings
   const set = (patch: Partial<typeof s>) => dispatch({ type: 'settings/update', patch })
@@ -103,6 +105,64 @@ export function SettingsApp() {
             <button className="secondary-button" onClick={() => dispatch({ type: 'app/makeDefaultBrowser' })}>
               Make Default
             </button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Tidy &amp; to-do</h2>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Use AI to Tidy</div>
+              <div className="setting-hint">
+                Tidy asks Claude to sort Today tabs into topic folders and give them shorter names. Only tab titles and
+                website names are sent. Without a key or internet, Tidy groups tabs by website instead.
+              </div>
+            </div>
+            <Toggle checked={s.aiTidy} onChange={(v) => set({ aiTidy: v })} />
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Claude API key</div>
+              <div className="setting-hint">
+                {state.aiKeySet
+                  ? 'Saved, encrypted with your Mac’s Keychain.'
+                  : 'From console.anthropic.com. Stored encrypted on this Mac, never in plain text.'}
+              </div>
+            </div>
+            {state.aiKeySet ? (
+              <button className="secondary-button" onClick={() => dispatch({ type: 'ai/clearKey' })}>
+                Remove Key
+              </button>
+            ) : (
+              <form
+                className="key-form"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (!apiKey.trim()) return
+                  dispatch({ type: 'ai/setKey', key: apiKey })
+                  setApiKey('')
+                }}
+              >
+                <input
+                  type="password"
+                  placeholder="sk-ant-…"
+                  value={apiKey}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+                <button className="secondary-button" type="submit" disabled={!apiKey.trim()}>
+                  Save
+                </button>
+              </form>
+            )}
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Show to-dos in the sidebar</div>
+              <div className="setting-hint">This Space’s unfinished to-dos appear under your pinned tabs.</div>
+            </div>
+            <Toggle checked={s.todoInSidebar} onChange={(v) => set({ todoInSidebar: v })} />
           </div>
         </section>
 

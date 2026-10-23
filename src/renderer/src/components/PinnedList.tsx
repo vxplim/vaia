@@ -56,7 +56,7 @@ function FolderRow({ folder, index, ...props }: ListProps & { folder: FolderItem
   const { draggable, dropClass, dragging, handlers } = useDragRow({
     id: folder.id,
     kind: 'folder',
-    zone: 'pinned',
+    zone: props.zone,
     spaceId: space.id,
     parentId,
     index,

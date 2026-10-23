@@ -11,6 +11,7 @@ import { HistoryPanel } from './components/HistoryPanel'
 import { PeekLayer } from './components/PeekLayer'
 import { Sidebar } from './components/Sidebar'
 import { SpaceEditor } from './components/SpaceEditor'
+import { TodoPanel } from './components/TodoPanel'
 import { DndProvider } from './dnd'
 import { dispatch, useAppState } from './state'
 import { themeStyle, useSystemDark } from './theme'
@@ -194,6 +195,9 @@ export default function App() {
         {overlay?.kind === 'archive' && <ArchivePanel state={state} closing={closing} onClose={closeOverlay} />}
         {overlay?.kind === 'history' && <HistoryPanel closing={closing} onClose={closeOverlay} />}
         {overlay?.kind === 'downloads' && <DownloadsPanel state={state} closing={closing} onClose={closeOverlay} />}
+        {overlay?.kind === 'todo' && (
+          <TodoPanel state={state} closing={closing} onClose={closeOverlay} left={sidebarVisible ? sidebarWidth + 4 : 10} />
+        )}
         {editing && <SpaceEditor state={state} space={editing} closing={closing} onClose={closeOverlay} />}
       </div>
     </DndProvider>

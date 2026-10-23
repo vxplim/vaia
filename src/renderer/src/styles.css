@@ -2051,3 +2051,426 @@ button.urlbar:hover {
 .boost-done {
   margin: 8px 4px 2px;
 }
+
+/* ---------- Tidy (Phase 11) ---------- */
+.tidy-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---------- To-do (Phase 11) ---------- */
+.todo-button {
+  position: relative;
+}
+.todo-badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: #e5533d;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.todo-drawer {
+  top: 10px;
+  bottom: 10px;
+  width: 340px;
+  max-width: calc(100vw - 20px);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 14px 10px;
+  animation: drawer-in 220ms var(--ease) both;
+}
+.overlay-layer.closing .todo-drawer {
+  animation: drawer-out 140ms ease-in both;
+}
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+@keyframes drawer-out {
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+.todo-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.todo-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.todo-head h2 {
+  flex: 1;
+  margin: 0 0 0 2px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.todo-tabs {
+  grid-template-columns: 1fr 1fr;
+}
+.todo-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.todo-add-input {
+  height: 34px;
+  padding: 0 11px;
+  border: 0;
+  outline: 0;
+  border-radius: 9px;
+  background: rgba(127, 127, 127, 0.12);
+  font: inherit;
+  font-size: 13.5px;
+  color: inherit;
+  user-select: text;
+}
+.todo-add-input:focus {
+  box-shadow: inset 0 0 0 1.5px rgba(127, 127, 127, 0.35);
+}
+.todo-add-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  position: relative;
+}
+.todo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: 11.5px;
+  background: rgba(127, 127, 127, 0.1);
+  opacity: 0.75;
+}
+.todo-chip:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(127, 127, 127, 0.18);
+}
+.todo-chip.on {
+  opacity: 1;
+  background: rgba(52, 199, 89, 0.18);
+}
+.todo-chip:disabled {
+  opacity: 0.35;
+}
+/* The real date picker is invisible; buttons open it with showPicker(). */
+.todo-date-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.todo-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 0 6px;
+}
+.todo-items {
+  display: flex;
+  flex-direction: column;
+}
+.todo-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  transition:
+    opacity 380ms ease,
+    background 120ms;
+}
+.todo-row:hover {
+  background: rgba(127, 127, 127, 0.08);
+}
+.todo-row.checking {
+  opacity: 0.3;
+}
+.todo-row.done .todo-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+.todo-row.drop-above::before,
+.todo-row.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: #34c759;
+}
+.todo-row.drop-above::before {
+  top: -1px;
+}
+.todo-row.drop-below::after {
+  bottom: -1px;
+}
+.todo-check {
+  flex: none;
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1.5px rgba(127, 127, 127, 0.55);
+  transition:
+    background 160ms,
+    box-shadow 160ms;
+}
+.todo-check:hover {
+  box-shadow: inset 0 0 0 1.5px rgba(127, 127, 127, 0.9);
+}
+.todo-check.checked {
+  background: #34c759;
+  box-shadow: none;
+  color: #fff;
+}
+.todo-check svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.2;
+}
+.todo-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.todo-text {
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.todo-text.linked {
+  cursor: pointer;
+}
+.todo-text.linked:hover {
+  text-decoration: underline;
+  text-decoration-color: rgba(127, 127, 127, 0.5);
+}
+.todo-edit {
+  font: inherit;
+  font-size: 13px;
+  padding: 1px 4px;
+  margin: -2px -4px;
+  border: 0;
+  outline: 0;
+  border-radius: 5px;
+  background: rgba(127, 127, 127, 0.14);
+  color: inherit;
+  user-select: text;
+}
+.todo-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.todo-space {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.todo-due {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+  background: rgba(127, 127, 127, 0.12);
+  opacity: 0.8;
+}
+.todo-due.today {
+  background: rgba(255, 159, 10, 0.2);
+  color: #b86a00;
+  opacity: 1;
+}
+.todo-due.overdue {
+  background: rgba(229, 83, 61, 0.16);
+  color: #c63a26;
+  opacity: 1;
+}
+.dark .todo-due.today {
+  color: #ffb648;
+}
+.dark .todo-due.overdue {
+  color: #ff7a66;
+}
+.todo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 0 6px 0 3px;
+  border-radius: 6px;
+  line-height: 17px;
+  background: rgba(127, 127, 127, 0.1);
+  opacity: 0.8;
+}
+.todo-link:hover {
+  opacity: 1;
+}
+.todo-link span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.todo-link img,
+.todo-link .favicon {
+  width: 12px;
+  height: 12px;
+}
+.todo-actions {
+  flex: none;
+  opacity: 0;
+  position: relative;
+  transition: opacity 120ms;
+}
+.todo-row:hover .todo-actions {
+  opacity: 1;
+}
+.todo-done {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 0.5px solid rgba(127, 127, 127, 0.25);
+}
+.todo-done-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.todo-done-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+.todo-done-toggle:hover {
+  opacity: 0.9;
+}
+.todo-done-note {
+  padding: 6px 6px 2px;
+  font-size: 11px;
+  opacity: 0.45;
+}
+
+/* To-do section in the sidebar */
+.todo-section {
+  margin-top: 6px;
+}
+.todo-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  padding-right: 2px;
+}
+.todo-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-muted);
+}
+.todo-count {
+  margin-left: 2px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+.todo-section .todo-row {
+  padding: 5px 8px;
+  align-items: center;
+}
+.todo-section .todo-row:hover {
+  background: var(--hover);
+}
+.todo-section .todo-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.todo-section .todo-check {
+  width: 15px;
+  height: 15px;
+  margin-top: 0;
+}
+
+/* Pop-out to-do window */
+.todo-window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 8px;
+}
+.todo-window-head {
+  height: 30px;
+  padding-left: 64px;
+  -webkit-app-region: drag;
+}
+.todo-window-head h2 {
+  font-size: 13px;
+}
+.todo-window-head button {
+  -webkit-app-region: no-drag;
+}
+.todo-pin.on {
+  background: var(--press);
+  color: var(--accent);
+}
+.todo-window .todo-row:hover {
+  background: var(--hover);
+}
+
+/* API key field in Settings */
+.key-form {
+  display: flex;
+  gap: 6px;
+}
+.key-form input {
+  width: 180px;
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  outline: 0;
+  border-radius: 7px;
+  background: rgba(127, 127, 127, 0.16);
+  font: inherit;
+  font-size: 12.5px;
+  color: inherit;
+  user-select: text;
+}

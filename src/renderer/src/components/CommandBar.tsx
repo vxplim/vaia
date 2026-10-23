@@ -5,7 +5,7 @@ import { SEARCH_ENGINES, displayHost, inputToUrl, searchUrl } from '../../../sha
 import { matchCommands, type CommandContext } from '../commands'
 import { dispatch } from '../state'
 import { Favicon } from './Favicon'
-import { IconGlobe, IconSearch } from './Icons'
+import { IconCheckCircle, IconGlobe, IconSearch } from './Icons'
 
 interface Result {
   key: string
@@ -69,6 +69,31 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
     const openUrl = (url: string) => () =>
       dispatch(mode === 'split' ? { type: 'split/add', url } : { type: 'tab/new', url })
     const words = ql.split(/\s+/).filter(Boolean)
+
+    // "todo buy milk" adds a to-do to this Space (optionally linked to the page you're on).
+    const todoText = mode === 'new' ? /^(?:todo|to-do)\s+(.+)$/i.exec(q)?.[1]?.trim() : undefined
+    if (todoText) {
+      const activeTab = allTabs(state).find((t) => t.id === activeTabId && t.url)
+      const add = (link: boolean) => () =>
+        dispatch({ type: 'todo/add', text: todoText, spaceId: state.activeSpaceId, linkTabId: link ? activeTabId ?? undefined : undefined, confirm: true })
+      out.push({
+        key: 'todo-add',
+        icon: <IconCheckCircle />,
+        title: `Add to-do: ${todoText}`,
+        label: 'To-do',
+        run: add(false)
+      })
+      if (activeTab) {
+        out.push({
+          key: 'todo-add-link',
+          icon: <IconCheckCircle />,
+          title: `Add to-do and link this page: ${todoText}`,
+          subtitle: activeTab.name || activeTab.title,
+          label: 'To-do',
+          run: add(true)
+        })
+      }
+    }
 
     const commands = matchCommands(q, ctx).slice(0, q ? 3 : 4)
     const commandRows = commands.map(

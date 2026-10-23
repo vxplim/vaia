@@ -47,6 +47,8 @@ vaia/
 │   │   ├── index.ts            ← start-up; connects the UI's requests to the brain
 │   │   ├── browser.ts          ← windows, web page views, and all actions
 │   │   ├── organize.ts         ← drag & drop, pinning, folders, split views
+│   │   ├── tidy.ts             ← Tidy: group Today tabs, close duplicates
+│   │   ├── ai.ts               ← AI Tidy (Claude) and the encrypted API key
 │   │   ├── store.ts            ← saving/loading your data (vaia-state.json)
 │   │   ├── history.ts          ← browsing history (history.json)
 │   │   ├── archive.ts          ← archived & recently closed tabs (archive.json)
@@ -61,6 +63,7 @@ vaia/
 │           ├── App.tsx         ← the main window: sidebar, pages, and floating panels
 │           ├── LittleApp.tsx   ← the Little window
 │           ├── SettingsApp.tsx ← the Settings window
+│           ├── TodoApp.tsx     ← the pop-out to-do window
 │           ├── state.ts        ← keeps the UI's copy of the data up to date
 │           ├── commands.ts     ← Command Bar commands
 │           ├── menus.ts        ← what's in each right-click menu
@@ -74,6 +77,7 @@ vaia/
 │               ├── SpaceEditor.tsx, ColorWheel.tsx, Backdrop.tsx
 │               ├── ArchivePanel.tsx, HistoryPanel.tsx, DownloadsPanel.tsx
 │               ├── PeekLayer.tsx, FindBar.tsx, BoostPanel.tsx
+│               ├── TodoList.tsx, TodoPanel.tsx, TodoSection.tsx  ← the to-do list's pieces
 │               └── Icons.tsx, Favicon.tsx
 ├── build/icon.svg, icon.png    ← the app icon (the SVG is the source, the PNG is what gets packaged)
 ├── screenshots/                ← pictures used in the README
@@ -84,6 +88,12 @@ vaia/
 ├── node_modules/               ← downloaded tools (not uploaded to GitHub)
 └── out/, dist/                 ← build output (not uploaded to GitHub)
 ```
+
+## Tidy and the to-do list
+
+- **Tidy** lives in `src/main/tidy.ts`. Before changing anything, the brain saves a copy of the Today list; the toast's **Undo** button simply puts that copy back.
+- **AI Tidy** (`src/main/ai.ts`) sends Claude a numbered list like `3. Flights to Lisbon — google.com` and asks for an answer in a fixed JSON shape: which numbers go in which folder, and shorter names. VAIA then rebuilds Today from that answer. Your API key is encrypted by macOS (the Keychain) before it's written to disk, and only the brain can read it; the interface only ever learns "a key is saved".
+- **To-dos** are one list in `vaia-state.json`. The panel, the sidebar section and the pop-out window are three views of that same list, so checking something off in one updates the others instantly.
 
 ## How the Mac app is made
 

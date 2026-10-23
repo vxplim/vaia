@@ -120,6 +120,8 @@ export function buildMenu(browser: Browser): void {
         },
         { label: 'Boost This Site…', id: 'boost', click: () => browser.command({ type: 'boost' }) },
         { label: 'Downloads', id: 'downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => browser.command({ type: 'open-panel', panel: 'downloads' }) },
+        { label: 'To-do List', id: 'todo', accelerator: 'CmdOrCtrl+Shift+K', click: () => browser.command({ type: 'open-panel', panel: 'todo' }) },
+        { label: 'Tidy Today Tabs', id: 'tidy', click: () => browser.tidy() },
         { type: 'separator' },
         { label: 'Reload Page', id: 'reload', accelerator: 'CmdOrCtrl+R', click: () => page()?.reload() },
         { label: 'Hard Reload Page', accelerator: 'CmdOrCtrl+Shift+R', click: () => page()?.reloadIgnoringCache() },

@@ -99,6 +99,19 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - README with download/install steps ("Open Anyway") and screenshots in `/screenshots`
   - GitHub Release v1.0.0 with both `.dmg` files and release notes; repo description and topics set
 
+- [x] **Phase 11: Tidy + To-do** (tag `v1.1.0`)
+  - **Tidy** (broom button next to "Clear", Command Bar "Tidy Today Tabs", or View menu): groups Today tabs from the same website into a folder named after the site (only with 2+ tabs), closes exact duplicate addresses, and keeps everything else in order. A toast with **Undo** stays for 6 seconds and puts Today back exactly as it was
+  - **AI Tidy** (off by default): Settings → "Use AI to Tidy" + your Claude API key. Sends only tab titles and website names to Claude (model `claude-opus-5-5`), which returns topic folders and shorter tab names. No key, no internet, or any error → Simple Tidy, with a toast saying why
+  - The API key is encrypted with your Mac's Keychain (Electron safeStorage) in `claude-key.bin` in VAIA's data folder. Never in the JSON file, never in the code
+  - **To-do list**, one shared list with three views that stay in sync:
+    - Slide-out panel: the ✓ button at the bottom of the sidebar, or **⇧⌘K**. "This Space" (this Space's + Everywhere to-dos) and "All" (every to-do, marked with its Space emoji)
+    - Sidebar section under Pinned: this Space's unfinished to-dos (Settings → "Show to-dos in the sidebar"; collapsible)
+    - Pop-out window (the ↗ button in the panel) with an "Always on top" pin
+  - Each to-do: text, done, due date, linked page, and a Space or "Everywhere". Right-click a to-do to edit, set a due date, move it to another Space, link/unlink the current page, or delete it. Double-click to edit the text
+  - Command Bar: type `todo buy milk` and press Enter. The second row adds it with the current page linked. Clicking a linked to-do opens that page (switching to it if it's already open)
+  - Due dates show "Today" / "Overdue" / "Tomorrow" / a date. The ✓ button shows how many are due today or overdue
+  - Checked items fade into a collapsed "Done" section and are deleted 7 days later. Drag to reorder
+
 ## Next ideas (not started)
 
 - Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
@@ -137,6 +150,14 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Boost JavaScript only runs when a page loads** (or with "Run now"), so editing it doesn't run half-typed code.
 - **The app is "ad-hoc" signed** (a free self-signature). Without any signature Apple Silicon Macs report the app as "damaged"; with it, macOS only asks you to "Open Anyway" once. Apple's "hardened runtime" is off because it only matters for notarization.
 - **Both Apple Silicon and Intel installers are built** as separate `.dmg` files (smaller than one combined "universal" app).
+- **Tidy folders are named after the website** (e.g. `github.com`), and running Tidy again adds new tabs from that site to the same folder. Folders can now live in Today too (drag them around like pinned folders); a Today folder disappears when its last tab is closed or archived.
+- **Duplicates are exact address matches.** The tab on screen is always the one kept. Closed duplicates don't go to the Archive (an identical tab is still open), but Undo brings them back.
+- **AI Tidy only uses Claude's answer if your tabs didn't change while it was thinking**; otherwise it falls back to Simple Tidy. It regroups all of Today (including old Tidy folders), so Undo is the safety net. Shorter names are kept until that tab goes to a different website.
+- **AI Tidy uses the Anthropic SDK** with structured JSON output (so the answer always has the right shape), low effort (it's a simple sorting job), and the API's automatic fallback model if Claude declines a request.
+- **The to-do sidebar section shows Everywhere to-dos too** (same as the panel's "This Space"), and hides itself when there's nothing to do.
+- **New to-dos go to the top of the list.** The ✓ badge counts due-today/overdue to-dos from every Space, so nothing slips through.
+- **Deleting a Space keeps its to-dos** by turning them into Everywhere to-dos.
+- **The to-do panel freezes the page into a picture** while it's open (like the other panels). For a list that stays visible while you browse, use the pop-out window.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -148,5 +169,8 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - Peek decides "another site" by comparing the last two parts of the domain (e.g. `news.example.com` and `example.com` count as the same site); unusual domains like `example.co.uk` may be treated as the same site as other `.co.uk` sites.
 
 ## Needs Vanessa
+
+- **Try AI Tidy with your own key:** create a key at console.anthropic.com (API Keys), then VAIA → Settings → paste it into "Claude API key" → Save, and switch on "Use AI to Tidy". It was tested with a fake key (it correctly fell back to Simple Tidy); a real key needs your account. Each Tidy is one small request (a few cents at most).
+- **Keychain prompt:** the first time the installed VAIA reads your saved key (or after an update), macOS may ask "VAIA wants to use … VAIA Safe Storage". Click **Always Allow** (it may ask for your Mac password). This happens because VAIA isn't signed with a paid Developer ID.
 
 - **Default browser (after Phase 10 install):** open the installed VAIA, choose VAIA menu → "Make VAIA Your Default Browser", and click "Use VAIA" in the macOS prompt. This can't be done or tested from the development version.

@@ -36,7 +36,11 @@ export const DEFAULT_SETTINGS: Settings = {
   adBlock: false,
   sidebarVisible: true,
   sidebarWidth: 248,
-  peekPinnedLinks: true
+  peekPinnedLinks: true,
+  aiTidy: false,
+  todoInSidebar: true,
+  todoSectionCollapsed: false,
+  todoWindowOnTop: false
 }
 
 export function newSpace(name: string, icon: string, colors: string[]): Space {
@@ -60,7 +64,8 @@ function defaultState(): PersistedState {
     activeSpaceId: space.id,
     favorites: [],
     settings: { ...DEFAULT_SETTINGS },
-    boosts: {}
+    boosts: {},
+    todos: []
   }
 }
 
@@ -72,7 +77,8 @@ function normalize(raw: Partial<PersistedState>): PersistedState {
     ...raw,
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
     boosts: raw.boosts ?? {},
-    favorites: raw.favorites ?? []
+    favorites: raw.favorites ?? [],
+    todos: raw.todos ?? []
   }
   if (!Array.isArray(state.spaces) || state.spaces.length === 0) state.spaces = base.spaces
   state.spaces = state.spaces.map((s) => ({ ...newSpace(s.name, s.icon, s.theme?.colors ?? ['#e5e5e5']), ...s }))
@@ -88,6 +94,7 @@ export class Store {
   downloads: DownloadItem[] = []
   peek: TabItem | null = null
   littles: Record<string, TabItem> = {}
+  aiKeySet = false
   private subscribers = new Set<WebContents>()
   private saveTimer: NodeJS.Timeout | null = null
   private broadcastTimer: NodeJS.Timeout | null = null
@@ -97,7 +104,7 @@ export class Store {
   }
 
   snapshot(): AppState {
-    return { ...this.state, runtime: this.runtime, downloads: this.downloads, peek: this.peek, littles: this.littles }
+    return { ...this.state, runtime: this.runtime, downloads: this.downloads, peek: this.peek, littles: this.littles, aiKeySet: this.aiKeySet }
   }
 
   subscribe(wc: WebContents): void {

@@ -1,6 +1,6 @@
 // The contract between the UI and the brain: every request the UI can make.
 import type { Zone } from './tree'
-import type { AppState, ArchivedTab, Boost, HistoryEntry, Pane, Rect, Settings, Theme, UiCommand } from './types'
+import type { AppState, ArchivedTab, Boost, HistoryEntry, Pane, Rect, Settings, Theme, Todo, UiCommand } from './types'
 
 export interface DropTarget {
   zone: Zone
@@ -77,6 +77,17 @@ export type Action =
   | { type: 'archive/remove'; id: string }
   | { type: 'archive/clear' }
   | { type: 'settings/update'; patch: Partial<Settings> }
+  | { type: 'today/tidy' }
+  | { type: 'ai/setKey'; key: string }
+  | { type: 'ai/clearKey' }
+  | { type: 'todo/add'; text: string; spaceId: string | null; due?: string; linkTabId?: string; confirm?: boolean }
+  | { type: 'todo/update'; id: string; patch: Partial<Pick<Todo, 'text' | 'done' | 'due' | 'spaceId' | 'link'>> }
+  | { type: 'todo/delete'; id: string }
+  | { type: 'todo/move'; id: string; beforeId: string | null }
+  | { type: 'todo/open'; id: string }
+  | { type: 'todo/linkActive'; id: string }
+  | { type: 'todo/clearDone' }
+  | { type: 'todo/popout' }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
 export interface VaiaApi {

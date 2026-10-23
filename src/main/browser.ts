@@ -14,11 +14,12 @@ import {
 } from 'electron'
 import { basename, extname, join } from 'node:path'
 import type { Action } from '../shared/api'
-import { activeSpace, locate, tabsIn } from '../shared/tree'
-import type { ArchivedTab, Boost, DownloadItem, Pane, Rect, Space, TabItem, UiCommand } from '../shared/types'
-import { SEARCH_ENGINES, inputToUrl, siteKey } from '../shared/url'
+import { activeSpace, allTabs, locate, tabsIn } from '../shared/tree'
+import type { ArchivedTab, Boost, DownloadItem, Pane, Rect, SidebarItem, Space, TabItem, Todo, UiCommand } from '../shared/types'
+import { SEARCH_ENGINES, inputToUrl, sameUrl, siteKey } from '../shared/url'
 import { existsSync } from 'node:fs'
 import { AdBlock } from './adblock'
+import { AiTidyError, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './ai'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { EMPTY_BOOST, ZAP_SCRIPT, boostCss } from './boosts'
 import { History } from './history'
@@ -36,7 +37,17 @@ import {
 } from './organize'
 import { THEME_PRESETS } from '../shared/themes'
 import { Store, newId, newSpace, readJson, writeJson } from './store'
+import { applyAiPlan, pruneEmptyFolders, simpleTidy, tidyInput, type TidyResult } from './tidy'
 
+/** Checked-off to-dos are deleted this long after being checked. */
+const DONE_TODO_KEEP_MS = 7 * 24 * 60 * 60 * 1000
+const UNDO_MS = 6000
+
+interface ToastOptions {
+  /** A button in the toast, e.g. Undo. */
+  action?: { label: string; run: () => void }
+  duration?: number
+}
 const PRELOAD = join(__dirname, '../preload/index.js')
 
 /** Remove "Electron/x" and "VAIA/x" from the user agent so sites treat us like Chrome. */
@@ -62,6 +73,11 @@ export class Browser {
   private downloadItems = new Map<string, Electron.DownloadItem>()
   private toastView: WebContentsView | null = null
   private toastTimer: NodeJS.Timeout | null = null
+  private toastAction: (() => void) | null = null
+  /** The Today list from before the last Tidy, for Undo. */
+  private tidyUndo: { spaceId: string; today: SidebarItem[] } | null = null
+  private tidying = false
+  private todoWin: BrowserWindow | null = null
   /** The Boost style sheet currently added to each tab's page (so it can be swapped). */
   private boostCssKeys = new Map<string, string>()
   private boostQueue = new Map<string, Promise<void>>()
@@ -144,7 +160,7 @@ export class Browser {
    * A small message at the bottom of the window. It lives in its own tiny
    * see-through view so it shows on top of web pages, too.
    */
-  showToast(message: string): void {
+  showToast(message: string, opts: ToastOptions = {}): void {
     const target = BrowserWindow.getFocusedWindow() ?? this.win
     if (!target) return
     if (!this.toastView) {
@@ -152,26 +168,48 @@ export class Browser {
         webPreferences: { sandbox: true, contextIsolation: true, javascript: false }
       })
       this.toastView.setBackgroundColor('#00000000')
+      // The toast has no scripts; its button is a link we catch here instead of following.
+      this.toastView.webContents.on('will-navigate', (e, url) => {
+        e.preventDefault()
+        if (url !== 'vaia-toast://action') return
+        const run = this.toastAction
+        this.hideToast()
+        run?.()
+      })
     }
     const view = this.toastView
-    const safe = message.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
+    const duration = opts.duration ?? (opts.action ? UNDO_MS : 1800)
+    this.toastAction = opts.action?.run ?? null
+    const safe = (text: string) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
+    const button = opts.action ? `<a href="vaia-toast://action">${safe(opts.action.label)}</a>` : ''
     const html = `<!doctype html><html><head><style>
       html,body{margin:0;height:100%;background:transparent;overflow:hidden}
       body{display:flex;align-items:center;justify-content:center;font:500 12.5px -apple-system,system-ui,sans-serif}
-      div{padding:8px 16px;border-radius:999px;background:rgba(30,30,32,.9);color:#fff;white-space:nowrap;
-        box-shadow:0 6px 20px rgba(0,0,0,.22);animation:t 1.8s cubic-bezier(.2,.8,.2,1) both}
-      @keyframes t{0%{opacity:0;transform:translateY(8px)}10%,85%{opacity:1;transform:none}100%{opacity:0}}
-    </style></head><body><div>${safe}</div></body></html>`
+      div{display:flex;align-items:center;gap:12px;padding:8px 16px;border-radius:999px;background:rgba(30,30,32,.9);color:#fff;white-space:nowrap;
+        box-shadow:0 6px 20px rgba(0,0,0,.22);animation:t ${duration}ms cubic-bezier(.2,.8,.2,1) both}
+      a{color:#9fd8b8;font-weight:600;text-decoration:none;padding:2px 8px;margin:-2px -8px -2px 0;border-radius:999px;cursor:pointer}
+      a:hover{background:rgba(255,255,255,.12)}
+      @keyframes t{0%{opacity:0;transform:translateY(8px)}6%,92%{opacity:1;transform:none}100%{opacity:0}}
+    </style></head><body><div><span>${safe(message)}</span>${button}</div></body></html>`
     view.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(() => {})
     const [w, h] = target.getContentSize()
-    const width = Math.min(420, w - 40)
+    // Keep the toast's (see-through) box close to its text so it doesn't block clicks on the page.
+    const guess = message.length * 7 + (opts.action ? opts.action.label.length * 8 + 70 : 50)
+    const width = Math.min(460, w - 40, Math.max(160, guess))
     view.setBounds({ x: Math.round((w - width) / 2), y: h - 72, width, height: 56 })
     // Adding it again moves it on top of everything else in the window.
     target.contentView.addChildView(view)
     if (this.toastTimer) clearTimeout(this.toastTimer)
-    this.toastTimer = setTimeout(() => {
-      if (!target.isDestroyed()) target.contentView.removeChildView(view)
-    }, 1900)
+    this.toastTimer = setTimeout(() => this.hideToast(), duration + 100)
+  }
+
+  private hideToast(): void {
+    if (this.toastTimer) clearTimeout(this.toastTimer)
+    this.toastTimer = null
+    this.toastAction = null
+    const view = this.toastView
+    if (!view) return
+    for (const win of BrowserWindow.getAllWindows()) if (win.contentView.children.includes(view)) win.contentView.removeChildView(view)
   }
 
   // ---------- Settings window ----------
@@ -305,6 +343,8 @@ export class Browser {
   /** Start-up work that needs the saved settings. */
   init(): void {
     this.loadDownloads()
+    this.store.aiKeySet = hasApiKey()
+    this.purgeDoneTodos()
     if (this.state.settings.adBlock) this.adblock.setEnabled(true)
   }
 
@@ -360,8 +400,10 @@ export class Browser {
     wc.on('did-navigate', (_e, url) => {
       const tab = this.tab(tabId)
       // A new site means the old icon no longer applies.
-      const favicon = tab && originOf(tab.url) === originOf(url) ? tab.favicon : undefined
-      this.updateTab(tabId, { url, favicon })
+      const sameSite = !!tab && originOf(tab.url) === originOf(url)
+      const favicon = sameSite ? tab.favicon : undefined
+      // A short name from AI Tidy described the old page.
+      this.updateTab(tabId, sameSite ? { url, favicon } : { url, favicon, name: undefined })
       this.history.visit(url, wc.getTitle(), favicon)
       runtime()
     })
@@ -678,9 +720,11 @@ export class Browser {
       if (wasActive) {
         // Prefer the neighbour below, like closing a tab in a list.
         const next = loc.list[loc.index] ?? loc.list[loc.index - 1]
-        if (next) this.activate(next.id)
+        if (next && next.kind !== 'folder') this.activate(next.id)
         else this.showNext(space, id)
       }
+      // A Tidy folder that's now empty goes away.
+      space.today = pruneEmptyFolders(space.today)
     }
     this.store.changed()
   }
@@ -714,9 +758,13 @@ export class Browser {
     if (!limit) return
     const cutoff = Date.now() - limit
     let changed = false
-    for (const space of this.state.spaces) {
-      space.today = space.today.filter((item) => {
-        if (item.kind === 'folder' || item.id === space.activeId) return true
+    const keep = (space: Space, list: SidebarItem[]): SidebarItem[] =>
+      list.filter((item) => {
+        if (item.kind === 'folder') {
+          item.children = keep(space, item.children)
+          return true
+        }
+        if (item.id === space.activeId) return true
         const tabs = item.kind === 'tab' ? [item] : item.tabs
         if (tabs.some((t) => t.lastViewedAt > cutoff || this.isAttached(t.id))) return true
         for (const tab of tabs) {
@@ -726,8 +774,19 @@ export class Browser {
         changed = true
         return false
       })
+    for (const space of this.state.spaces) {
+      space.today = keep(space, space.today)
+      if (changed) space.today = pruneEmptyFolders(space.today)
     }
     if (changed) this.store.changed()
+  }
+
+  /** Checked-off to-dos disappear a week after you check them. */
+  purgeDoneTodos(): void {
+    const cutoff = Date.now() - DONE_TODO_KEEP_MS
+    const before = this.state.todos.length
+    this.state.todos = this.state.todos.filter((t) => !(t.done && (t.doneAt ?? 0) < cutoff))
+    if (this.state.todos.length !== before) this.store.changed()
   }
 
   /** Open an archived tab again (in its old Space if it still exists). */
@@ -923,6 +982,153 @@ export class Browser {
     this.views.get(tabId)?.webContents.executeJavaScript('window.__vaiaStopZap?.()').catch(() => {})
   }
 
+  // ---------- Tidy ----------
+
+  /** Tidy the current Space's Today tabs, with Claude if that's switched on. */
+  async tidy(): Promise<void> {
+    if (this.tidying) return
+    const space = activeSpace(this.state)
+    const before = structuredClone(space.today)
+    let result: TidyResult | null = null
+    let fallbackReason = ''
+    if (this.state.settings.aiTidy) {
+      this.tidying = true
+      try {
+        // Work on a copy so nothing moves until Claude's answer arrives.
+        const draft = structuredClone(space)
+        const { tabs, lines, removed } = tidyInput(draft)
+        if (lines.length >= 2) {
+          this.showToast('Tidying with Claude…', { duration: 20000 })
+          const plan = await aiTidyPlan(lines)
+          // Tabs may have been closed or moved while we waited: only use the answer if nothing changed.
+          if (layoutOf(space.today) !== layoutOf(before)) throw new AiTidyError('Tabs changed while tidying')
+          result = applyAiPlan(draft, tabs, plan, removed)
+          space.today = draft.today
+        }
+      } catch (err) {
+        fallbackReason = err instanceof AiTidyError ? err.message : 'AI Tidy failed'
+        if (!(err instanceof AiTidyError)) console.error('[tidy]', err)
+      } finally {
+        this.tidying = false
+      }
+    }
+    result ??= simpleTidy(space)
+    for (const tab of result.removed) {
+      if (space.activeId === tab.id) space.activeId = null
+      this.destroyView(tab.id)
+    }
+    if (!result.changed) {
+      this.showToast(fallbackReason ? `${fallbackReason} · Already tidy` : 'Already tidy')
+      return
+    }
+    this.tidyUndo = { spaceId: space.id, today: before }
+    this.store.changed()
+    const parts = [
+      result.folders ? `${result.folders} folder${result.folders === 1 ? '' : 's'}` : '',
+      result.removed.length ? `${result.removed.length} duplicate${result.removed.length === 1 ? '' : 's'} closed` : ''
+    ].filter(Boolean)
+    const summary = `Tidied${parts.length ? `: ${parts.join(', ')}` : ''}`
+    this.showToast(fallbackReason ? `${fallbackReason}, used Simple Tidy. ${summary}` : summary, {
+      action: { label: 'Undo', run: () => this.undoTidy() }
+    })
+  }
+
+  /** Put Today back exactly as it was before the last Tidy. */
+  undoTidy(): void {
+    const undo = this.tidyUndo
+    this.tidyUndo = null
+    const space = undo && this.state.spaces.find((s) => s.id === undo.spaceId)
+    if (!undo || !space) return
+    space.today = undo.today
+    if (!space.activeId) {
+      const first = tabsIn(space.today)[0]
+      if (first && space.id === this.state.activeSpaceId) this.activate(first.id)
+    }
+    this.store.changed()
+  }
+
+  // ---------- To-dos ----------
+
+  addTodo(text: string, spaceId: string | null, due?: string, linkTabId?: string): string | null {
+    const clean = text.trim()
+    if (!clean) return null
+    const tab = linkTabId ? this.tab(linkTabId) : null
+    const todo: Todo = {
+      id: newId(),
+      text: clean,
+      done: false,
+      due: due || undefined,
+      link: tab?.url ? { url: tab.url, title: tab.name || tab.title } : undefined,
+      spaceId,
+      createdAt: Date.now()
+    }
+    // New to-dos go on top of the list (above the others that are still open).
+    this.state.todos.unshift(todo)
+    this.store.changed()
+    return todo.id
+  }
+
+  /** Open a to-do's linked page: switch to it if it's already open, otherwise open a tab. */
+  openTodoLink(id: string): void {
+    const link = this.state.todos.find((t) => t.id === id)?.link
+    if (!link) return
+    if (!this.win) this.createWindow()
+    this.win?.show()
+    this.win?.focus()
+    const current = activeSpace(this.state)
+    const open = allTabs(this.state).filter((t) => sameUrl(t.url, link.url))
+    const match = open.find((t) => locate(this.state, t.id)?.space === current) ?? open[0]
+    if (match) {
+      const space = locate(this.state, match.id)?.space
+      if (space && space !== current) this.switchSpace(space.id)
+      this.activate(match.id)
+    } else {
+      this.newTab(link.url)
+    }
+    this.store.changed()
+  }
+
+  /** Move a to-do so it sits just before another one (null = the end). */
+  moveTodo(id: string, beforeId: string | null): void {
+    const todos = this.state.todos
+    const from = todos.findIndex((t) => t.id === id)
+    if (from < 0 || id === beforeId) return
+    const [todo] = todos.splice(from, 1)
+    const to = beforeId ? todos.findIndex((t) => t.id === beforeId) : -1
+    todos.splice(to < 0 ? todos.length : to, 0, todo)
+    this.store.changed()
+  }
+
+  /** The to-do list in its own small window that can float above everything. */
+  openTodoWindow(): void {
+    if (this.todoWin && !this.todoWin.isDestroyed()) {
+      this.todoWin.show()
+      this.todoWin.focus()
+      return
+    }
+    const win = new BrowserWindow({
+      width: 340,
+      height: 520,
+      minWidth: 260,
+      minHeight: 240,
+      title: 'VAIA To-do',
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 14, y: 14 },
+      vibrancy: 'sidebar',
+      visualEffectState: 'active',
+      backgroundColor: '#00000000',
+      show: false,
+      webPreferences: { preload: PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true }
+    })
+    this.todoWin = win
+    if (this.state.settings.todoWindowOnTop) win.setAlwaysOnTop(true, 'floating')
+    this.store.subscribe(win.webContents)
+    this.hardenUiWindow(win)
+    win.once('ready-to-show', () => win.show())
+    win.on('closed', () => (this.todoWin = null))
+    loadUi(win, 'todo')
+  }
+
   // ---------- Split View ----------
 
   /**
@@ -1005,6 +1211,8 @@ export class Browser {
     for (const tab of [...tabsIn(space.pinned), ...tabsIn(space.today)]) this.destroyView(tab.id)
     this.state.spaces.splice(index, 1)
     if (space.profileId) this.forgetProfile(space.profileId)
+    // Its to-dos aren't lost: they become "Everywhere" to-dos.
+    for (const todo of this.state.todos) if (todo.spaceId === id) todo.spaceId = null
     if (this.state.activeSpaceId === id) {
       this.state.activeSpaceId = ''
       this.switchSpace(this.state.spaces[Math.max(0, index - 1)].id)
@@ -1257,12 +1465,73 @@ export class Browser {
       }
       case 'settings/update':
         if (action.patch.adBlock !== undefined) this.adblock.setEnabled(action.patch.adBlock)
+        if (action.patch.todoWindowOnTop !== undefined && this.todoWin && !this.todoWin.isDestroyed()) {
+          this.todoWin.setAlwaysOnTop(action.patch.todoWindowOnTop, 'floating')
+        }
         Object.assign(this.state.settings, action.patch)
         if (action.patch.archiveAfter) this.autoArchive()
         this.store.changed()
         return
+      case 'today/tidy':
+        return this.tidy()
+      case 'ai/setKey':
+        return saveApiKey(action.key)
+          .then(() => (this.store.aiKeySet = true))
+          .catch((err) => {
+            console.error('[ai] could not save key', err)
+            this.showToast('Could not save the key securely')
+          })
+          .finally(() => this.store.changed(false))
+      case 'ai/clearKey':
+        clearApiKey()
+        this.store.aiKeySet = false
+        return this.store.changed(false)
+      case 'todo/add': {
+        const id = this.addTodo(action.text, action.spaceId, action.due, action.linkTabId)
+        if (id && action.confirm) this.showToast('Added to your to-do list')
+        return id
+      }
+      case 'todo/update': {
+        const todo = this.state.todos.find((t) => t.id === action.id)
+        if (!todo) return
+        const { done, ...rest } = action.patch
+        Object.assign(todo, rest)
+        if (done !== undefined && done !== todo.done) {
+          todo.done = done
+          todo.doneAt = done ? Date.now() : undefined
+        }
+        if (todo.text.trim() === '') todo.text = 'Untitled'
+        return this.store.changed()
+      }
+      case 'todo/delete':
+        this.state.todos = this.state.todos.filter((t) => t.id !== action.id)
+        return this.store.changed()
+      case 'todo/move':
+        return this.moveTodo(action.id, action.beforeId)
+      case 'todo/open':
+        return this.openTodoLink(action.id)
+      case 'todo/linkActive': {
+        const todo = this.state.todos.find((t) => t.id === action.id)
+        const id = this.activeTabId()
+        const tab = id ? this.tab(id) : null
+        if (todo && tab?.url) {
+          todo.link = { url: tab.url, title: tab.name || tab.title }
+          this.store.changed()
+        }
+        return
+      }
+      case 'todo/clearDone':
+        this.state.todos = this.state.todos.filter((t) => !t.done)
+        return this.store.changed()
+      case 'todo/popout':
+        return this.openTodoWindow()
     }
   }
+}
+
+/** Which items are where (ignoring titles and icons, which change as pages load). */
+function layoutOf(list: SidebarItem[]): string {
+  return JSON.stringify(list, (key, value) => (key === 'title' || key === 'favicon' || key === 'lastViewedAt' ? undefined : value))
 }
 
 /** example.com for www.example.com, mail.example.com, etc. (good enough for "same site"). */

@@ -118,6 +118,25 @@ export const COMMANDS: Command[] = [
     run: () => dispatch({ type: 'folder/new' })
   },
   {
+    id: 'todo',
+    title: 'Open To-do List',
+    shortcut: '⇧⌘K',
+    keywords: 'tasks todo to-do checklist reminders',
+    run: (ctx) => ctx.ui.openPanel('todo')
+  },
+  {
+    id: 'todo-popout',
+    title: 'Pop Out To-do List',
+    keywords: 'tasks todo to-do window sticky float',
+    run: () => dispatch({ type: 'todo/popout' })
+  },
+  {
+    id: 'tidy',
+    title: 'Tidy Today Tabs',
+    keywords: 'organize group folders duplicates clean sort',
+    run: () => dispatch({ type: 'today/tidy' })
+  },
+  {
     id: 'clear-today',
     title: 'Clear Today Tabs',
     keywords: 'close all tidy',

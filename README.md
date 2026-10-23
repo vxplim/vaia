@@ -45,6 +45,8 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - ✅ Settings window, Downloads popover, History page, Find in page (⌘F)
 - ✅ Built-in ad and tracker blocker (open-source EasyList filters)
 - ✅ Boosts: recolor any website, change its font, zap away elements, and add your own CSS/JS
+- ✅ Tidy: group Today tabs by website and close duplicates in one click (with Undo), or let Claude sort them into topic folders with your own API key
+- ✅ To-do list per Space (or everywhere): slide-out panel (⇧⌘K), sidebar section, and a pop-out window that can stay on top; due dates, linked pages, and "todo …" in the Command Bar
 - ✅ Keyboard-friendly: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⌘Y, ⌘, (full list in Settings)
 
 ## Screenshots

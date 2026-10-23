@@ -64,7 +64,10 @@ app.whenReady().then(() => {
 
   // Check for tabs to auto-archive at start-up and then every minute.
   browser.autoArchive()
-  setInterval(() => browser.autoArchive(), 60_000)
+  setInterval(() => {
+    browser.autoArchive()
+    browser.purgeDoneTodos()
+  }, 60_000)
 
   // macOS: clicking the Dock icon with no windows open makes a new one.
   app.on('activate', () => {

@@ -1,7 +1,7 @@
 {
   "name": "vaia",
   "productName": "VAIA",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A calm, sidebar-first browser for Mac",
   "author": "Vanessa Minerva Lim",
   "license": "MIT",
@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.2.0",
     "@ghostery/adblocker-electron": "^2.20.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

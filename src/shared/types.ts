@@ -17,6 +17,8 @@ export interface TabItem {
   favicon?: string
   /** Set for pinned tabs and favorites: the URL they "belong" to. */
   pinnedUrl?: string
+  /** A shorter name shown instead of the page title (set by AI Tidy). */
+  name?: string
   createdAt: number
   lastViewedAt: number
 }
@@ -65,6 +67,28 @@ export interface Settings {
   sidebarWidth: number
   /** Links from pinned tabs/favorites to other sites open in a Peek card. */
   peekPinnedLinks: boolean
+  /** Tidy asks Claude for topic folders (needs an API key). */
+  aiTidy: boolean
+  /** Show this Space's to-dos in the sidebar under Pinned. */
+  todoInSidebar: boolean
+  todoSectionCollapsed: boolean
+  /** The popped-out to-do window floats above other apps. */
+  todoWindowOnTop: boolean
+}
+
+export interface Todo {
+  id: string
+  text: string
+  done: boolean
+  /** When it was checked off (done items are deleted 7 days later). */
+  doneAt?: number
+  /** "YYYY-MM-DD" (a calendar day, no time). */
+  due?: string
+  /** A page this to-do is about; clicking the to-do opens it. */
+  link?: { url: string; title: string }
+  /** The Space it belongs to, or null for "Everywhere". */
+  spaceId: string | null
+  createdAt: number
 }
 
 export interface Boost {
@@ -85,6 +109,8 @@ export interface PersistedState {
   favorites: TabItem[]
   settings: Settings
   boosts: Record<string, Boost>
+  /** One shared list, in the order you arranged it. */
+  todos: Todo[]
 }
 
 export interface TabRuntime {
@@ -111,6 +137,8 @@ export interface AppState extends PersistedState {
   peek: TabItem | null
   /** Pages open in Little windows, by tab id. */
   littles: Record<string, TabItem>
+  /** Whether a Claude API key is saved (the key itself never leaves the brain). */
+  aiKeySet: boolean
 }
 
 export interface HistoryEntry {
@@ -144,7 +172,7 @@ export interface Pane {
 }
 
 /** Floating panels in the main window. */
-export type Panel = 'archive' | 'history' | 'downloads'
+export type Panel = 'archive' | 'history' | 'downloads' | 'todo'
 
 /** Commands the brain asks the UI to perform (usually from keyboard shortcuts). */
 export type UiCommand =

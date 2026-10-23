@@ -19,8 +19,7 @@ function listFor(state: PersistedState, to: DropTarget): SidebarItem[] | null {
   if (to.zone === 'favorites') return state.favorites
   const space = state.spaces.find((s) => s.id === to.spaceId)
   if (!space) return null
-  if (to.zone === 'today') return space.today
-  if (!to.parentId) return space.pinned
+  if (!to.parentId) return to.zone === 'today' ? space.today : space.pinned
   const loc = locate(state, to.parentId)
   return loc && loc.item.kind === 'folder' ? loc.item.children : null
 }
@@ -40,7 +39,6 @@ export function moveItem(state: PersistedState, id: string, to: DropTarget): boo
   if (!from || from.split) return false
   const item = from.item
   if (to.zone === 'favorites' && item.kind !== 'tab') return false
-  if (to.zone === 'today' && item.kind === 'folder') return false
   if (to.parentId && (to.parentId === id || (item.kind === 'folder' && containsId(item, to.parentId)))) return false
   const target = listFor(state, to)
   if (!target) return false
