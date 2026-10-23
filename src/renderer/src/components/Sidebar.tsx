@@ -4,7 +4,9 @@ import { useDropArea } from '../dnd'
 import { pinnedAreaMenu } from '../menus'
 import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
-import { IconBack, IconForward, IconMore, IconPlus, IconReload, IconSidebar, IconStop } from './Icons'
+import { siteKey } from '../../../shared/url'
+import { BoostPanel } from './BoostPanel'
+import { IconBack, IconBoost, IconForward, IconMore, IconPlus, IconReload, IconSidebar, IconStop } from './Icons'
 import { ItemList } from './PinnedList'
 import { SpaceBar } from './SpaceBar'
 import { UrlBar } from './UrlBar'
@@ -19,6 +21,8 @@ interface Props {
   onEditSpace: (spaceId: string) => void
   onOpenPanel: (panel: Panel) => void
   onToggleSidebar: () => void
+  boostOpen: boolean
+  onBoost: (open: boolean) => void
 }
 
 /** Two-finger horizontal swipes on the sidebar switch Spaces. */
@@ -44,7 +48,10 @@ function useSwipe(onSwipe: (delta: 1 | -1) => void) {
 }
 
 export function Sidebar(props: Props) {
-  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onToggleSidebar } = props
+  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onToggleSidebar, boostOpen, onBoost } =
+    props
+  const site = activeTab ? siteKey(activeTab.url) : null
+  const boosted = !!(site && state.boosts[site]?.enabled)
   const spaceIndex = state.spaces.findIndex((s) => s.id === space.id)
   // Slide the tab list in from the side the new Space is on.
   const lastIndex = useRef(spaceIndex)
@@ -104,7 +111,21 @@ export function Sidebar(props: Props) {
       <div className="urlbar-wrap">
         <UrlBar tab={activeTab} editing={urlEditing} setEditing={setUrlEditing} />
         <FavoritesDropZone state={state} space={space} />
+        {site && !urlEditing && (
+          <button
+            className={`boost-button${boosted ? ' on' : ''}${boostOpen ? ' open' : ''}`}
+            title={boosted ? 'This site is Boosted (edit)' : 'Boost this site'}
+            onClick={() => onBoost(!boostOpen)}
+          >
+            <IconBoost />
+          </button>
+        )}
       </div>
+
+      {boostOpen ? (
+        <BoostPanel state={state} tab={activeTab} onClose={() => onBoost(false)} />
+      ) : (
+        <>
 
       <Favorites state={state} space={space} />
 
@@ -153,6 +174,8 @@ export function Sidebar(props: Props) {
       </div>
 
       <SpaceBar state={state} onEdit={onEditSpace} onOpenPanel={onOpenPanel} />
+        </>
+      )}
     </aside>
   )
 }

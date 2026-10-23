@@ -15,11 +15,12 @@ import {
 import { basename, extname, join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, locate, tabsIn } from '../shared/tree'
-import type { ArchivedTab, DownloadItem, Pane, Rect, Space, TabItem, UiCommand } from '../shared/types'
-import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
+import type { ArchivedTab, Boost, DownloadItem, Pane, Rect, Space, TabItem, UiCommand } from '../shared/types'
+import { SEARCH_ENGINES, inputToUrl, siteKey } from '../shared/url'
 import { existsSync } from 'node:fs'
 import { AdBlock } from './adblock'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
+import { EMPTY_BOOST, ZAP_SCRIPT, boostCss } from './boosts'
 import { History } from './history'
 import {
   addFavorite,
@@ -61,6 +62,10 @@ export class Browser {
   private downloadItems = new Map<string, Electron.DownloadItem>()
   private toastView: WebContentsView | null = null
   private toastTimer: NodeJS.Timeout | null = null
+  /** The Boost style sheet currently added to each tab's page (so it can be swapped). */
+  private boostCssKeys = new Map<string, string>()
+  private boostQueue = new Map<string, Promise<void>>()
+  private zapping = new Set<string>()
   private views = new Map<string, WebContentsView>()
   /** Which tab views are currently shown in each window. */
   private attached = new Map<BrowserWindow, string[]>()
@@ -394,6 +399,13 @@ export class Browser {
       }
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
+    // Boosts: re-apply the site's customizations every time a page loads.
+    wc.on('did-navigate', () => this.boostCssKeys.delete(tabId))
+    wc.on('dom-ready', () => {
+      this.applyBoostCss(tabId)
+      const boost = this.boostFor(wc.getURL())
+      if (boost?.enabled && boost.js.trim()) wc.executeJavaScript(boost.js).catch(() => {})
+    })
     wc.on('found-in-page', (_e, result) => {
       if (result.finalUpdate) {
         this.notify({ type: 'find-result', matches: result.matches, active: result.activeMatchOrdinal })
@@ -419,6 +431,8 @@ export class Browser {
     }
     view.webContents.close()
     this.views.delete(tabId)
+    this.boostCssKeys.delete(tabId)
+    this.boostQueue.delete(tabId)
     delete this.store.runtime[tabId]
   }
 
@@ -839,6 +853,76 @@ export class Browser {
     return true
   }
 
+  // ---------- Boosts ----------
+
+  private boostFor(url: string) {
+    const site = siteKey(url)
+    return site ? this.state.boosts[site] : undefined
+  }
+
+  /**
+   * Swap the page's Boost style sheet for the current version (or remove it).
+   * Runs one at a time per tab, so quick changes (dragging a color) can't leave stray style sheets behind.
+   */
+  private applyBoostCss(tabId: string): Promise<void> {
+    const next = (this.boostQueue.get(tabId) ?? Promise.resolve()).then(() => this.swapBoostCss(tabId))
+    this.boostQueue.set(tabId, next.catch(() => {}))
+    return next
+  }
+
+  private async swapBoostCss(tabId: string): Promise<void> {
+    const wc = this.views.get(tabId)?.webContents
+    if (!wc || wc.isDestroyed()) return
+    const old = this.boostCssKeys.get(tabId)
+    this.boostCssKeys.delete(tabId)
+    if (old) await wc.removeInsertedCSS(old).catch(() => {})
+    const boost = this.boostFor(wc.getURL())
+    const css = boost?.enabled ? boostCss(boost) : ''
+    if (css) {
+      // Every Boost rule is !important, so it wins over the site's own styles.
+      // (Not cssOrigin "user": Electron can't remove those again, which breaks turning a Boost off.)
+      const key = await wc.insertCSS(css).catch(() => null)
+      if (key) this.boostCssKeys.set(tabId, key)
+    }
+  }
+
+  /** After a Boost changes, update every open page of that site. */
+  private refreshBoost(site: string): void {
+    for (const id of this.views.keys()) {
+      const url = this.views.get(id)?.webContents.getURL() ?? ''
+      if (siteKey(url) === site) this.applyBoostCss(id)
+    }
+  }
+
+  updateBoost(site: string, patch: Partial<Boost>): void {
+    const boost = { ...EMPTY_BOOST, ...this.state.boosts[site], ...patch }
+    this.state.boosts[site] = boost
+    this.store.changed()
+    this.refreshBoost(site)
+  }
+
+  /** Zap mode: click things on the page to hide them, until Esc. */
+  async startZap(tabId: string): Promise<void> {
+    const wc = this.views.get(tabId)?.webContents
+    const site = wc ? siteKey(wc.getURL()) : null
+    if (!wc || !site || this.zapping.has(tabId)) return
+    this.zapping.add(tabId)
+    wc.focus()
+    while (this.zapping.has(tabId) && !wc.isDestroyed()) {
+      const selector = (await wc.executeJavaScript(ZAP_SCRIPT, true).catch(() => null)) as string | null
+      if (!selector) break
+      const boost = this.state.boosts[site] ?? EMPTY_BOOST
+      if (!boost.zaps.includes(selector)) this.updateBoost(site, { zaps: [...boost.zaps, selector], enabled: true })
+    }
+    this.zapping.delete(tabId)
+    this.notify({ type: 'zap-ended' })
+  }
+
+  stopZap(tabId: string): void {
+    this.zapping.delete(tabId)
+    this.views.get(tabId)?.webContents.executeJavaScript('window.__vaiaStopZap?.()').catch(() => {})
+  }
+
   // ---------- Split View ----------
 
   /**
@@ -1155,6 +1239,22 @@ export class Browser {
         this.win?.show()
         this.win?.focus()
         return this.command({ type: 'edit-space', id: action.id })
+      case 'boost/update':
+        return this.updateBoost(action.site, action.patch)
+      case 'boost/delete':
+        delete this.state.boosts[action.site]
+        this.store.changed()
+        return this.refreshBoost(action.site)
+      case 'boost/zapStart':
+        return this.startZap(action.tabId)
+      case 'boost/zapStop':
+        return this.stopZap(action.tabId)
+      case 'boost/runJs': {
+        const wc = this.views.get(action.tabId)?.webContents
+        const boost = wc ? this.boostFor(wc.getURL()) : undefined
+        if (wc && boost?.js.trim()) wc.executeJavaScript(boost.js).catch(() => this.showToast('The script had an error'))
+        return
+      }
       case 'settings/update':
         if (action.patch.adBlock !== undefined) this.adblock.setEnabled(action.patch.adBlock)
         Object.assign(this.state.settings, action.patch)

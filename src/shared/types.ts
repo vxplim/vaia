@@ -156,3 +156,5 @@ export type UiCommand =
   | { type: 'find-next'; forward: boolean }
   | { type: 'find-result'; matches: number; active: number }
   | { type: 'toggle-sidebar' }
+  | { type: 'boost' }
+  | { type: 'zap-ended' }

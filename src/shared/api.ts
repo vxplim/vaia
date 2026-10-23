@@ -1,6 +1,6 @@
 // The contract between the UI and the brain: every request the UI can make.
 import type { Zone } from './tree'
-import type { AppState, ArchivedTab, HistoryEntry, Pane, Rect, Settings, Theme, UiCommand } from './types'
+import type { AppState, ArchivedTab, Boost, HistoryEntry, Pane, Rect, Settings, Theme, UiCommand } from './types'
 
 export interface DropTarget {
   zone: Zone
@@ -67,6 +67,11 @@ export type Action =
   | { type: 'history/remove'; url: string }
   | { type: 'app/openSettings' }
   | { type: 'app/editSpace'; id: string }
+  | { type: 'boost/update'; site: string; patch: Partial<Boost> }
+  | { type: 'boost/delete'; site: string }
+  | { type: 'boost/zapStart'; tabId: string }
+  | { type: 'boost/zapStop'; tabId: string }
+  | { type: 'boost/runJs'; tabId: string }
   | { type: 'tab/reopenClosed' }
   | { type: 'archive/restore'; id: string }
   | { type: 'archive/remove'; id: string }

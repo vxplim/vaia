@@ -1856,3 +1856,198 @@ button.urlbar:hover {
     height: 0;
   }
 }
+
+/* ---------- Boosts (Phase 9) ---------- */
+.boost-button {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+  opacity: 0;
+  transition: opacity 120ms, background 120ms;
+}
+.urlbar-wrap:hover .boost-button,
+.boost-button.on,
+.boost-button.open {
+  opacity: 1;
+}
+.boost-button:hover,
+.boost-button.open {
+  background: var(--press);
+  color: var(--fg);
+}
+.boost-button.on {
+  color: var(--accent);
+}
+.boost-button.on::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff7a3d;
+}
+.boost-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  animation: tab-in 180ms var(--ease);
+}
+.boost-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px 10px 6px;
+}
+.boost-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.boost-site {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-top: 1px;
+}
+.boost-empty {
+  color: var(--fg-muted);
+  padding: 0 6px;
+}
+.boost-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px 0 6px;
+}
+.boost-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fg-muted);
+  margin: 14px 0 6px;
+}
+.boost-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+}
+.boost-color {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.boost-color input[type='color'] {
+  width: 30px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: default;
+}
+.boost-color input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.boost-color input[type='color']::-webkit-color-swatch {
+  border: 0;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.2);
+}
+.boost-off {
+  width: 22px;
+  font-size: 11px;
+  color: var(--fg-faint);
+  text-align: center;
+}
+.boost-select {
+  width: 100%;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  padding: 0 8px;
+  background: var(--field);
+}
+.boost-zap {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: var(--field);
+  font-weight: 500;
+  text-align: center;
+}
+.boost-zap:hover {
+  background: var(--press);
+}
+.boost-zap.active {
+  background: #ff5a4e;
+  color: #fff;
+  font-size: 12px;
+}
+.zap-list {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.zap-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 2px 2px 8px;
+  border-radius: 6px;
+  background: var(--hover);
+  font: 11px ui-monospace, Menlo, monospace;
+}
+.zap-item span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.zap-list .text-button {
+  align-self: flex-start;
+  height: 24px;
+  font-size: 11.5px;
+}
+.code-box {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: 0;
+  outline: 0;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: var(--field);
+  font: 11.5px/1.5 ui-monospace, 'SF Mono', Menlo, monospace;
+  user-select: text;
+}
+.code-box:focus {
+  background: var(--active-tab);
+}
+.text-button.small {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+.text-button:disabled {
+  opacity: 0.4;
+}
+.boost-delete {
+  margin: 14px 0 6px;
+}
+.boost-done {
+  margin: 8px 4px 2px;
+}

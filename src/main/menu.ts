@@ -118,6 +118,7 @@ export function buildMenu(browser: Browser): void {
           accelerator: 'CmdOrCtrl+S',
           click: () => browser.notify({ type: 'toggle-sidebar' })
         },
+        { label: 'Boost This Site…', id: 'boost', click: () => browser.command({ type: 'boost' }) },
         { label: 'Downloads', id: 'downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => browser.command({ type: 'open-panel', panel: 'downloads' }) },
         { type: 'separator' },
         { label: 'Reload Page', id: 'reload', accelerator: 'CmdOrCtrl+R', click: () => page()?.reload() },

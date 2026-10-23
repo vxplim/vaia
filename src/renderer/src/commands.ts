@@ -15,6 +15,7 @@ export interface CommandContext {
     openSplitPicker: () => void
     toggleSidebar: () => void
     find: () => void
+    boost: () => void
   }
 }
 
@@ -171,6 +172,23 @@ export const COMMANDS: Command[] = [
     keywords: 'search text',
     enabled: hasTab,
     run: (ctx) => ctx.ui.find()
+  },
+  {
+    id: 'boost',
+    title: 'Boost This Site',
+    keywords: 'customize colors font zap css javascript style theme',
+    enabled: hasTab,
+    run: (ctx) => ctx.ui.boost()
+  },
+  {
+    id: 'zap',
+    title: 'Zap Elements on This Page',
+    keywords: 'hide remove boost',
+    enabled: hasTab,
+    run: (ctx) => {
+      ctx.ui.boost()
+      dispatch({ type: 'boost/zapStart', tabId: ctx.activeTabId! })
+    }
   },
   {
     id: 'duplicate',

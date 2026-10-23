@@ -138,3 +138,8 @@ export const IconChevronDown = (p: P) => (
     <path d="M4 6l4 4 4-4" />
   </Svg>
 )
+export const IconBoost = (p: P) => (
+  <Svg width="14" height="14" {...p}>
+    <path d="M9 2.5 4 9h3.5L7 13.5 12 7H8.5L9 2.5Z" />
+  </Svg>
+)

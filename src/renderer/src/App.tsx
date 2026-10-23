@@ -33,6 +33,7 @@ export default function App() {
   const [findOpen, setFindOpen] = useState(false)
   // With the sidebar hidden, hovering the left edge slides it out over the page.
   const [sidebarPeek, setSidebarPeek] = useState(false)
+  const [boostOpen, setBoostOpen] = useState(false)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -61,6 +62,12 @@ export default function App() {
   }, [])
   const sidebarVisible = state?.settings.sidebarVisible ?? true
 
+  // The Boost editor lives in the sidebar, so make sure the sidebar is showing.
+  const openBoost = useCallback(() => {
+    if (!sidebarVisible) dispatch({ type: 'settings/update', patch: { sidebarVisible: true } })
+    setBoostOpen(true)
+  }, [sidebarVisible])
+
   const toggleSidebar = useCallback(() => {
     setSidebarPeek(false)
     dispatch({ type: 'settings/update', patch: { sidebarVisible: !sidebarVisible } })
@@ -79,8 +86,9 @@ export default function App() {
         if (cmd.type === 'open-panel') openPanel(cmd.panel)
         if (cmd.type === 'toggle-sidebar') toggleSidebar()
         if (cmd.type === 'find') openFind()
+        if (cmd.type === 'boost') openBoost()
       }),
-    [openOverlay, editSpace, openPanel, toggleSidebar, openFind, sidebarVisible]
+    [openOverlay, editSpace, openPanel, toggleSidebar, openFind, openBoost, sidebarVisible]
   )
 
   // Hide the window's red/yellow/green buttons along with the sidebar.
@@ -139,6 +147,8 @@ export default function App() {
       onEditSpace={editSpace}
       onOpenPanel={openPanel}
       onToggleSidebar={toggleSidebar}
+      boostOpen={boostOpen && sidebarVisible}
+      onBoost={(open) => (open ? openBoost() : setBoostOpen(false))}
     />
   )
 
@@ -176,7 +186,8 @@ export default function App() {
               openPanel,
               openSplitPicker: () => openOverlay({ kind: 'command', mode: 'split' }),
               toggleSidebar,
-              find: openFind
+              find: openFind,
+              boost: openBoost
             }}
           />
         )}

@@ -4,7 +4,7 @@
 
 VAIA is a desktop web browser built around a vertical sidebar, a floating command bar, Spaces, and an uncluttered, card-like content area. It's an independent, original project built with Electron, React, and TypeScript.
 
-> 🚧 **Status:** in development. Phases 1–8 of 10 are done. See [PROGRESS.md](PROGRESS.md).
+> 🚧 **Status:** in development. Phases 1–9 of 10 are done; packaging and the first release are next. See [PROGRESS.md](PROGRESS.md).
 
 ## Features
 
@@ -22,11 +22,12 @@ VAIA is a desktop web browser built around a vertical sidebar, a floating comman
 - ✅ Hideable sidebar (⌘S) that slides out when you hover the left edge
 - ✅ Settings window, Downloads popover, History page, Find in page (⌘F)
 - ✅ Built-in ad and tracker blocker (open-source EasyList filters)
-- ✅ Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[, ⌘] and ⇧⌘C (copy URL)
+- ✅ Boosts: recolor any website, change its font, zap away elements, and add your own CSS/JS
+- ✅ Keyboard-friendly: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⌘Y, ⌘, (full list in Settings)
 
 ### Coming next
 
-- Boosts: per-site customization
+- A real Mac app (.dmg) with its own icon, and a downloadable release
 
 ## Screenshots
 

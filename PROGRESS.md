@@ -82,10 +82,18 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - **Ad blocker** (Settings or Command Bar "Toggle Ad Blocker"): Ghostery's open-source engine with the EasyList ad + tracker lists, for every profile. Tested: an ad script is blocked when on and loads when off
   - Animations: tabs fold away when closed with ×, the sidebar slides in, plus the existing Command Bar / Space / panel animations
 
+- [x] **Phase 9: Boosts** (tag `v0.9.0`)
+  - Per-website customization, saved per site and switchable on/off
+  - Open it with the ⚡︎ button on the address pill (it shows an orange dot when the site is Boosted), View menu → "Boost This Site…", or Command Bar "Boost This Site". The editor opens in the sidebar so you see changes live
+  - Colors: background, text and link color (× returns to the site's own color)
+  - Font: system, serif, rounded, monospace, Helvetica, Avenir
+  - **Zap**: click "Zap elements", then click things on the page to hide them (Esc to stop); each zapped item is listed and can be restored
+  - Custom CSS (applied as you type) and custom JavaScript (runs each time a page on that site loads; "Run now" to try it)
+  - Command Bar "Zap Elements on This Page" jumps straight into zapping
+
 ## Next
 
-- [ ] Phase 9: Boosts
-- [ ] Phase 10: Ship it (icon, .dmg, GitHub Release), to do together
+- [ ] **Phase 10: Ship it** (icon, .dmg, GitHub Release), to do together
 
 ## Decisions made along the way
 
@@ -116,7 +124,17 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Toasts are drawn by the brain** in a tiny see-through view placed on top of everything, because nothing in the normal interface can float above a live web page.
 - **Downloads go straight to ~/Downloads** without asking; a name clash gets " (1)", " (2)", …
 - **The filter lists for the ad blocker are downloaded the first time you turn it on** (needs internet once) and cached in VAIA's data folder.
+- **Boost styles use normal (author) style sheets with `!important`**. Electron's stronger "user" style sheets can't be removed again, which would make turning a Boost off impossible.
+- **Boost JavaScript only runs when a page loads** (or with "Run now"), so editing it doesn't run half-typed code.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
+
+## Known limitations (simpler versions chosen)
+
+- The tab-close animation plays when you click × (⌘W closes instantly).
+- The ⇧⌘T "recently closed" list holds Today tabs; closing a pinned tab only puts it to sleep, so there's nothing to reopen.
+- Back/forward history of each tab isn't restored after quitting VAIA (the page itself is).
+- Favorites always use the default profile, even when viewed from a Space with a separate profile.
+- Peek decides "another site" by comparing the last two parts of the domain (e.g. `news.example.com` and `example.com` count as the same site); unusual domains like `example.co.uk` may be treated as the same site as other `.co.uk` sites.
 
 ## Needs Vanessa
 
