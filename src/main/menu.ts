@@ -34,6 +34,12 @@ export function buildMenu(browser: Browser): void {
       label: 'File',
       submenu: [
         { label: 'New Tab', id: 'new-tab', accelerator: 'CmdOrCtrl+T', click: () => browser.command({ type: 'command-bar' }) },
+        {
+          label: 'New Split View Pane…',
+          id: 'split',
+          accelerator: 'Ctrl+Shift+=',
+          click: () => browser.command({ type: 'command-bar', mode: 'split' })
+        },
         { label: 'Open Location…', id: 'focus-url', accelerator: 'CmdOrCtrl+L', click: () => browser.command({ type: 'focus-url' }) },
         {
           label: 'Copy URL',

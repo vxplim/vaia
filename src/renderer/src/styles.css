@@ -1241,3 +1241,122 @@ button.urlbar:hover {
 .list-row:hover .tab-action {
   opacity: 0.6;
 }
+
+/* ---------- Split View (Phase 6) ---------- */
+.panes {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+.pane-slot {
+  position: relative;
+  flex-basis: 0;
+  min-width: 0;
+  display: flex;
+}
+.pane-slot + .pane-slot {
+  padding-left: 8px;
+}
+.split-divider {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  -webkit-app-region: no-drag;
+  z-index: 2;
+}
+.split-divider::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 50%;
+  height: 36px;
+  width: 2px;
+  margin-top: -18px;
+  border-radius: 2px;
+  background: var(--fg-faint);
+  opacity: 0;
+  transition: opacity 150ms;
+}
+.split-divider:hover::after {
+  opacity: 1;
+}
+.content-card.focused {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    0 8px 28px rgba(0, 0, 0, 0.08);
+}
+
+.drop-zones {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  gap: 8px;
+  z-index: 3;
+  pointer-events: none;
+}
+.drop-zone {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  transition: background 150ms;
+}
+.drop-zone.active {
+  background: rgba(127, 127, 127, 0.22);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  backdrop-filter: blur(4px);
+}
+.drop-zone span {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(30, 30, 32, 0.85);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.split-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--field);
+}
+.split-row.active {
+  background: var(--active-tab);
+  box-shadow: var(--active-shadow);
+}
+.split-seg {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 6px;
+}
+.split-seg + .split-seg {
+  border-left: 1px solid var(--divider);
+  border-radius: 0 6px 6px 0;
+}
+.split-seg:hover {
+  background: var(--hover);
+}
+.split-seg.focused .tab-title {
+  font-weight: 600;
+}
+.split-row .tab-close {
+  opacity: 0;
+}
+.split-row:hover .tab-close {
+  opacity: 1;
+}

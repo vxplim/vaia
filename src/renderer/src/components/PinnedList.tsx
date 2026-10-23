@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { AppState, FolderItem, SidebarItem, Space } from '../../../shared/types'
+import type { AppState, FolderItem, SidebarItem, Space, SplitItem } from '../../../shared/types'
 import { useDragRow } from '../dnd'
-import { folderMenu } from '../menus'
+import { folderMenu, splitMenu } from '../menus'
 import { dispatch } from '../state'
-import { IconChevron, IconFolder } from './Icons'
+import { Favicon } from './Favicon'
+import { IconChevron, IconClose, IconFolder } from './Icons'
 import { TabRow } from './TabRow'
 
 interface ListProps {
@@ -41,7 +42,7 @@ export function ItemList(props: ListProps) {
         if (item.kind === 'folder') {
           return <FolderRow key={item.id} folder={item} index={index} {...props} />
         }
-        return null
+        return <SplitRow key={item.id} split={item} index={index} {...props} />
       })}
     </>
   )
@@ -120,6 +121,57 @@ function FolderRow({ folder, index, ...props }: ListProps & { folder: FolderItem
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/** A Split View shows as one row, with a segment for each tab side by side. */
+function SplitRow({ split, index, ...props }: ListProps & { split: SplitItem; index: number }) {
+  const { state, space, zone, parentId, depth } = props
+  const active = space.activeId === split.id
+  const { draggable, dropClass, dragging, handlers } = useDragRow({
+    id: split.id,
+    kind: 'split',
+    zone,
+    spaceId: space.id,
+    parentId,
+    index
+  })
+  return (
+    <div
+      className={`split-row${active ? ' active' : ''}${dragging ? ' dragging' : ''}${dropClass}`}
+      style={{ marginLeft: depth * 14 }}
+      draggable={draggable}
+      {...handlers}
+    >
+      {split.tabs.map((tab) => (
+        <div
+          key={tab.id}
+          className={`split-seg${active && split.focusedId === tab.id ? ' focused' : ''}`}
+          role="button"
+          title={tab.title}
+          onClick={() => dispatch({ type: 'tab/activate', id: tab.id })}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            splitMenu(split, tab)
+          }}
+        >
+          <span className={`tab-icon${state.runtime[tab.id]?.loading ? ' loading' : ''}`}>
+            <Favicon src={tab.favicon} url={tab.url} />
+          </span>
+          <span className="tab-title">{tab.title}</span>
+        </div>
+      ))}
+      <button
+        className="tab-action tab-close"
+        title="Separate the tabs"
+        onClick={(e) => {
+          e.stopPropagation()
+          dispatch({ type: 'split/dissolve', id: split.id })
+        }}
+      >
+        <IconClose />
+      </button>
     </div>
   )
 }

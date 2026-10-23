@@ -18,7 +18,18 @@ import type { ArchivedTab, Pane, Space, TabItem, UiCommand } from '../shared/typ
 import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { History } from './history'
-import { addFavorite, deleteFolder, moveItem, newFolder, pinTab, unpinTab } from './organize'
+import {
+  addFavorite,
+  addToSplit,
+  deleteFolder,
+  detachFromSplit,
+  dissolveSplit,
+  moveItem,
+  newFolder,
+  pinTab,
+  removeFromSplit,
+  unpinTab
+} from './organize'
 import { THEME_PRESETS } from '../shared/themes'
 import { Store, newId, newSpace } from './store'
 
@@ -187,6 +198,14 @@ export class Browser {
       return { action: 'deny' }
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
+    // In a split, the pane you click becomes the one the address bar shows.
+    wc.on('focus', () => {
+      const split = locate(this.state, tabId)?.split
+      if (split && split.focusedId !== tabId) {
+        split.focusedId = tabId
+        this.store.changed()
+      }
+    })
   }
 
   private destroyView(tabId: string): void {
@@ -306,7 +325,7 @@ export class Browser {
     const loc = locate(this.state, space.activeId)
     if (!loc) return null
     if (loc.item.kind === 'tab') return loc.item.id
-    if (loc.item.kind === 'split') return loc.item.tabs[0]?.id ?? null
+    if (loc.item.kind === 'split') return loc.item.focusedId ?? loc.item.tabs[0]?.id ?? null
     return null
   }
 
@@ -324,10 +343,14 @@ export class Browser {
 
   // ---------- Actions ----------
 
+  makeTab(url: string, title?: string, favicon?: string): TabItem {
+    const now = Date.now()
+    return { kind: 'tab', id: newId(), url, title: title || url || 'New Tab', favicon, createdAt: now, lastViewedAt: now }
+  }
+
   newTab(url = '', activate = true, openerId?: string): TabItem {
     const space = activeSpace(this.state)
-    const now = Date.now()
-    const tab: TabItem = { kind: 'tab', id: newId(), url, title: url || 'New Tab', createdAt: now, lastViewedAt: now }
+    const tab = this.makeTab(url)
     // Tabs opened from a link go right below the tab that opened them.
     const opener = openerId ? locate(this.state, openerId) : null
     if (opener && opener.zone === 'today' && opener.space === space && !opener.split) {
@@ -354,8 +377,9 @@ export class Browser {
     if (!loc) return
     const space = loc.space ?? activeSpace(this.state)
     this.touchActive(space)
-    // Clicking a tab inside a split shows the whole split.
+    // Clicking a tab inside a split shows the whole split, focused on that tab.
     space.activeId = loc.split ? loc.split.id : id
+    if (loc.split) loc.split.focusedId = id
     if (loc.item.kind === 'tab') {
       loc.item.lastViewedAt = Date.now()
       if (loc.item.url) this.focusOnAttach = id
@@ -378,7 +402,12 @@ export class Browser {
     const space = loc.space ?? activeSpace(this.state)
     const wasActive = space.activeId === id
     this.destroyView(id)
-    if (loc.zone !== 'today') {
+    if (loc.split) {
+      // One pane of a split closes; the rest stay side by side.
+      removeFromSplit(this.state, id)
+      if (loc.zone === 'today') this.archive.add(tab, space.id, true)
+      if (space.activeId) this.activate(space.activeId)
+    } else if (loc.zone !== 'today') {
       // Pinned tabs and favorites never disappear when closed: they just go to sleep.
       if (tab.pinnedUrl) tab.url = tab.pinnedUrl
       if (wasActive) this.showNext(space, id)
@@ -459,6 +488,58 @@ export class Browser {
     if (!entry) return
     this.archive.remove(id)
     this.reopen(entry, false)
+  }
+
+  // ---------- Split View ----------
+
+  /**
+   * Put a tab (an existing one, or a new one for `url`) next to what's on screen.
+   * Pinned tabs and favorites are copied rather than moved, so they stay where they are.
+   */
+  splitAdd(opts: { tabId?: string; url?: string; side?: 'left' | 'right' }): void {
+    const space = activeSpace(this.state)
+    let baseId = space.activeId
+    if (!baseId) {
+      if (opts.tabId) this.activate(opts.tabId)
+      else if (opts.url) this.newTab(opts.url)
+      return
+    }
+    let add: TabItem | null = null
+    if (opts.tabId) {
+      if (opts.tabId === baseId) return
+      const loc = locate(this.state, opts.tabId)
+      if (!loc || loc.item.kind !== 'tab') return
+      if (loc.split && loc.split.id === baseId) return
+      if (loc.split) detachFromSplit(this.state, opts.tabId)
+      const fresh = locate(this.state, opts.tabId)!
+      if (fresh.zone === 'today') {
+        fresh.list.splice(fresh.index, 1)
+        add = fresh.item as TabItem
+      } else {
+        const original = fresh.item as TabItem
+        add = this.makeTab(original.url, original.title, original.favicon)
+      }
+    } else if (opts.url) {
+      add = this.makeTab(opts.url)
+    }
+    if (!add) return
+    // A favorite on screen can't become a split itself: split a copy of it instead.
+    const base = locate(this.state, baseId)
+    if (base?.zone === 'favorites' && base.item.kind === 'tab') {
+      const copy = this.makeTab(base.item.url, base.item.title, base.item.favicon)
+      space.today.unshift(copy)
+      space.activeId = baseId = copy.id
+    }
+    const split = addToSplit(this.state, baseId, add, opts.side ?? 'right')
+    if (!split) {
+      // Already 4 panes (or nothing to split): open it as a normal tab instead.
+      space.today.unshift(add)
+      this.activate(add.id)
+    } else {
+      space.activeId = split.id
+      this.focusOnAttach = add.id
+    }
+    this.store.changed()
   }
 
   // ---------- Spaces ----------
@@ -655,6 +736,22 @@ export class Browser {
       }
       case 'tab/moveToSpace':
         return this.moveToSpace(action.id, action.spaceId)
+      case 'split/add':
+        return this.splitAdd(action)
+      case 'split/detach':
+        detachFromSplit(this.state, action.tabId)
+        return this.store.changed()
+      case 'split/dissolve':
+        dissolveSplit(this.state, action.id)
+        return this.store.changed()
+      case 'split/resize': {
+        const loc = locate(this.state, action.id)
+        if (loc?.item.kind === 'split' && action.sizes.length === loc.item.tabs.length) {
+          loc.item.sizes = action.sizes
+          this.store.changed()
+        }
+        return
+      }
       case 'tab/reopenClosed':
         return this.reopenClosed()
       case 'archive/restore':

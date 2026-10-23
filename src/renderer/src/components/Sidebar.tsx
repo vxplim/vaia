@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type WheelEvent } from 'react'
 import type { AppState, Space, TabItem } from '../../../shared/types'
-import { DndProvider, useDropArea } from '../dnd'
+import { useDropArea } from '../dnd'
 import { pinnedAreaMenu } from '../menus'
 import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
@@ -18,14 +18,6 @@ interface Props {
   onNewTab: () => void
   onEditSpace: (spaceId: string) => void
   onOpenArchive: () => void
-}
-
-export function Sidebar(props: Props) {
-  return (
-    <DndProvider>
-      <SidebarInner {...props} />
-    </DndProvider>
-  )
 }
 
 /** Two-finger horizontal swipes on the sidebar switch Spaces. */
@@ -50,7 +42,7 @@ function useSwipe(onSwipe: (delta: 1 | -1) => void) {
   }
 }
 
-function SidebarInner({ state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenArchive }: Props) {
+export function Sidebar({ state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenArchive }: Props) {
   const spaceIndex = state.spaces.findIndex((s) => s.id === space.id)
   // Slide the tab list in from the side the new Space is on.
   const lastIndex = useRef(spaceIndex)

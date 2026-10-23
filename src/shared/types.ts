@@ -35,6 +35,8 @@ export interface SplitItem {
   tabs: TabItem[]
   /** Fraction of the width each pane takes; adds up to 1. */
   sizes: number[]
+  /** The pane you last clicked: the address bar and shortcuts act on it. */
+  focusedId?: string
 }
 
 export type SidebarItem = TabItem | FolderItem | SplitItem
@@ -138,7 +140,7 @@ export interface Pane {
 /** Commands the brain asks the UI to perform (usually from keyboard shortcuts). */
 export type UiCommand =
   | { type: 'focus-url' }
-  | { type: 'command-bar' }
+  | { type: 'command-bar'; mode?: 'new' | 'split' }
   | { type: 'edit-space'; id: string }
   | { type: 'open-panel'; panel: 'archive' }
   | { type: 'toast'; message: string }

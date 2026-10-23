@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { activeSpace, locate } from '../../shared/tree'
-import type { TabItem } from '../../shared/types'
+import type { SplitItem, TabItem } from '../../shared/types'
 import { ArchivePanel } from './components/ArchivePanel'
 import { Backdrop } from './components/Backdrop'
 import { CommandBar } from './components/CommandBar'
@@ -8,13 +8,14 @@ import { Content } from './components/Content'
 import { Sidebar } from './components/Sidebar'
 import { SpaceEditor } from './components/SpaceEditor'
 import { Toast } from './components/Toast'
+import { DndProvider } from './dnd'
 import { useAppState } from './state'
 import { themeStyle, useSystemDark } from './theme'
 
 const CLOSE_ANIMATION_MS = 140
 
 /** Things that float over the page (the page is "frozen" into a picture while one is open). */
-export type Overlay = { kind: 'command' } | { kind: 'space-editor'; spaceId: string } | { kind: 'archive' }
+export type Overlay = { kind: 'command'; mode: 'new' | 'split' } | { kind: 'space-editor'; spaceId: string } | { kind: 'archive' }
 
 export default function App() {
   const state = useAppState()
@@ -47,7 +48,7 @@ export default function App() {
     () =>
       window.vaia.onCommand((cmd) => {
         if (cmd.type === 'focus-url') setUrlEditing(true)
-        if (cmd.type === 'command-bar') openOverlay({ kind: 'command' })
+        if (cmd.type === 'command-bar') openOverlay({ kind: 'command', mode: cmd.mode ?? 'new' })
         if (cmd.type === 'edit-space') editSpace(cmd.id)
         if (cmd.type === 'open-panel') openOverlay({ kind: cmd.panel })
         if (cmd.type === 'toast') setToast({ message: cmd.message, key: Date.now() })
@@ -59,41 +60,54 @@ export default function App() {
 
   const space = activeSpace(state)
   const loc = space.activeId ? locate(state, space.activeId) : null
-  const activeTab: TabItem | null = loc?.item.kind === 'tab' ? loc.item : null
+  // In Split View, the "active tab" is the pane you last clicked.
+  const activeTab: TabItem | null =
+    loc?.item.kind === 'tab'
+      ? loc.item
+      : loc?.item.kind === 'split'
+        ? (loc.item.tabs.find((t) => t.id === (loc.item as SplitItem).focusedId) ?? loc.item.tabs[0] ?? null)
+        : null
   const theme = themeStyle(space.theme, systemDark)
   const editing = overlay?.kind === 'space-editor' ? state.spaces.find((s) => s.id === overlay.spaceId) : null
 
   return (
-    <div
-      className={`app${theme.isDark ? ' dark' : ''}${state.settings.sidebarVisible ? '' : ' no-sidebar'}`}
-      style={theme.vars as React.CSSProperties}
-    >
-      <Backdrop background={theme.background} />
-      {state.settings.sidebarVisible && (
-        <Sidebar
-          state={state}
-          space={space}
-          activeTab={activeTab}
-          urlEditing={urlEditing}
-          setUrlEditing={setUrlEditing}
-          onNewTab={() => openOverlay({ kind: 'command' })}
-          onEditSpace={editSpace}
-          onOpenArchive={() => openOverlay({ kind: 'archive' })}
-        />
-      )}
-      <Content tab={activeTab} frozen={overlay !== null} />
-      {overlay?.kind === 'command' && (
-        <CommandBar
-          state={state}
-          activeTabId={activeTab?.id ?? null}
-          closing={closing}
-          onClose={closeOverlay}
-          ui={{ editSpace, openPanel: (panel) => openOverlay({ kind: panel }) }}
-        />
-      )}
-      {overlay?.kind === 'archive' && <ArchivePanel state={state} closing={closing} onClose={closeOverlay} />}
-      {editing && <SpaceEditor state={state} space={editing} closing={closing} onClose={closeOverlay} />}
-      {toast && <Toast key={toast.key} message={toast.message} onDone={() => setToast(null)} />}
-    </div>
+    <DndProvider>
+      <div
+        className={`app${theme.isDark ? ' dark' : ''}${state.settings.sidebarVisible ? '' : ' no-sidebar'}`}
+        style={theme.vars as React.CSSProperties}
+      >
+        <Backdrop background={theme.background} />
+        {state.settings.sidebarVisible && (
+          <Sidebar
+            state={state}
+            space={space}
+            activeTab={activeTab}
+            urlEditing={urlEditing}
+            setUrlEditing={setUrlEditing}
+            onNewTab={() => openOverlay({ kind: 'command', mode: 'new' })}
+            onEditSpace={editSpace}
+            onOpenArchive={() => openOverlay({ kind: 'archive' })}
+          />
+        )}
+        <Content state={state} space={space} frozen={overlay !== null} />
+        {overlay?.kind === 'command' && (
+          <CommandBar
+            state={state}
+            activeTabId={activeTab?.id ?? null}
+            mode={overlay.mode}
+            closing={closing}
+            onClose={closeOverlay}
+            ui={{
+              editSpace,
+              openPanel: (panel) => openOverlay({ kind: panel }),
+              openSplitPicker: () => openOverlay({ kind: 'command', mode: 'split' })
+            }}
+          />
+        )}
+        {overlay?.kind === 'archive' && <ArchivePanel state={state} closing={closing} onClose={closeOverlay} />}
+        {editing && <SpaceEditor state={state} space={editing} closing={closing} onClose={closeOverlay} />}
+        {toast && <Toast key={toast.key} message={toast.message} onDone={() => setToast(null)} />}
+      </div>
+    </DndProvider>
   )
 }

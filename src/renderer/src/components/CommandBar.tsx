@@ -19,6 +19,8 @@ interface Result {
 interface Props {
   state: AppState
   activeTabId: string | null
+  /** 'split' = whatever you pick opens in a new Split View pane. */
+  mode: 'new' | 'split'
   closing: boolean
   onClose: () => void
   ui: CommandContext['ui']
@@ -27,7 +29,7 @@ interface Props {
 const CommandIcon = () => <span className="cmd-glyph">⌘</span>
 
 /** The floating, Spotlight-style bar for opening sites, switching tabs and running commands. */
-export function CommandBar({ state, activeTabId, closing, onClose, ui }: Props) {
+export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: Props) {
   const [query, setQuery] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -64,7 +66,8 @@ export function CommandBar({ state, activeTabId, closing, onClose, ui }: Props) 
     const ql = q.toLowerCase()
     const ctx: CommandContext = { state, activeTabId, ui }
     const out: Result[] = []
-    const openUrl = (url: string) => () => dispatch({ type: 'tab/new', url })
+    const openUrl = (url: string) => () =>
+      dispatch(mode === 'split' ? { type: 'split/add', url } : { type: 'tab/new', url })
     const words = ql.split(/\s+/).filter(Boolean)
 
     const commands = matchCommands(q, ctx).slice(0, q ? 3 : 4)
@@ -79,7 +82,7 @@ export function CommandBar({ state, activeTabId, closing, onClose, ui }: Props) 
     )
     // "copy" -> "Copy URL" first: a command whose name starts with what you typed wins.
     const commandFirst = q.length >= 2 && commands[0]?.title.toLowerCase().startsWith(ql)
-    if (commandFirst) out.push(commandRows.shift()!)
+    if (commandFirst && mode === 'new') out.push(commandRows.shift()!)
 
     if (q) {
       const url = inputToUrl(q, engine)
@@ -106,12 +109,12 @@ export function CommandBar({ state, activeTabId, closing, onClose, ui }: Props) 
         icon: <Favicon src={t.favicon} url={t.url} />,
         title: t.title,
         subtitle: displayHost(t.url),
-        label: 'Switch to Tab',
-        run: () => dispatch({ type: 'tab/activate', id: t.id })
+        label: mode === 'split' ? 'Open in Split' : 'Switch to Tab',
+        run: () => dispatch(mode === 'split' ? { type: 'split/add', tabId: t.id } : { type: 'tab/activate', id: t.id })
       })
     }
 
-    out.push(...commandRows)
+    if (mode === 'new') out.push(...commandRows)
 
     if (q) {
       const openUrls = new Set(tabs.map((t) => t.url))
@@ -136,7 +139,7 @@ export function CommandBar({ state, activeTabId, closing, onClose, ui }: Props) 
       }
     }
     return out
-  }, [query, state, activeTabId, history, suggestions, engine, ui])
+  }, [query, state, activeTabId, history, suggestions, engine, ui, mode])
 
   // Remember the highlighted row by its key, so late-arriving suggestions don't move it.
   const found = results.findIndex((r) => r.key === selectedKey)
@@ -165,7 +168,7 @@ export function CommandBar({ state, activeTabId, closing, onClose, ui }: Props) 
             className="cmd-input"
             value={query}
             spellCheck={false}
-            placeholder="Search, open a site, or run a command…"
+            placeholder={mode === 'split' ? 'Open in a new Split View pane…' : 'Search, open a site, or run a command…'}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {

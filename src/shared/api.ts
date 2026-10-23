@@ -46,6 +46,10 @@ export type Action =
   | { type: 'space/delete'; id: string }
   | { type: 'space/reorder'; id: string; index: number }
   | { type: 'tab/moveToSpace'; id: string; spaceId: string }
+  | { type: 'split/add'; tabId?: string; url?: string; side?: 'left' | 'right' }
+  | { type: 'split/detach'; tabId: string }
+  | { type: 'split/dissolve'; id: string }
+  | { type: 'split/resize'; id: string; sizes: number[] }
   | { type: 'tab/reopenClosed' }
   | { type: 'archive/restore'; id: string }
   | { type: 'archive/remove'; id: string }

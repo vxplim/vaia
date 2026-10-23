@@ -49,7 +49,7 @@ export function TabRow({ tab, state, active, zone, spaceId, parentId, index, dep
       onClick={() => dispatch({ type: 'tab/activate', id: tab.id })}
       onContextMenu={(e) => {
         e.preventDefault()
-        tabMenu(tab, zone, loaded)
+        tabMenu(tab, zone, loaded, active)
       }}
     >
       <span className={`tab-icon${rt?.loading ? ' loading' : ''}`}>

@@ -8,7 +8,12 @@ export interface CommandContext {
   state: AppState
   activeTabId: string | null
   /** Things only the UI can do, like opening a panel. */
-  ui: { editSpace: (spaceId: string) => void; openPanel: (panel: 'archive') => void }
+  ui: {
+    editSpace: (spaceId: string) => void
+    openPanel: (panel: 'archive') => void
+    /** Reopen the Command Bar to pick what goes in a new Split View pane. */
+    openSplitPicker: () => void
+  }
 }
 
 export interface Command {
@@ -114,6 +119,14 @@ export const COMMANDS: Command[] = [
     title: 'Clear Today Tabs',
     keywords: 'close all tidy',
     run: () => dispatch({ type: 'today/clear' })
+  },
+  {
+    id: 'split-view',
+    title: 'Add Split View Pane',
+    shortcut: '⌃⇧=',
+    keywords: 'side by side split screen',
+    enabled: hasTab,
+    run: (ctx) => ctx.ui.openSplitPicker()
   },
   {
     id: 'reopen-closed',

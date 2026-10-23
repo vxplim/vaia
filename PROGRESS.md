@@ -57,9 +57,16 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - ⇧⌘T reopens the most recently closed tab (in its original Space), repeatedly
   - Pinned tabs and favorites are never auto-archived; neither is anything on screen
 
+- [x] **Phase 6: Split View** (tag `v0.6.0`)
+  - Show 2–4 tabs side by side, each in its own rounded card
+  - Create it by: dragging a tab from the sidebar onto the page (left or right half), right-click a tab → "Open in Split View", or ⌃⇧= (opens the Command Bar to pick a site or tab for the new pane)
+  - Drag the thin dividers between panes to resize them (sizes are saved)
+  - The pane you click is "focused" (ring around it): the address bar, ⌘R, ⌘W, etc. act on it
+  - In the sidebar a split is one combined row with a segment per tab; × separates them back into normal tabs; right-click a segment for "Remove from Split View" / "Close Tab"
+  - ⌘W closes just the focused pane; when one tab is left, the split turns back into a normal tab
+
 ## Next
 
-- [ ] Phase 6: Split View
 - [ ] Phase 7: Peek and Little window
 - [ ] Phase 8: Sidebar and polish
 - [ ] Phase 9: Boosts
@@ -86,6 +93,8 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Favorites stay put when switching Spaces** (they're shared), only the Space's own pinned/Today list slides.
 - **Turning a separate profile off (or deleting a Space) erases that profile's cookies/logins**, so no stray logins are left behind.
 - **No ⌃← / ⌃→ shortcuts for Spaces**: macOS already uses those to switch desktops. "Next/Previous Space" are in the Spaces menu instead.
+- **Pinned tabs and favorites are copied (not moved) into a split**, so your pinned list never changes by accident.
+- **Dragging a tab over the page freezes it into a picture** (like the Command Bar) so the page area can show the left/right drop zones.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Needs Vanessa

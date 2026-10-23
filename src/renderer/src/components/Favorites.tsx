@@ -51,7 +51,7 @@ function FavoriteTile({ tab, index, state, space }: { tab: TabItem; index: numbe
       onClick={() => dispatch({ type: 'tab/activate', id: tab.id })}
       onContextMenu={(e) => {
         e.preventDefault()
-        tabMenu(tab, 'favorites', !!rt)
+        tabMenu(tab, 'favorites', !!rt, space.activeId === tab.id)
       }}
     >
       <span className={rt?.loading ? 'loading' : ''}>
