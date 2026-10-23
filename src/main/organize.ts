@@ -1,0 +1,84 @@
+// Moving things around the sidebar: drag and drop, pinning, folders.
+// These functions change the app data directly and report whether they did.
+import type { DropTarget } from '../shared/api'
+import { locate, type Zone } from '../shared/tree'
+import type { FolderItem, PersistedState, SidebarItem, Space, TabItem } from '../shared/types'
+import { newId } from './store'
+
+function tabsOf(item: SidebarItem): TabItem[] {
+  if (item.kind === 'tab') return [item]
+  if (item.kind === 'split') return item.tabs
+  return item.children.flatMap(tabsOf)
+}
+
+function containsId(folder: FolderItem, id: string): boolean {
+  return folder.children.some((c) => c.id === id || (c.kind === 'folder' && containsId(c, id)))
+}
+
+function listFor(state: PersistedState, to: DropTarget): SidebarItem[] | null {
+  if (to.zone === 'favorites') return state.favorites
+  const space = state.spaces.find((s) => s.id === to.spaceId)
+  if (!space) return null
+  if (to.zone === 'today') return space.today
+  if (!to.parentId) return space.pinned
+  const loc = locate(state, to.parentId)
+  return loc && loc.item.kind === 'folder' ? loc.item.children : null
+}
+
+/** Pinned tabs and favorites remember the page they were pinned on; Today tabs don't. */
+function updatePinnedUrls(item: SidebarItem, zone: Zone): void {
+  for (const tab of tabsOf(item)) {
+    if (zone === 'today') delete tab.pinnedUrl
+    else tab.pinnedUrl ??= tab.url
+  }
+}
+
+export function moveItem(state: PersistedState, id: string, to: DropTarget): boolean {
+  const from = locate(state, id)
+  if (!from || from.split) return false
+  const item = from.item
+  if (to.zone === 'favorites' && item.kind !== 'tab') return false
+  if (to.zone === 'today' && item.kind === 'folder') return false
+  if (to.parentId && (to.parentId === id || (item.kind === 'folder' && containsId(item, to.parentId)))) return false
+  const target = listFor(state, to)
+  if (!target) return false
+
+  from.list.splice(from.index, 1)
+  let index = to.index
+  if (from.list === target && from.index < index) index--
+  target.splice(Math.max(0, Math.min(index, target.length)), 0, item)
+  updatePinnedUrls(item, to.zone)
+
+  // If the item was on screen in another Space, that Space no longer shows it.
+  const toSpace = to.zone === 'favorites' ? null : state.spaces.find((s) => s.id === to.spaceId)
+  if (from.space && toSpace && from.space !== toSpace && from.space.activeId === id) {
+    from.space.activeId = null
+  }
+  return true
+}
+
+export function pinTab(state: PersistedState, id: string, space: Space): boolean {
+  return moveItem(state, id, { zone: 'pinned', spaceId: space.id, parentId: null, index: space.pinned.length })
+}
+
+export function unpinTab(state: PersistedState, id: string, space: Space): boolean {
+  return moveItem(state, id, { zone: 'today', spaceId: space.id, parentId: null, index: 0 })
+}
+
+export function addFavorite(state: PersistedState, id: string, space: Space): boolean {
+  return moveItem(state, id, { zone: 'favorites', spaceId: space.id, parentId: null, index: state.favorites.length })
+}
+
+export function newFolder(space: Space, name = 'New Folder'): FolderItem {
+  const folder: FolderItem = { kind: 'folder', id: newId(), name, collapsed: false, children: [] }
+  space.pinned.push(folder)
+  return folder
+}
+
+/** Deleting a folder keeps its tabs: they move up to where the folder was. */
+export function deleteFolder(state: PersistedState, id: string): boolean {
+  const loc = locate(state, id)
+  if (!loc || loc.item.kind !== 'folder') return false
+  loc.list.splice(loc.index, 1, ...loc.item.children)
+  return true
+}

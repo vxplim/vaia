@@ -1,6 +1,7 @@
 // The Mac menu bar. Menu shortcuts work even while a web page has focus,
 // which is why every VAIA keyboard shortcut lives here.
-import { Menu, app, type MenuItemConstructorOptions } from 'electron'
+import { BrowserWindow, Menu, app, type MenuItemConstructorOptions, type WebContents } from 'electron'
+import type { MenuItem } from '../shared/api'
 import type { Browser } from './browser'
 
 export function buildMenu(browser: Browser): void {
@@ -75,4 +76,29 @@ export function buildMenu(browser: Browser): void {
     { role: 'windowMenu' }
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+/** A native right-click menu requested by the UI. Native menus can float over web pages. */
+export function popupMenu(sender: WebContents, items: MenuItem[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    let done = false
+    const finish = (value: string | null) => {
+      if (!done) {
+        done = true
+        resolve(value)
+      }
+    }
+    const menu = Menu.buildFromTemplate(
+      items.map((item) =>
+        item.type === 'separator'
+          ? { type: 'separator' as const }
+          : { label: item.label, enabled: item.enabled ?? true, click: () => finish(item.id ?? null) }
+      )
+    )
+    menu.popup({
+      window: BrowserWindow.fromWebContents(sender) ?? undefined,
+      // The close callback can arrive before the click; wait a tick so a click wins.
+      callback: () => setTimeout(() => finish(null), 50)
+    })
+  })
 }

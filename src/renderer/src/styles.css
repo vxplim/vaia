@@ -525,3 +525,239 @@ button.urlbar:hover {
     opacity: 0;
   }
 }
+
+/* ---------- Sidebar areas (Phase 3) ---------- */
+.sidebar-scroll {
+  display: flex;
+  flex-direction: column;
+}
+.today {
+  flex: 1;
+  min-height: 60px;
+  padding-bottom: 8px;
+}
+.pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 8px;
+  border-radius: 10px;
+}
+.pinned-empty,
+.favorites-empty,
+.folder-empty {
+  color: var(--fg-faint);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+.pinned-empty {
+  border: 1px dashed var(--divider);
+  border-radius: 9px;
+  text-align: center;
+}
+.folder-empty {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.drop-area {
+  background: var(--hover);
+}
+
+/* Favorites grid */
+.favorites {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+}
+.urlbar-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.favorites-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 9px;
+  border: 1.5px dashed var(--fg-faint);
+  background: var(--active-tab);
+  color: var(--fg-muted);
+  animation: tab-in 140ms var(--ease);
+}
+.favorites-empty.active {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.fav-tile {
+  position: relative;
+  height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--field);
+  transition:
+    background 120ms,
+    transform 120ms var(--ease),
+    box-shadow 120ms;
+}
+.fav-tile:hover {
+  background: var(--press);
+}
+.fav-tile:active {
+  transform: scale(0.96);
+}
+.fav-tile.active {
+  background: var(--active-tab);
+  box-shadow: var(--active-shadow);
+}
+.fav-tile .loading .favicon {
+  animation: pulse 1s ease-in-out infinite;
+}
+/* A small dot under a favorite that's open (loaded). */
+.fav-tile.loaded::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--fg-muted);
+}
+
+/* Folders */
+.folder-row {
+  position: relative;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 8px;
+  border-radius: 9px;
+  color: var(--fg);
+}
+.folder-row:hover {
+  background: var(--hover);
+}
+.folder-chevron {
+  flex: none;
+  color: var(--fg-muted);
+  transition: transform 160ms var(--ease);
+}
+.folder-chevron.open {
+  transform: rotate(90deg);
+}
+.folder-icon {
+  flex: none;
+  color: var(--fg-muted);
+}
+.folder-name-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  border: 0;
+  outline: 0;
+  border-radius: 6px;
+  padding: 0 6px;
+  background: var(--active-tab);
+  user-select: text;
+}
+.folder-children {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  animation: tab-in 160ms var(--ease);
+}
+
+/* Tab row extras */
+.tab-row {
+  position: relative;
+}
+.tab-slash {
+  color: var(--fg-faint);
+  margin-right: 5px;
+}
+.tab-action {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+}
+.tab-action:hover {
+  background: var(--press);
+  color: var(--fg);
+}
+.tab-return {
+  opacity: 0.7;
+}
+
+/* Drag and drop */
+.dragging {
+  opacity: 0.35;
+}
+.drop-before::before,
+.drop-after::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.drop-before::before {
+  top: -1.5px;
+}
+.drop-after::before {
+  bottom: -1.5px;
+}
+.fav-tile.drop-before::before,
+.fav-tile.drop-after::before {
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  height: auto;
+  left: auto;
+  right: auto;
+}
+.fav-tile.drop-before::before {
+  left: -4px;
+}
+.fav-tile.drop-after::before {
+  right: -4px;
+}
+.drop-into {
+  background: var(--press);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+/* Divider between Pinned and Today */
+.today-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin: 4px 2px;
+}
+.divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+.clear-button {
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+.clear-button:hover {
+  background: var(--hover);
+  color: var(--fg);
+}

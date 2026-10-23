@@ -2,10 +2,10 @@
 // window, and answers requests coming from the UI.
 import { BrowserWindow, app, ipcMain } from 'electron'
 import { join } from 'node:path'
-import type { Action } from '../shared/api'
+import type { Action, MenuItem } from '../shared/api'
 import type { Pane } from '../shared/types'
 import { Browser } from './browser'
-import { buildMenu } from './menu'
+import { buildMenu, popupMenu } from './menu'
 
 app.setName('VAIA')
 // Keep your data in ~/Library/Application Support/VAIA (tests can point elsewhere).
@@ -18,6 +18,7 @@ ipcMain.handle('action', (_e, action: Action) => browser.dispatch(action))
 ipcMain.handle('capture', (_e, tabIds: string[]) => browser.capture(tabIds))
 ipcMain.handle('suggest', (_e, query: string) => browser.suggest(query))
 ipcMain.handle('history:search', (_e, query: string) => browser.history.search(query))
+ipcMain.handle('menu:popup', (e, items: MenuItem[]) => popupMenu(e.sender, items))
 ipcMain.on('panes:set', (e, panes: Pane[]) => {
   if (e.sender === browser.win?.webContents) browser.setPanes(panes)
 })

@@ -1,5 +1,7 @@
 // App commands you can run from the Command Bar (⌘T), e.g. "Toggle Sidebar".
+import { locate } from '../../shared/tree'
 import type { AppState } from '../../shared/types'
+import { sameUrl } from '../../shared/url'
 import { dispatch } from './state'
 
 export interface CommandContext {
@@ -18,6 +20,11 @@ export interface Command {
 }
 
 const hasTab = (ctx: CommandContext) => !!ctx.activeTabId
+const zoneOf = (ctx: CommandContext) => (ctx.activeTabId ? locate(ctx.state, ctx.activeTabId)?.zone : undefined)
+const activeTab = (ctx: CommandContext) => {
+  const loc = ctx.activeTabId ? locate(ctx.state, ctx.activeTabId) : null
+  return loc?.item.kind === 'tab' ? loc.item : null
+}
 
 export const COMMANDS: Command[] = [
   {
@@ -56,6 +63,55 @@ export const COMMANDS: Command[] = [
     shortcut: '⌘]',
     enabled: (ctx) => !!ctx.activeTabId && !!ctx.state.runtime[ctx.activeTabId]?.canGoForward,
     run: (ctx) => dispatch({ type: 'tab/forward', id: ctx.activeTabId! })
+  },
+  {
+    id: 'pin-tab',
+    title: 'Pin Tab',
+    keywords: 'keep',
+    enabled: (ctx) => zoneOf(ctx) === 'today',
+    run: (ctx) => dispatch({ type: 'tab/pin', id: ctx.activeTabId! })
+  },
+  {
+    id: 'unpin-tab',
+    title: 'Unpin Tab',
+    enabled: (ctx) => zoneOf(ctx) === 'pinned',
+    run: (ctx) => dispatch({ type: 'tab/unpin', id: ctx.activeTabId! })
+  },
+  {
+    id: 'add-favorite',
+    title: 'Add to Favorites',
+    keywords: 'favourite star',
+    enabled: (ctx) => !!zoneOf(ctx) && zoneOf(ctx) !== 'favorites',
+    run: (ctx) => dispatch({ type: 'tab/favorite', id: ctx.activeTabId! })
+  },
+  {
+    id: 'remove-favorite',
+    title: 'Remove from Favorites',
+    keywords: 'favourite',
+    enabled: (ctx) => zoneOf(ctx) === 'favorites',
+    run: (ctx) => dispatch({ type: 'tab/unpin', id: ctx.activeTabId! })
+  },
+  {
+    id: 'reset-pinned',
+    title: 'Return to Pinned Page',
+    keywords: 'reset home original',
+    enabled: (ctx) => {
+      const tab = activeTab(ctx)
+      return !!tab?.pinnedUrl && !sameUrl(tab.url, tab.pinnedUrl)
+    },
+    run: (ctx) => dispatch({ type: 'tab/resetPinned', id: ctx.activeTabId! })
+  },
+  {
+    id: 'new-folder',
+    title: 'New Folder',
+    keywords: 'group pinned',
+    run: () => dispatch({ type: 'folder/new' })
+  },
+  {
+    id: 'clear-today',
+    title: 'Clear Today Tabs',
+    keywords: 'close all tidy',
+    run: () => dispatch({ type: 'today/clear' })
   },
   {
     id: 'close-tab',

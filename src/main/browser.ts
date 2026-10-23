@@ -13,10 +13,11 @@ import {
 } from 'electron'
 import { join } from 'node:path'
 import type { Action } from '../shared/api'
-import { activeSpace, locate } from '../shared/tree'
-import type { Pane, TabItem, UiCommand } from '../shared/types'
+import { activeSpace, locate, tabsIn } from '../shared/tree'
+import type { Pane, Space, TabItem, UiCommand } from '../shared/types'
 import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
 import { History } from './history'
+import { addFavorite, deleteFolder, moveItem, newFolder, pinTab, unpinTab } from './organize'
 import { Store, newId } from './store'
 
 const PRELOAD = join(__dirname, '../preload/index.js')
@@ -338,18 +339,54 @@ export class Browser {
     this.store.changed()
   }
 
+  /** The tab to show after the current one goes away: the most recently viewed open tab. */
+  private pickNext(space: Space, excludeId: string): string | null {
+    const candidates = [...this.state.favorites, ...tabsIn(space.pinned), ...tabsIn(space.today)]
+      .filter((t) => t.id !== excludeId && this.views.has(t.id))
+      .sort((a, b) => b.lastViewedAt - a.lastViewedAt)
+    return candidates[0]?.id ?? space.today.find((i) => i.kind !== 'folder')?.id ?? null
+  }
+
   closeTab(id: string): void {
     const loc = locate(this.state, id)
     if (!loc || loc.item.kind !== 'tab') return
+    const tab = loc.item
     const space = loc.space ?? activeSpace(this.state)
     const wasActive = space.activeId === id
-    loc.list.splice(loc.index, 1)
     this.destroyView(id)
-    if (wasActive) {
-      // Select the neighbour, preferring the one below.
-      const next = loc.list[loc.index] ?? loc.list[loc.index - 1]
-      space.activeId = next && next.kind !== 'folder' ? next.id : null
-      if (next?.kind === 'tab') this.activate(next.id)
+    if (loc.zone !== 'today') {
+      // Pinned tabs and favorites never disappear when closed: they just go to sleep.
+      if (tab.pinnedUrl) tab.url = tab.pinnedUrl
+      if (wasActive) this.showNext(space, id)
+    } else {
+      loc.list.splice(loc.index, 1)
+      if (wasActive) {
+        // Prefer the neighbour below, like closing a tab in a list.
+        const next = loc.list[loc.index] ?? loc.list[loc.index - 1]
+        if (next) this.activate(next.id)
+        else this.showNext(space, id)
+      }
+    }
+    this.store.changed()
+  }
+
+  private showNext(space: Space, excludeId: string): void {
+    const next = this.pickNext(space, excludeId)
+    space.activeId = null
+    if (next) this.activate(next)
+  }
+
+  /** Remove a pinned tab, favorite or folder for good. */
+  deleteItem(id: string): void {
+    const loc = locate(this.state, id)
+    if (!loc) return
+    if (loc.item.kind === 'folder') {
+      deleteFolder(this.state, id)
+    } else if (loc.item.kind === 'tab') {
+      const space = loc.space ?? activeSpace(this.state)
+      loc.list.splice(loc.index, 1)
+      this.destroyView(id)
+      if (space.activeId === id) this.showNext(space, id)
     }
     this.store.changed()
   }
@@ -396,6 +433,46 @@ export class Browser {
           this.command({ type: 'toast', message: 'Copied URL' })
         }
         return
+      }
+      case 'tab/resetPinned': {
+        const tab = this.tab(action.id)
+        if (tab?.pinnedUrl) this.navigate(tab.id, tab.pinnedUrl)
+        return
+      }
+      case 'tab/pin':
+        pinTab(this.state, action.id, activeSpace(this.state))
+        return this.store.changed()
+      case 'tab/unpin':
+        unpinTab(this.state, action.id, activeSpace(this.state))
+        return this.store.changed()
+      case 'tab/favorite':
+        addFavorite(this.state, action.id, activeSpace(this.state))
+        return this.store.changed()
+      case 'item/move':
+        moveItem(this.state, action.id, action.to)
+        return this.store.changed()
+      case 'item/delete':
+        return this.deleteItem(action.id)
+      case 'folder/new': {
+        const folder = newFolder(activeSpace(this.state), action.name)
+        this.store.changed()
+        return folder.id
+      }
+      case 'folder/rename':
+      case 'folder/toggle': {
+        const loc = locate(this.state, action.id)
+        if (loc?.item.kind !== 'folder') return
+        if (action.type === 'folder/rename') loc.item.name = action.name.trim() || loc.item.name
+        else loc.item.collapsed = !loc.item.collapsed
+        return this.store.changed()
+      }
+      case 'today/clear': {
+        const space = activeSpace(this.state)
+        for (const tab of tabsIn(space.today)) this.destroyView(tab.id)
+        const activeWasToday = space.today.some((i) => i.id === space.activeId)
+        space.today = []
+        if (activeWasToday) this.showNext(space, '')
+        return this.store.changed()
       }
       case 'settings/update':
         Object.assign(this.state.settings, action.patch)

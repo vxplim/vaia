@@ -4,7 +4,7 @@
 
 VAIA is a desktop web browser built around a vertical sidebar, a floating command bar, Spaces, and an uncluttered, card-like content area. It's an independent, original project built with Electron, React, and TypeScript.
 
-> 🚧 **Status:** in development. Phases 1–2 of 10 are done. See [PROGRESS.md](PROGRESS.md).
+> 🚧 **Status:** in development. Phases 1–3 of 10 are done. See [PROGRESS.md](PROGRESS.md).
 
 ## Features
 
@@ -12,11 +12,12 @@ VAIA is a desktop web browser built around a vertical sidebar, a floating comman
 - ✅ Compact address pill: type a URL or search
 - ✅ Tabs restored when you reopen the app
 - ✅ Command Bar (⌘T): open sites, search with suggestions, switch tabs, search history, run commands
+- ✅ Favorites (icon tiles), Pinned tabs with folders, and Today tabs, all with drag and drop
+- ✅ Pinned tabs remember their home page, and closing them puts them to sleep instead of losing them
 - ✅ Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[, ⌘] and ⇧⌘C (copy URL)
 
 ### Coming next
 
-- Favorites, Pinned tabs with folders, and Today tabs
 - Spaces with their own colors, themes, and optional separate profiles
 - Auto-archiving of old tabs
 - Split View, Peek, and Little window

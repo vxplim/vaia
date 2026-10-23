@@ -30,9 +30,18 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Browsing history is now recorded (`history.json`)
   - ⇧⌘C copies the current URL with a "Copied URL" toast
 
+- [x] **Phase 3: Favorites, Pinned and Today tabs** (tag `v0.3.0`)
+  - Sidebar areas, top to bottom: **Favorites** (icon tiles, shared by all Spaces), **Pinned** (per Space, with folders), a divider with **Clear**, **+ New Tab**, then **Today** tabs
+  - Drag and drop to reorder and to move tabs between all three areas; a line shows where it will land; drop onto the middle of a folder to put it inside
+  - While dragging with no favorites yet, a "Drop here to add to Favorites" spot appears over the address bar
+  - Pinned tabs and favorites remember their original page. If you browse away, the row shows "/ Page title" and a ↩ button (also in the right-click menu and Command Bar: "Return to Pinned Page")
+  - Closing a pinned tab or favorite puts it to sleep (it stays in the sidebar); only Today tabs really close
+  - Folders: create (right-click the pinned area, or Command Bar "New Folder"), rename (double-click), collapse/expand (click), delete (keeps the tabs), nest tabs inside
+  - Right-click menus on tabs: Pin/Unpin, Add to/Remove from Favorites, Copy Link, Close/Put to Sleep, Delete
+  - Command Bar commands: Pin Tab, Unpin Tab, Add to Favorites, Remove from Favorites, Return to Pinned Page, New Folder, Clear Today Tabs
+
 ## Next
 
-- [ ] Phase 3: Favorites, Pinned and Today tabs
 - [ ] Phase 4: Spaces
 - [ ] Phase 5: Auto-archive and Archive
 - [ ] Phase 6: Split View
@@ -54,6 +63,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **⌘T no longer creates an empty "New Tab".** A tab is created only when you pick something in the Command Bar, so no blank tabs pile up.
 - **⌘L still edits the address in the sidebar** (the Phase 1 behaviour), while ⌘T is for new tabs.
 - **A command ranks first** when its name starts with what you typed (e.g. "copy" → Copy URL); otherwise the address/search row is first.
+- **"Clear" closes Today tabs for now**; in Phase 5 it will archive them instead so you can get them back.
+- **Deleting a folder keeps its tabs** (they move to where the folder was), so nothing is lost by accident.
+- **Favorites always use the default profile** (they're shared by every Space).
+- **Right-click menus are native Mac menus**, so they can appear over web pages.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Needs Vanessa

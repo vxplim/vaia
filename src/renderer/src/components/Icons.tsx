@@ -77,3 +77,25 @@ export const IconSidebar = (p: P) => (
     <path d="M6.5 3v10" />
   </Svg>
 )
+export const IconReturn = (p: P) => (
+  <Svg width="12" height="12" {...p}>
+    <path d="M6 4 3 7l3 3" />
+    <path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H8" />
+  </Svg>
+)
+export const IconChevron = (p: P) => (
+  <Svg width="12" height="12" {...p}>
+    <path d="M6 4l4 4-4 4" />
+  </Svg>
+)
+export const IconFolder = (p: P) => (
+  <Svg {...p}>
+    <path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" />
+  </Svg>
+)
+export const IconFolderPlus = (p: P) => (
+  <Svg {...p}>
+    <path d="M2.5 4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" />
+    <path d="M8 7.2v3.6M6.2 9h3.6" />
+  </Svg>
+)

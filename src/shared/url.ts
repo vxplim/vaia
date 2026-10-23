@@ -66,3 +66,9 @@ export function siteKey(url: string): string | null {
     return null
   }
 }
+
+/** Same page, ignoring a trailing slash or #section. */
+export function sameUrl(a: string, b: string): boolean {
+  const norm = (u: string) => u.replace(/#.*$/, '').replace(/\/$/, '')
+  return norm(a) === norm(b)
+}
