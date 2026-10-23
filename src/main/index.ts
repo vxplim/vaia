@@ -1,56 +1,35 @@
-// The "main process": the brain of the app. It runs in Node.js, creates
-// windows, and (in later phases) manages tabs and saves your data.
-import { app, BrowserWindow, shell } from 'electron'
+// The "main process": the brain of the app. It starts VAIA, creates the
+// window, and answers requests coming from the UI.
+import { BrowserWindow, app, ipcMain } from 'electron'
 import { join } from 'node:path'
-
-function createMainWindow(): BrowserWindow {
-  const win = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 720,
-    minHeight: 480,
-    title: 'VAIA',
-    titleBarStyle: 'hiddenInset',
-    backgroundColor: '#f4f1ec',
-    show: false,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      // Security best practices: the UI cannot touch Node.js directly.
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true
-    }
-  })
-
-  win.once('ready-to-show', () => win.show())
-
-  // Never let the app UI itself navigate away or open random windows;
-  // send any outside links to the user's default browser for now.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
-    return { action: 'deny' }
-  })
-
-  // In development, load the live-reloading dev server; otherwise the built file.
-  if (process.env.ELECTRON_RENDERER_URL) {
-    win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
-  }
-
-  return win
-}
+import type { Action } from '../shared/api'
+import type { Pane } from '../shared/types'
+import { Browser } from './browser'
+import { buildMenu } from './menu'
 
 app.setName('VAIA')
+// Keep your data in ~/Library/Application Support/VAIA (tests can point elsewhere).
+app.setPath('userData', process.env.VAIA_USER_DATA || join(app.getPath('appData'), 'VAIA'))
+
+const browser = new Browser()
+
+ipcMain.handle('state:get', () => browser.store.snapshot())
+ipcMain.handle('action', (_e, action: Action) => browser.dispatch(action))
+ipcMain.on('panes:set', (e, panes: Pane[]) => {
+  if (e.sender === browser.win?.webContents) browser.setPanes(panes)
+})
 
 app.whenReady().then(() => {
-  createMainWindow()
+  buildMenu(browser)
+  browser.createWindow()
 
   // macOS: clicking the Dock icon with no windows open makes a new one.
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+    if (BrowserWindow.getAllWindows().length === 0) browser.createWindow()
   })
 })
+
+app.on('before-quit', () => browser.store.flush())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

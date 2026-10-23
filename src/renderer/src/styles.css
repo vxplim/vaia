@@ -1,19 +1,20 @@
+/* ---------- Base ---------- */
 :root {
-  --bg: #f4f1ec;
-  --card: #ffffff;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
-  color: var(--text);
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
+  --radius: 10px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --card-bg: #ffffff;
+  --card-fg: #1d1d1f;
+  --card-muted: #8a8a8e;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1c1b1f;
-    --card: #2a292e;
-    --text: #f5f5f7;
-    --muted: #a1a1a6;
+    --card-bg: #1f1f22;
+    --card-fg: #f2f2f4;
+    --card-muted: #8e8e93;
   }
 }
 
@@ -26,34 +27,299 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  background: var(--bg);
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  cursor: default;
 }
 
-.welcome {
-  height: 100%;
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+kbd {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.14);
+}
+
+/* ---------- App shell ---------- */
+.app {
+  position: relative;
+  display: flex;
+  height: 100vh;
+  color: var(--fg);
+}
+
+/* The Space's color, slightly see-through so the Mac's frosted glass shows. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  opacity: 0.86;
+  z-index: -1;
+  transition: background 400ms var(--ease);
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 6px 8px 10px;
+  min-width: 0;
+}
+
+.sidebar-top {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* Lets you drag the window by the top of the sidebar. */
+  -webkit-app-region: drag;
+  padding-left: 72px;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.icon-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
   display: grid;
   place-items: center;
-  /* Lets you drag the window by its background (no title bar). */
+  color: var(--fg-muted);
+  transition: background 120ms, color 120ms;
+}
+.icon-button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--fg);
+}
+.icon-button:active:not(:disabled) {
+  background: var(--press);
+}
+.icon-button:disabled {
+  opacity: 0.4;
+}
+
+/* ---------- URL bar ---------- */
+.urlbar {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 9px;
+  background: var(--field);
+  text-align: left;
+  min-width: 0;
+  transition: background 120ms;
+}
+button.urlbar:hover {
+  background: var(--press);
+}
+.urlbar.editing {
+  background: var(--active-tab);
+  box-shadow: var(--active-shadow), 0 0 0 2px rgba(127, 127, 127, 0.18);
+}
+.urlbar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  user-select: text;
+}
+.urlbar-icon {
+  flex: none;
+  color: var(--fg-muted);
+}
+.urlbar-host {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.urlbar-placeholder,
+.urlbar input::placeholder {
+  color: var(--fg-muted);
+}
+
+/* ---------- Tab list ---------- */
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.sidebar-scroll::-webkit-scrollbar {
+  width: 0;
+}
+
+.new-tab-row,
+.tab-row {
+  height: 34px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 6px 0 10px;
+  border-radius: 9px;
+  text-align: left;
+  transition:
+    background 120ms,
+    box-shadow 120ms;
+}
+.new-tab-row {
+  color: var(--fg-muted);
+  margin-bottom: 2px;
+}
+.new-tab-row:hover,
+.tab-row:hover {
+  background: var(--hover);
+}
+.tab-row.active {
+  background: var(--active-tab);
+  box-shadow: var(--active-shadow);
+}
+
+.tab-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tab-row {
+  animation: tab-in 180ms var(--ease);
+}
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.tab-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.tab-icon.loading .favicon {
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.favicon {
+  border-radius: 4px;
+  flex: none;
+  object-fit: contain;
+}
+.favicon-letter {
+  display: grid;
+  place-items: center;
+  background: var(--press);
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+
+.tab-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-muted);
+  opacity: 0;
+  transition: opacity 100ms;
+}
+.tab-row:hover .tab-close {
+  opacity: 1;
+}
+.tab-close:hover {
+  background: var(--press);
+  color: var(--fg);
+}
+
+/* ---------- Content card ---------- */
+.content-wrap {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 8px 8px 4px;
   -webkit-app-region: drag;
 }
 
-.card {
-  background: var(--card);
-  padding: 40px 56px;
-  border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  text-align: center;
+.content-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--card-fg);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    0 8px 28px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  -webkit-app-region: no-drag;
 }
 
-.card h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--card-muted);
 }
-
-.card p {
+.empty-state p {
   margin: 0;
-  font-size: 13px;
-  color: var(--muted);
+}
+.empty-mark {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  margin-bottom: 8px;
+  color: var(--card-fg);
+  opacity: 0.12;
+}
+.empty-state .hint {
+  margin-top: 6px;
+  font-size: 12px;
 }

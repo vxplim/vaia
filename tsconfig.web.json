@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "composite": true
   },
-  "include": ["src/renderer/**/*", "src/preload/*.d.ts", "src/shared/**/*"]
+  "include": ["src/renderer/**/*", "src/shared/**/*"]
 }

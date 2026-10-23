@@ -20,20 +20,39 @@ An Electron app has three parts that talk to each other:
 
 Web pages themselves (Phase 1 onward) run in separate, locked-down views called **WebContentsView**, which sit next to the sidebar.
 
+## How a tab gets on screen
+
+1. You press ⌘T. The **menu** (`src/main/menu.ts`) catches it and tells the UI "open a new tab".
+2. The UI asks the brain to run the action `tab/new` (through the bridge, `window.vaia.dispatch`).
+3. The brain (`src/main/browser.ts`) adds the tab to your data and broadcasts the new data to the UI.
+4. The UI redraws the sidebar, measures the rounded content card, and tells the brain "show tab X at these pixels" (`setPanes`).
+5. The brain places that tab's web page view (a `WebContentsView`) exactly over the card.
+
 ## Folder map
 
 ```
 vaia/
 ├── src/
-│   ├── main/index.ts          ← the brain: creates the window
+│   ├── shared/                ← code and types used by BOTH the brain and the UI
+│   │   ├── types.ts           ← the shape of all data (tabs, spaces, settings…)
+│   │   ├── api.ts             ← the list of actions the UI can request
+│   │   ├── tree.ts            ← helpers to find tabs inside folders/splits
+│   │   └── url.ts             ← turning typed text into a URL or a search
+│   ├── main/                  ← the brain
+│   │   ├── index.ts           ← app start-up, connects the UI's requests
+│   │   ├── browser.ts         ← window, web page views, all tab actions
+│   │   ├── store.ts           ← saving/loading your data to disk
+│   │   └── menu.ts            ← Mac menu bar + keyboard shortcuts
 │   ├── preload/index.ts       ← the bridge: exposes window.vaia
-│   ├── preload/api.d.ts       ← the "contract": what window.vaia contains
-│   └── renderer/              ← the UI
+│   └── renderer/              ← the UI (React)
 │       ├── index.html
 │       └── src/
 │           ├── main.tsx       ← starts React
 │           ├── App.tsx        ← the top-level screen
-│           └── styles.css     ← colors, fonts, layout
+│           ├── state.ts       ← keeps the UI's copy of the data up to date
+│           ├── theme.ts       ← turns a Space's colors into CSS colors
+│           ├── styles.css     ← all the visual styling
+│           └── components/    ← Sidebar, UrlBar, TabRow, Content, icons…
 ├── electron.vite.config.ts    ← build settings (Vite, the fast build tool)
 ├── electron-builder.yml       ← packaging settings for the Mac .app/.dmg
 ├── tsconfig*.json             ← TypeScript settings
