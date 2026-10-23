@@ -32,8 +32,14 @@ export function buildMenu(browser: Browser): void {
     {
       label: 'File',
       submenu: [
-        { label: 'New Tab', id: 'new-tab', accelerator: 'CmdOrCtrl+T', click: () => browser.command({ type: 'new-tab' }) },
+        { label: 'New Tab', id: 'new-tab', accelerator: 'CmdOrCtrl+T', click: () => browser.command({ type: 'command-bar' }) },
         { label: 'Open Location…', id: 'focus-url', accelerator: 'CmdOrCtrl+L', click: () => browser.command({ type: 'focus-url' }) },
+        {
+          label: 'Copy URL',
+          id: 'copy-url',
+          accelerator: 'CmdOrCtrl+Shift+C',
+          click: withTab((id) => browser.dispatch({ type: 'tab/copyUrl', id }))
+        },
         { type: 'separator' },
         { label: 'Close Tab', id: 'close-tab', accelerator: 'CmdOrCtrl+W', click: withTab((id) => browser.closeTab(id)) },
         { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' }

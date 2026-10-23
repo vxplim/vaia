@@ -15,6 +15,9 @@ const browser = new Browser()
 
 ipcMain.handle('state:get', () => browser.store.snapshot())
 ipcMain.handle('action', (_e, action: Action) => browser.dispatch(action))
+ipcMain.handle('capture', (_e, tabIds: string[]) => browser.capture(tabIds))
+ipcMain.handle('suggest', (_e, query: string) => browser.suggest(query))
+ipcMain.handle('history:search', (_e, query: string) => browser.history.search(query))
 ipcMain.on('panes:set', (e, panes: Pane[]) => {
   if (e.sender === browser.win?.webContents) browser.setPanes(panes)
 })
@@ -29,7 +32,10 @@ app.whenReady().then(() => {
   })
 })
 
-app.on('before-quit', () => browser.store.flush())
+app.on('before-quit', () => {
+  browser.store.flush()
+  browser.history.flush()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

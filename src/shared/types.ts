@@ -110,6 +110,7 @@ export interface HistoryEntry {
   title: string
   favicon?: string
   visitedAt: number
+  visitCount: number
 }
 
 export interface ArchivedTab {
@@ -137,5 +138,5 @@ export interface Pane {
 /** Commands the brain asks the UI to perform (usually from keyboard shortcuts). */
 export type UiCommand =
   | { type: 'focus-url' }
-  | { type: 'new-tab' }
+  | { type: 'command-bar' }
   | { type: 'toast'; message: string }

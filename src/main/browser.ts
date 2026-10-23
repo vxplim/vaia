@@ -3,6 +3,7 @@
 import {
   BrowserWindow,
   Menu,
+  net,
   WebContentsView,
   clipboard,
   session,
@@ -14,7 +15,8 @@ import { join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, locate } from '../shared/tree'
 import type { Pane, TabItem, UiCommand } from '../shared/types'
-import { inputToUrl } from '../shared/url'
+import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
+import { History } from './history'
 import { Store, newId } from './store'
 
 const PRELOAD = join(__dirname, '../preload/index.js')
@@ -35,6 +37,7 @@ export function loadUi(win: BrowserWindow, view = ''): void {
 export class Browser {
   win: BrowserWindow | null = null
   readonly store = new Store()
+  readonly history = new History()
   private views = new Map<string, WebContentsView>()
   private attached: string[] = []
   private focusOnAttach: string | null = null
@@ -136,19 +139,28 @@ export class Browser {
       }
       this.store.changed(false)
     }
-    wc.on('page-title-updated', (_e, title) => this.updateTab(tabId, { title }))
+    wc.on('page-title-updated', (_e, title) => {
+      this.updateTab(tabId, { title })
+      this.history.update(wc.getURL(), { title })
+    })
     wc.on('page-favicon-updated', (_e, icons) => {
-      if (icons[0]) this.updateTab(tabId, { favicon: icons[0] })
+      if (!icons[0]) return
+      this.updateTab(tabId, { favicon: icons[0] })
+      this.history.update(wc.getURL(), { favicon: icons[0] })
     })
     wc.on('did-navigate', (_e, url) => {
       const tab = this.tab(tabId)
-      const patch: Partial<TabItem> = { url }
-      if (tab && originOf(tab.url) !== originOf(url)) patch.favicon = undefined
-      this.updateTab(tabId, patch)
+      // A new site means the old icon no longer applies.
+      const favicon = tab && originOf(tab.url) === originOf(url) ? tab.favicon : undefined
+      this.updateTab(tabId, { url, favicon })
+      this.history.visit(url, wc.getTitle(), favicon)
       runtime()
     })
     wc.on('did-navigate-in-page', (_e, url, isMainFrame) => {
-      if (isMainFrame) this.updateTab(tabId, { url })
+      if (isMainFrame) {
+        this.updateTab(tabId, { url })
+        this.history.visit(url, wc.getTitle(), this.tab(tabId)?.favicon)
+      }
       runtime()
     })
     wc.on('did-start-loading', runtime)
@@ -201,6 +213,39 @@ export class Browser {
       this.views.get(this.focusOnAttach)?.webContents.focus()
       this.focusOnAttach = null
     }
+  }
+
+  /** JPEG snapshots of the given tabs' pages, as data: URLs. */
+  async capture(tabIds: string[]): Promise<Record<string, string>> {
+    const out: Record<string, string> = {}
+    await Promise.all(
+      tabIds.map(async (id) => {
+        const view = this.views.get(id)
+        if (!view || !this.attached.includes(id)) return
+        try {
+          const img = await view.webContents.capturePage()
+          if (!img.isEmpty()) out[id] = `data:image/jpeg;base64,${img.toJPEG(82).toString('base64')}`
+        } catch {
+          // A page that can't be captured just shows a blank card.
+        }
+      })
+    )
+    return out
+  }
+
+  /** Search suggestions from the chosen search engine. */
+  async suggest(query: string): Promise<string[]> {
+    if (!query.trim()) return []
+    const url = SEARCH_ENGINES[this.state.settings.searchEngine].suggest.replace('%s', encodeURIComponent(query))
+    try {
+      const res = await net.fetch(url, { signal: AbortSignal.timeout(1500) })
+      const data = (await res.json()) as unknown
+      // The common "OpenSearch" format: [query, [suggestion, suggestion, ...]]
+      if (Array.isArray(data) && Array.isArray(data[1])) return (data[1] as unknown[]).map(String).slice(0, 5)
+    } catch {
+      // Offline or blocked: just no suggestions.
+    }
+    return []
   }
 
   private pageMenu(tabId: string, p: ContextMenuParams): void {
@@ -344,6 +389,14 @@ export class Browser {
         return wc(action.id)?.reload()
       case 'tab/stop':
         return wc(action.id)?.stop()
+      case 'tab/copyUrl': {
+        const tab = this.tab(action.id)
+        if (tab?.url) {
+          clipboard.writeText(tab.url)
+          this.command({ type: 'toast', message: 'Copied URL' })
+        }
+        return
+      }
       case 'settings/update':
         Object.assign(this.state.settings, action.patch)
         this.store.changed()

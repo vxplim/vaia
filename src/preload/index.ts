@@ -16,6 +16,9 @@ const api: VaiaApi = {
   onState: (listener) => listen<AppState>('state:changed', listener),
   dispatch: (action) => ipcRenderer.invoke('action', action),
   setPanes: (panes) => ipcRenderer.send('panes:set', panes),
+  capture: (tabIds) => ipcRenderer.invoke('capture', tabIds),
+  suggest: (query) => ipcRenderer.invoke('suggest', query),
+  searchHistory: (query) => ipcRenderer.invoke('history:search', query),
   onCommand: (listener) => listen<UiCommand>('ui:command', listener)
 }
 

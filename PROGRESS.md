@@ -22,9 +22,16 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Tabs, their URLs and the selected tab are saved and restored on relaunch
   - Right-click on a page: open link in new tab, copy link, copy image, back/forward/reload, inspect
 
+- [x] **Phase 2: Command Bar** (tag `v0.2.0`)
+  - ⌘T (or "+ New Tab") opens a centered, frosted Command Bar over a blurred picture of the page
+  - Results: open the typed address or search, matching open tabs ("Switch to Tab"), history, app commands, and live search suggestions
+  - Commands so far: Copy URL, Toggle Sidebar, Reload, Go Back, Go Forward, Close Tab
+  - ↑/↓ to move, Enter to choose, Esc (or click outside) to close; smooth open/close animation
+  - Browsing history is now recorded (`history.json`)
+  - ⇧⌘C copies the current URL with a "Copied URL" toast
+
 ## Next
 
-- [ ] Phase 2: Command Bar
 - [ ] Phase 3: Favorites, Pinned and Today tabs
 - [ ] Phase 4: Spaces
 - [ ] Phase 5: Auto-archive and Archive
@@ -43,6 +50,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Web pages use their own storage area** (`persist:default`), separate from VAIA's own interface.
 - **The user agent hides "Electron"** so websites treat VAIA like Chrome (some sites block unknown browsers).
 - **Login popups** (like "Sign in with Google") open as real popup windows so they keep working; other links that open new windows become tabs.
+- **Overlays use a page snapshot.** Web pages are always drawn on top of VAIA's interface, so nothing can float over a live page. When the Command Bar opens, VAIA takes a quick picture of the page, shows the picture (blurred) and hides the live page; closing the bar brings the live page back.
+- **⌘T no longer creates an empty "New Tab".** A tab is created only when you pick something in the Command Bar, so no blank tabs pile up.
+- **⌘L still edits the address in the sidebar** (the Phase 1 behaviour), while ⌘T is for new tabs.
+- **A command ranks first** when its name starts with what you typed (e.g. "copy" → Copy URL); otherwise the address/search row is first.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Needs Vanessa
