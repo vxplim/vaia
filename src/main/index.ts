@@ -48,7 +48,15 @@ app.on('open-file', (event, path) => {
   else pendingLinks.push(url)
 })
 
+app.setAboutPanelOptions({
+  applicationName: 'VAIA',
+  credits: 'A calm, sidebar-first browser for Mac.',
+  copyright: '© 2026 Vanessa Minerva Lim'
+})
+
 app.whenReady().then(() => {
+  // The installed app gets its icon from the bundle; while developing, show it in the Dock too.
+  if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   buildMenu(browser)
   browser.init()
   browser.createWindow()

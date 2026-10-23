@@ -9,6 +9,11 @@ files:
   - package.json
 mac:
   category: public.app-category.productivity
+  # "-" = a free ad-hoc signature. It keeps the app intact on Apple Silicon, but it
+  # isn't an Apple Developer ID, so macOS asks you to "Open Anyway" the first time.
+  identity: "-"
+  # Only needed for Apple notarization (which needs a paid Developer ID anyway).
+  hardenedRuntime: false
   extendInfo:
     CFBundleDocumentTypes:
       - CFBundleTypeName: Web Page
@@ -20,7 +25,9 @@ mac:
     - target: dmg
       arch:
         - arm64
+        - x64
 dmg:
+  title: VAIA ${version}
   artifactName: VAIA-${version}-${arch}.dmg
 # Lets macOS offer VAIA as the default web browser.
 protocols:

@@ -75,6 +75,8 @@ vaia/
 │               ├── ArchivePanel.tsx, HistoryPanel.tsx, DownloadsPanel.tsx
 │               ├── PeekLayer.tsx, FindBar.tsx, BoostPanel.tsx
 │               └── Icons.tsx, Favicon.tsx
+├── build/icon.svg, icon.png    ← the app icon (the SVG is the source, the PNG is what gets packaged)
+├── screenshots/                ← pictures used in the README
 ├── electron.vite.config.ts     ← build settings (Vite, the fast build tool)
 ├── electron-builder.yml        ← packaging settings for the Mac .app/.dmg
 ├── tsconfig*.json              ← TypeScript settings
@@ -82,6 +84,16 @@ vaia/
 ├── node_modules/               ← downloaded tools (not uploaded to GitHub)
 └── out/, dist/                 ← build output (not uploaded to GitHub)
 ```
+
+## How the Mac app is made
+
+`npm run build:mac` does three things:
+
+1. **Builds** the code (TypeScript → plain JavaScript in `out/`).
+2. **Packages** it with **electron-builder**: it copies a ready-made Electron program, renames it VAIA, puts our code and the icon inside, and creates `VAIA.app`.
+3. **Wraps** the app in a `.dmg` (a Mac disk image, the "drag to Applications" window). There's one for Apple Silicon Macs and one for Intel Macs.
+
+The app gets an **ad-hoc signature**: a free self-signature that proves the files haven't been changed since packaging. Apple Silicon Macs won't run apps without one. It isn't an official Apple **Developer ID** signature, so macOS asks you to "Open Anyway" the first time. Removing that step means **signing** with a Developer ID and **notarizing** (sending the app to Apple to scan), which needs the $99/year Apple Developer Program.
 
 ## Where your data lives
 
@@ -96,4 +108,7 @@ Everything is stored on your Mac in `~/Library/Application Support/VAIA/`:
 - **tag**: a named bookmark on a commit, like `v0.1.0` for Phase 1.
 - **IPC**: "inter-process communication", meaning messages sent between main and renderer.
 - **Partition / profile**: a separate cookie jar. Spaces with "Separate profile" each get their own.
+- **.dmg**: a Mac disk image, the usual way Mac apps are downloaded.
+- **Release**: a download page on GitHub tied to a tag (like `v1.0.0`), with the `.dmg` files attached.
+- **Code signing / notarization**: Apple's way of proving who made an app and that it was scanned for malware.
 - **Boost**: your customizations for one website, applied every time a page from that site loads.

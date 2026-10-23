@@ -91,9 +91,18 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Custom CSS (applied as you type) and custom JavaScript (runs each time a page on that site loads; "Run now" to try it)
   - Command Bar "Zap Elements on This Page" jumps straight into zapping
 
-## Next
+- [x] **Phase 10: Ship it** (tag `v1.0.0`)
+  - Original app icon: two cream leaves forming a "V" on a sage-green rounded square (`build/icon.svg`, rendered to `build/icon.png`; electron-builder turns it into the Mac `.icns`). Also shown in the Dock during `npm run dev`
+  - Name "VAIA" everywhere, version 1.0.0, About VAIA panel
+  - `npm run build:mac` builds `dist/VAIA-1.0.0-arm64.dmg` (Apple Silicon) and `dist/VAIA-1.0.0-x64.dmg` (Intel)
+  - The packaged app was launched and tested (runs as VAIA 1.0.0, no errors)
+  - README with download/install steps ("Open Anyway") and screenshots in `/screenshots`
+  - GitHub Release v1.0.0 with both `.dmg` files and release notes; repo description and topics set
 
-- [ ] **Phase 10: Ship it** (icon, .dmg, GitHub Release), to do together
+## Next ideas (not started)
+
+- Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
+- Auto-updates (electron-updater reading GitHub Releases; needs signing first)
 
 ## Decisions made along the way
 
@@ -126,6 +135,8 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **The filter lists for the ad blocker are downloaded the first time you turn it on** (needs internet once) and cached in VAIA's data folder.
 - **Boost styles use normal (author) style sheets with `!important`**. Electron's stronger "user" style sheets can't be removed again, which would make turning a Boost off impossible.
 - **Boost JavaScript only runs when a page loads** (or with "Run now"), so editing it doesn't run half-typed code.
+- **The app is "ad-hoc" signed** (a free self-signature). Without any signature Apple Silicon Macs report the app as "damaged"; with it, macOS only asks you to "Open Anyway" once. Apple's "hardened runtime" is off because it only matters for notarization.
+- **Both Apple Silicon and Intel installers are built** as separate `.dmg` files (smaller than one combined "universal" app).
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)

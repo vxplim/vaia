@@ -1,10 +1,32 @@
+<p align="center"><img src="build/icon.png" width="128" alt="VAIA icon"></p>
+
 # VAIA
 
 **A calm, sidebar-first browser for Mac.**
 
 VAIA is a desktop web browser built around a vertical sidebar, a floating command bar, Spaces, and an uncluttered, card-like content area. It's an independent, original project built with Electron, React, and TypeScript.
 
-> 🚧 **Status:** in development. Phases 1–9 of 10 are done; packaging and the first release are next. See [PROGRESS.md](PROGRESS.md).
+![VAIA with its sidebar, favorites and a web page](screenshots/main.png)
+
+## Download
+
+Get the latest version from the [Releases page](https://github.com/vxplim/vaia/releases/latest):
+
+| Your Mac | Download |
+|---|---|
+| Apple Silicon (M1, M2, M3, M4…) | `VAIA-1.0.0-arm64.dmg` |
+| Intel | `VAIA-1.0.0-x64.dmg` |
+
+Not sure which? Apple menu  → **About This Mac**. If "Chip" says Apple M-something, pick Apple Silicon.
+
+## Install
+
+1. Open the `.dmg` you downloaded and drag **VAIA** into the **Applications** folder.
+2. Open VAIA from Applications. The first time, macOS says it can't verify the app (VAIA isn't signed with a paid Apple Developer ID yet). Click **Done** (not "Move to Trash").
+3. Open **System Settings → Privacy & Security**, scroll down to "VAIA was blocked…" and click **Open Anyway**, then enter your Mac password and click **Open Anyway** again.
+4. That's it. macOS remembers your choice, so from now on VAIA opens normally.
+
+Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your Default Browser**.
 
 ## Features
 
@@ -25,13 +47,12 @@ VAIA is a desktop web browser built around a vertical sidebar, a floating comman
 - ✅ Boosts: recolor any website, change its font, zap away elements, and add your own CSS/JS
 - ✅ Keyboard-friendly: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⌘Y, ⌘, (full list in Settings)
 
-### Coming next
-
-- A real Mac app (.dmg) with its own icon, and a downloadable release
-
 ## Screenshots
 
-_Coming soon._
+| | |
+|---|---|
+| ![Command Bar](screenshots/command-bar.png) **Command Bar** (⌘T) | ![Split View](screenshots/split-view.png) **Split View** |
+| ![Space themes](screenshots/spaces.png) **Spaces with their own themes** | |
 
 ## Run it from the code
 
@@ -48,7 +69,7 @@ npm run dev
 |---|---|
 | `npm run dev` | Runs VAIA in development mode with live reload |
 | `npm run build` | Checks the code for errors and builds it |
-| `npm run build:mac` | Packages VAIA into a Mac `.app` and `.dmg` (in `dist/`) |
+| `npm run build:mac` | Packages VAIA into Mac `.dmg` installers for Apple Silicon and Intel (in `dist/`) |
 
 ## License
 
