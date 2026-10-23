@@ -1,0 +1,27 @@
+# Downloaded dependencies (re-created by "npm install")
+node_modules/
+
+# Build output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# macOS junk
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Secrets — never commit these
+.env
+.env.*
+*.pem
+*.p12
+*.key
+*.provisionprofile
+
+# Editor folders
+.vscode/
+.idea/

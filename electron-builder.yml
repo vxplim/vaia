@@ -1,0 +1,17 @@
+# Settings for packaging VAIA into a Mac .app and .dmg (npm run build:mac)
+appId: com.vaia.browser
+productName: VAIA
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch:
+        - arm64
+dmg:
+  artifactName: VAIA-${version}-${arch}.dmg
