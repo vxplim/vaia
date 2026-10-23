@@ -129,6 +129,19 @@ export const COMMANDS: Command[] = [
     run: (ctx) => ctx.ui.openSplitPicker()
   },
   {
+    id: 'little-window',
+    title: 'New Little Window',
+    shortcut: '⌥⌘N',
+    keywords: 'mini small quick popup',
+    run: () => dispatch({ type: 'little/new' })
+  },
+  {
+    id: 'default-browser',
+    title: 'Make VAIA Your Default Browser',
+    keywords: 'default',
+    run: () => dispatch({ type: 'app/makeDefaultBrowser' })
+  },
+  {
     id: 'reopen-closed',
     title: 'Reopen Closed Tab',
     shortcut: '⇧⌘T',

@@ -1,6 +1,6 @@
 // The contract between the UI and the brain: every request the UI can make.
 import type { Zone } from './tree'
-import type { AppState, ArchivedTab, HistoryEntry, Pane, Settings, Theme, UiCommand } from './types'
+import type { AppState, ArchivedTab, HistoryEntry, Pane, Rect, Settings, Theme, UiCommand } from './types'
 
 export interface DropTarget {
   zone: Zone
@@ -50,6 +50,11 @@ export type Action =
   | { type: 'split/detach'; tabId: string }
   | { type: 'split/dissolve'; id: string }
   | { type: 'split/resize'; id: string; sizes: number[] }
+  | { type: 'peek/close' }
+  | { type: 'peek/expand' }
+  | { type: 'little/new'; url?: string }
+  | { type: 'little/toMain'; id: string }
+  | { type: 'app/makeDefaultBrowser' }
   | { type: 'tab/reopenClosed' }
   | { type: 'archive/restore'; id: string }
   | { type: 'archive/remove'; id: string }
@@ -63,6 +68,8 @@ export interface VaiaApi {
   onState(listener: (state: AppState) => void): () => void
   dispatch(action: Action): Promise<unknown>
   setPanes(panes: Pane[]): void
+  /** Where the Peek card's page goes (null when there's no Peek). */
+  setPeekRect(rect: Rect | null): void
   /** Take pictures of web pages (shown while an overlay covers them). */
   capture(tabIds: string[]): Promise<Record<string, string>>
   suggest(query: string): Promise<string[]>

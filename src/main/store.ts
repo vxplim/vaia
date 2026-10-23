@@ -4,7 +4,7 @@ import { app, type WebContents } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { AppState, DownloadItem, PersistedState, Settings, Space, TabRuntime } from '../shared/types'
+import type { AppState, DownloadItem, PersistedState, Settings, Space, TabItem, TabRuntime } from '../shared/types'
 
 export const newId = (): string => randomUUID()
 
@@ -35,7 +35,8 @@ export const DEFAULT_SETTINGS: Settings = {
   archiveAfter: '12h',
   adBlock: false,
   sidebarVisible: true,
-  sidebarWidth: 248
+  sidebarWidth: 248,
+  peekPinnedLinks: true
 }
 
 export function newSpace(name: string, icon: string, colors: string[]): Space {
@@ -85,6 +86,8 @@ export class Store {
   state: PersistedState
   runtime: Record<string, TabRuntime> = {}
   downloads: DownloadItem[] = []
+  peek: TabItem | null = null
+  littles: Record<string, TabItem> = {}
   private subscribers = new Set<WebContents>()
   private saveTimer: NodeJS.Timeout | null = null
   private broadcastTimer: NodeJS.Timeout | null = null
@@ -94,7 +97,7 @@ export class Store {
   }
 
   snapshot(): AppState {
-    return { ...this.state, runtime: this.runtime, downloads: this.downloads }
+    return { ...this.state, runtime: this.runtime, downloads: this.downloads, peek: this.peek, littles: this.littles }
   }
 
   subscribe(wc: WebContents): void {

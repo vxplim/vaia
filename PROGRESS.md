@@ -65,9 +65,14 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - In the sidebar a split is one combined row with a segment per tab; × separates them back into normal tabs; right-click a segment for "Remove from Split View" / "Close Tab"
   - ⌘W closes just the focused pane; when one tab is left, the split turns back into a normal tab
 
+- [x] **Phase 7: Peek and Little window** (tag `v0.7.0`)
+  - **Peek**: in a pinned tab or favorite, clicking a link to a *different* website opens it in a floating card over the page. "Open as Tab" turns it into a real Today tab without reloading; × / Esc / clicking outside closes it
+  - **Little window** (⌥⌘N, File menu, or Command Bar "New Little Window"): a small, minimal window with back/forward/reload, an address pill, and "Open in VAIA" to move the page into the main window as a tab (again without reloading)
+  - ⌘W closes the Little window (or the Peek); ⌘L focuses the Little window's address pill
+  - **Default browser**: VAIA menu → "Make VAIA Your Default Browser" (or Command Bar). Links clicked in other apps then open in a Little window. The app is set up to register for http/https links and .html files
+
 ## Next
 
-- [ ] Phase 7: Peek and Little window
 - [ ] Phase 8: Sidebar and polish
 - [ ] Phase 9: Boosts
 - [ ] Phase 10: Ship it (icon, .dmg, GitHub Release), to do together
@@ -95,8 +100,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **No ⌃← / ⌃→ shortcuts for Spaces**: macOS already uses those to switch desktops. "Next/Previous Space" are in the Spaces menu instead.
 - **Pinned tabs and favorites are copied (not moved) into a split**, so your pinned list never changes by accident.
 - **Dragging a tab over the page freezes it into a picture** (like the Command Bar) so the page area can show the left/right drop zones.
+- **Peek only triggers for links to other sites** (same-site links navigate the pinned tab as usual), and **never for sign-in pages** (accounts.*, login.*, /oauth, …) so logging in keeps working. It also ignores redirects that happen while a page is still loading.
+- **"Make default browser" only works in the installed app**, not in `npm run dev` (in development it would register the bare Electron program as your browser). In dev it shows a toast explaining that.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Needs Vanessa
 
-_Nothing right now._
+- **Default browser (after Phase 10 install):** open the installed VAIA, choose VAIA menu → "Make VAIA Your Default Browser", and click "Use VAIA" in the macOS prompt. This can't be done or tested from the development version.

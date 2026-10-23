@@ -5,7 +5,7 @@ import type { MenuItem } from '../shared/api'
 import type { Browser } from './browser'
 
 export function buildMenu(browser: Browser): void {
-  const page = () => browser.activeWebContents()
+  const page = () => browser.focusedWebContents()
   const withTab = (fn: (id: string) => void) => () => {
     const id = browser.activeTabId()
     if (id) fn(id)
@@ -20,6 +20,11 @@ export function buildMenu(browser: Browser): void {
       label: app.name,
       submenu: [
         { role: 'about', label: 'About VAIA' },
+        { type: 'separator' },
+        {
+          label: 'Make VAIA Your Default Browser',
+          click: () => browser.dispatch({ type: 'app/makeDefaultBrowser' })
+        },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -40,7 +45,22 @@ export function buildMenu(browser: Browser): void {
           accelerator: 'Ctrl+Shift+=',
           click: () => browser.command({ type: 'command-bar', mode: 'split' })
         },
-        { label: 'Open Location…', id: 'focus-url', accelerator: 'CmdOrCtrl+L', click: () => browser.command({ type: 'focus-url' }) },
+        {
+          label: 'New Little Window',
+          id: 'little',
+          accelerator: 'CmdOrCtrl+Alt+N',
+          click: () => browser.openLittle()
+        },
+        {
+          label: 'Open Location…',
+          id: 'focus-url',
+          accelerator: 'CmdOrCtrl+L',
+          click: () => {
+            const little = browser.focusedLittle()
+            if (little) little.win.webContents.send('ui:command', { type: 'focus-url' })
+            else browser.command({ type: 'focus-url' })
+          }
+        },
         {
           label: 'Copy URL',
           id: 'copy-url',
@@ -48,7 +68,17 @@ export function buildMenu(browser: Browser): void {
           click: withTab((id) => browser.dispatch({ type: 'tab/copyUrl', id }))
         },
         { type: 'separator' },
-        { label: 'Close Tab', id: 'close-tab', accelerator: 'CmdOrCtrl+W', click: withTab((id) => browser.closeTab(id)) },
+        {
+          label: 'Close Tab',
+          id: 'close-tab',
+          accelerator: 'CmdOrCtrl+W',
+          click: () => {
+            const little = browser.focusedLittle()
+            if (little) return little.win.close()
+            if (browser.store.peek) return browser.closePeek()
+            withTab((id) => browser.closeTab(id))()
+          }
+        },
         { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' }
       ]
     },

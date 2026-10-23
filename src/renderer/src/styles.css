@@ -1360,3 +1360,131 @@ button.urlbar:hover {
 .split-row:hover .tab-close {
   opacity: 1;
 }
+
+/* ---------- Peek (Phase 7) ---------- */
+.peek-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 36px 56px;
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(3px);
+  animation: layer-in 160ms var(--ease) both;
+}
+.peek-layer.closing {
+  animation: layer-out 120ms ease-in both;
+}
+.peek-card {
+  width: min(1100px, 100%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: rgba(250, 250, 251, 0.96);
+  color: #1d1d1f;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.14),
+    0 30px 90px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+  animation: peek-in 180ms var(--ease) both;
+}
+.peek-layer.closing .peek-card {
+  animation: bar-out 120ms ease-in both;
+}
+@keyframes peek-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .peek-card {
+    background: rgba(36, 36, 40, 0.96);
+    color: #f2f2f4;
+  }
+}
+.peek-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px 0 14px;
+}
+.peek-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.peek-host {
+  flex: 1;
+  font-size: 12px;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+.peek-button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.peek-button:hover:not(:disabled) {
+  background: rgba(127, 127, 127, 0.14);
+}
+.peek-button:disabled {
+  opacity: 0.4;
+}
+.peek-button.icon {
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+}
+.peek-body {
+  flex: 1;
+  margin: 0 6px 6px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* ---------- Little window ---------- */
+.app.little {
+  flex-direction: column;
+}
+.little-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 6px 8px 0 78px;
+  -webkit-app-region: drag;
+}
+.little-bar > * {
+  -webkit-app-region: no-drag;
+}
+.little-url {
+  flex: 1;
+  height: 30px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+.little-move {
+  color: var(--fg);
+}
+.little-move:hover:not(:disabled) {
+  background: var(--hover);
+}
+.little-content {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 6px 6px;
+}

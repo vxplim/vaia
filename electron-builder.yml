@@ -9,9 +9,22 @@ files:
   - package.json
 mac:
   category: public.app-category.productivity
+  extendInfo:
+    CFBundleDocumentTypes:
+      - CFBundleTypeName: Web Page
+        CFBundleTypeRole: Viewer
+        LSItemContentTypes:
+          - public.html
+          - public.xhtml
   target:
     - target: dmg
       arch:
         - arm64
 dmg:
   artifactName: VAIA-${version}-${arch}.dmg
+# Lets macOS offer VAIA as the default web browser.
+protocols:
+  - name: Web Page
+    schemes:
+      - http
+      - https

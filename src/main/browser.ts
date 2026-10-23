@@ -3,18 +3,18 @@
 import {
   BrowserWindow,
   Menu,
+  app,
   net,
   WebContentsView,
   clipboard,
   session,
-  shell,
   type ContextMenuParams,
   type Session
 } from 'electron'
 import { join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, locate, tabsIn } from '../shared/tree'
-import type { ArchivedTab, Pane, Space, TabItem, UiCommand } from '../shared/types'
+import type { ArchivedTab, Pane, Rect, Space, TabItem, UiCommand } from '../shared/types'
 import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { History } from './history'
@@ -54,7 +54,13 @@ export class Browser {
   readonly history = new History()
   readonly archive = new Archive()
   private views = new Map<string, WebContentsView>()
-  private attached: string[] = []
+  /** Which tab views are currently shown in each window. */
+  private attached = new Map<BrowserWindow, string[]>()
+  /** The main window's panes as last reported by its UI (Peek is added on top). */
+  private mainPanes: Pane[] = []
+  private peekRect: Rect | null = null
+  /** Little windows, by the id of the tab they show. */
+  private littles = new Map<string, { tab: TabItem; win: BrowserWindow }>()
   private focusOnAttach: string | null = null
   private configuredSessions = new Set<Session>()
 
@@ -86,25 +92,27 @@ export class Browser {
     })
     this.win = win
     this.store.subscribe(win.webContents)
-    // The UI is laid out in exact pixels to line up with web pages; don't let it zoom.
-    win.webContents.on('did-finish-load', () => win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {}))
-    win.webContents.on('before-input-event', (event, input) => {
-      if (input.meta && ['=', '+', '-', '0'].includes(input.key)) event.preventDefault()
-    })
-    win.webContents.setWindowOpenHandler(({ url }) => {
-      shell.openExternal(url)
-      return { action: 'deny' }
-    })
-    win.webContents.on('will-navigate', (e) => e.preventDefault())
+    // The UI is laid out in exact pixels to line up with web pages; don't let it zoom or navigate.
+    this.hardenUiWindow(win)
     win.once('ready-to-show', () => win.show())
     win.on('closed', () => {
-      for (const view of this.views.values()) view.webContents.close()
-      this.views.clear()
-      this.attached = []
+      // Close every page except those living in Little windows.
+      for (const id of [...this.views.keys()]) if (!this.littles.has(id)) this.destroyView(id)
+      this.attached.delete(win)
+      this.closePeek()
       this.win = null
     })
     loadUi(win)
     return win
+  }
+
+  private hardenUiWindow(win: BrowserWindow): void {
+    win.webContents.on('did-finish-load', () => win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {}))
+    win.webContents.on('before-input-event', (event, input) => {
+      if (input.meta && ['=', '+', '-', '0'].includes(input.key)) event.preventDefault()
+    })
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    win.webContents.on('will-navigate', (e) => e.preventDefault())
   }
 
   /** Send a command to the main window's UI, focusing it first. */
@@ -155,6 +163,17 @@ export class Browser {
     return view
   }
 
+  isAttached(tabId: string): boolean {
+    for (const ids of this.attached.values()) if (ids.includes(tabId)) return true
+    return false
+  }
+
+  /** Is this a pinned tab or favorite? Links from those to other sites open in Peek. */
+  private opensLinksInPeek(tabId: string): boolean {
+    const zone = locate(this.state, tabId)?.zone
+    return this.state.settings.peekPinnedLinks && (zone === 'pinned' || zone === 'favorites')
+  }
+
   private wireView(tabId: string, view: WebContentsView): void {
     const wc = view.webContents
     const runtime = () => {
@@ -194,8 +213,26 @@ export class Browser {
     wc.setWindowOpenHandler(({ url, disposition }) => {
       // Real popups (e.g. "Sign in with Google") need to stay popups.
       if (disposition === 'new-window') return { action: 'allow' }
-      this.newTab(url, disposition !== 'background-tab', tabId)
+      if (disposition === 'foreground-tab' && this.opensLinksInPeek(tabId) && !isAuthUrl(url)) this.openPeek(url)
+      else this.newTab(url, disposition !== 'background-tab', tabId)
       return { action: 'deny' }
+    })
+    // Clicking a link to another site from a pinned tab opens it in Peek instead.
+    // "settled" = the page finished loading, so this is you clicking, not a load-time redirect.
+    let settled = false
+    wc.on('did-navigate', () => (settled = false))
+    wc.on('did-stop-loading', () => (settled = true))
+    wc.on('will-navigate', (e) => {
+      if (!settled || !this.opensLinksInPeek(tabId)) return
+      if (siteOf(e.url) === siteOf(wc.getURL()) || isAuthUrl(e.url) || !/^https?:/.test(e.url)) return
+      e.preventDefault()
+      this.openPeek(e.url)
+    })
+    wc.on('before-input-event', (e, input) => {
+      if (input.type === 'keyDown' && input.key === 'Escape' && this.store.peek?.id === tabId) {
+        e.preventDefault()
+        this.closePeek()
+      }
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
     // In a split, the pane you click becomes the one the address bar shows.
@@ -211,23 +248,46 @@ export class Browser {
   private destroyView(tabId: string): void {
     const view = this.views.get(tabId)
     if (!view) return
-    if (this.win && this.attached.includes(tabId)) this.win.contentView.removeChildView(view)
-    this.attached = this.attached.filter((id) => id !== tabId)
+    for (const [win, ids] of this.attached) {
+      if (!ids.includes(tabId)) continue
+      if (!win.isDestroyed()) win.contentView.removeChildView(view)
+      this.attached.set(win, ids.filter((id) => id !== tabId))
+    }
     view.webContents.close()
     this.views.delete(tabId)
     delete this.store.runtime[tabId]
   }
 
-  /** The UI tells us exactly which pages should be visible and where. */
-  setPanes(panes: Pane[]): void {
-    const win = this.win
-    if (!win) return
+  /** A window's UI tells us exactly which pages should be visible in it, and where. */
+  setPanes(win: BrowserWindow, panes: Pane[]): void {
+    if (win === this.win) {
+      this.mainPanes = panes
+      this.layoutMain()
+    } else {
+      this.applyLayout(win, panes)
+    }
+  }
+
+  /** Where the Peek card's page goes (null = no Peek). */
+  setPeekRect(rect: Rect | null): void {
+    this.peekRect = rect
+    this.layoutMain()
+  }
+
+  private layoutMain(): void {
+    if (!this.win) return
+    const peek = this.store.peek
+    const panes = peek && this.peekRect ? [...this.mainPanes, { tabId: peek.id, rect: this.peekRect }] : this.mainPanes
+    this.applyLayout(this.win, panes)
+  }
+
+  private applyLayout(win: BrowserWindow, panes: Pane[]): void {
+    if (win.isDestroyed()) return
+    const before = this.attached.get(win) ?? []
     const wanted = panes.map((p) => p.tabId)
-    for (const id of this.attached) {
-      if (!wanted.includes(id)) {
-        const view = this.views.get(id)
-        if (view) win.contentView.removeChildView(view)
-      }
+    for (const id of before) {
+      const view = this.views.get(id)
+      if (view && !wanted.includes(id)) win.contentView.removeChildView(view)
     }
     for (const pane of panes) {
       const tab = this.tab(pane.tabId)
@@ -240,10 +300,18 @@ export class Browser {
         width: Math.max(0, Math.round(r.width)),
         height: Math.max(0, Math.round(r.height))
       })
-      if (!this.attached.includes(pane.tabId)) win.contentView.addChildView(view)
+      // A view shown in another window (e.g. moved out of a Little window) moves here.
+      for (const [other, ids] of this.attached) {
+        if (other !== win && ids.includes(pane.tabId)) {
+          if (!other.isDestroyed()) other.contentView.removeChildView(view)
+          this.attached.set(other, ids.filter((id) => id !== pane.tabId))
+        }
+      }
+      if (!before.includes(pane.tabId)) win.contentView.addChildView(view)
     }
-    this.attached = wanted.filter((id) => this.views.has(id))
-    if (this.focusOnAttach && this.attached.includes(this.focusOnAttach)) {
+    const now = wanted.filter((id) => this.views.has(id))
+    this.attached.set(win, now)
+    if (this.focusOnAttach && now.includes(this.focusOnAttach)) {
       this.views.get(this.focusOnAttach)?.webContents.focus()
       this.focusOnAttach = null
     }
@@ -255,7 +323,7 @@ export class Browser {
     await Promise.all(
       tabIds.map(async (id) => {
         const view = this.views.get(id)
-        if (!view || !this.attached.includes(id)) return
+        if (!view || !this.isAttached(id)) return
         try {
           const img = await view.webContents.capturePage()
           if (!img.isEmpty()) out[id] = `data:image/jpeg;base64,${img.toJPEG(82).toString('base64')}`
@@ -316,7 +384,22 @@ export class Browser {
 
   tab(id: string): TabItem | null {
     const loc = locate(this.state, id)
-    return loc && loc.item.kind === 'tab' ? loc.item : null
+    if (loc && loc.item.kind === 'tab') return loc.item
+    if (this.store.peek?.id === id) return this.store.peek
+    return this.littles.get(id)?.tab ?? null
+  }
+
+  /** The page in the window you're using: a Little window's page, or the main window's active tab. */
+  focusedWebContents(): Electron.WebContents | null {
+    const little = this.focusedLittle()
+    if (little) return this.views.get(little.tab.id)?.webContents ?? null
+    return this.activeWebContents()
+  }
+
+  focusedLittle(): { tab: TabItem; win: BrowserWindow } | null {
+    const focused = BrowserWindow.getFocusedWindow()
+    for (const little of this.littles.values()) if (little.win === focused) return little
+    return null
   }
 
   activeTabId(): string | null {
@@ -457,7 +540,7 @@ export class Browser {
       space.today = space.today.filter((item) => {
         if (item.kind === 'folder' || item.id === space.activeId) return true
         const tabs = item.kind === 'tab' ? [item] : item.tabs
-        if (tabs.some((t) => t.lastViewedAt > cutoff || this.attached.includes(t.id))) return true
+        if (tabs.some((t) => t.lastViewedAt > cutoff || this.isAttached(t.id))) return true
         for (const tab of tabs) {
           this.destroyView(tab.id)
           this.archive.add(tab, space.id, false)
@@ -488,6 +571,108 @@ export class Browser {
     if (!entry) return
     this.archive.remove(id)
     this.reopen(entry, false)
+  }
+
+  // ---------- Peek ----------
+
+  /** Show a link in a floating preview card over the current page. */
+  openPeek(url: string): void {
+    const peek = this.store.peek
+    if (peek) {
+      this.views.get(peek.id)?.webContents.loadURL(url).catch(() => {})
+      return
+    }
+    this.store.peek = this.makeTab(url)
+    this.focusOnAttach = this.store.peek.id
+    this.store.changed(false)
+  }
+
+  closePeek(): void {
+    const peek = this.store.peek
+    if (!peek) return
+    this.store.peek = null
+    this.peekRect = null
+    this.destroyView(peek.id)
+    this.store.changed(false)
+    this.layoutMain()
+  }
+
+  /** Turn the Peek into a real tab (the page keeps its place; no reload). */
+  expandPeek(): void {
+    const peek = this.store.peek
+    if (!peek) return
+    this.store.peek = null
+    this.peekRect = null
+    activeSpace(this.state).today.unshift(peek)
+    this.activate(peek.id)
+    this.store.changed()
+  }
+
+  // ---------- Little windows ----------
+
+  /** A small, minimal window for a quick look at something. */
+  openLittle(url = ''): void {
+    const tab = this.makeTab(url)
+    const win = new BrowserWindow({
+      width: 960,
+      height: 680,
+      minWidth: 420,
+      minHeight: 300,
+      title: 'VAIA',
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 14, y: 14 },
+      vibrancy: 'sidebar',
+      visualEffectState: 'active',
+      backgroundColor: '#00000000',
+      show: false,
+      webPreferences: { preload: PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true }
+    })
+    this.littles.set(tab.id, { tab, win })
+    this.store.littles[tab.id] = tab
+    this.store.subscribe(win.webContents)
+    this.hardenUiWindow(win)
+    win.once('ready-to-show', () => win.show())
+    win.on('closed', () => {
+      // Still a Little window's tab (not moved to the main window): close its page.
+      if (this.littles.has(tab.id)) {
+        this.littles.delete(tab.id)
+        delete this.store.littles[tab.id]
+        this.destroyView(tab.id)
+        this.store.changed(false)
+      }
+      this.attached.delete(win)
+    })
+    if (url) this.focusOnAttach = tab.id
+    loadUi(win, `little&id=${tab.id}`)
+    this.store.changed(false)
+  }
+
+  /** Move a Little window's page into the main window as a Today tab. */
+  littleToMain(tabId: string): void {
+    const little = this.littles.get(tabId)
+    if (!little) return
+    this.littles.delete(tabId)
+    delete this.store.littles[tabId]
+    if (!this.win) this.createWindow()
+    activeSpace(this.state).today.unshift(little.tab)
+    this.activate(tabId)
+    little.win.close()
+    this.win?.show()
+    this.win?.focus()
+    this.store.changed()
+  }
+
+  /** Links from other apps (when VAIA is the default browser) open in a Little window. */
+  openExternalLink(url: string): void {
+    this.openLittle(url)
+  }
+
+  makeDefaultBrowser(): boolean {
+    // In development this would make the bare Electron app the default browser; only the real app may.
+    if (!app.isPackaged) return false
+    app.setAsDefaultProtocolClient('http')
+    app.setAsDefaultProtocolClient('https')
+    return true
   }
 
   // ---------- Split View ----------
@@ -752,6 +937,22 @@ export class Browser {
         }
         return
       }
+      case 'peek/close':
+        return this.closePeek()
+      case 'peek/expand':
+        return this.expandPeek()
+      case 'little/new':
+        return this.openLittle(action.url)
+      case 'little/toMain':
+        return this.littleToMain(action.id)
+      case 'app/makeDefaultBrowser': {
+        const ok = this.makeDefaultBrowser()
+        this.command({
+          type: 'toast',
+          message: ok ? 'Asked macOS to make VAIA your default browser' : 'Available in the installed VAIA app'
+        })
+        return ok
+      }
       case 'tab/reopenClosed':
         return this.reopenClosed()
       case 'archive/restore':
@@ -766,6 +967,29 @@ export class Browser {
         this.store.changed()
         return
     }
+  }
+}
+
+/** example.com for www.example.com, mail.example.com, etc. (good enough for "same site"). */
+function siteOf(url: string): string {
+  try {
+    return new URL(url).hostname.split('.').slice(-2).join('.')
+  } catch {
+    return ''
+  }
+}
+
+/** Sign-in pages must open normally, never in Peek, or logging in breaks. */
+function isAuthUrl(url: string): boolean {
+  try {
+    const { hostname, pathname } = new URL(url)
+    return (
+      /^(accounts|login|auth|sso|signin|id|oauth)\./.test(hostname) ||
+      /(^|\.)(okta|auth0|microsoftonline|appleid\.apple)\./.test(hostname) ||
+      /\/(login|signin|sign-in|oauth|authorize|sso)\b/.test(pathname)
+    )
+  } catch {
+    return false
   }
 }
 

@@ -5,6 +5,7 @@ import { ArchivePanel } from './components/ArchivePanel'
 import { Backdrop } from './components/Backdrop'
 import { CommandBar } from './components/CommandBar'
 import { Content } from './components/Content'
+import { PeekLayer } from './components/PeekLayer'
 import { Sidebar } from './components/Sidebar'
 import { SpaceEditor } from './components/SpaceEditor'
 import { Toast } from './components/Toast'
@@ -89,7 +90,8 @@ export default function App() {
             onOpenArchive={() => openOverlay({ kind: 'archive' })}
           />
         )}
-        <Content state={state} space={space} frozen={overlay !== null} />
+        <Content state={state} space={space} frozen={overlay !== null || !!state.peek} />
+        {state.peek && <PeekLayer key={state.peek.id} state={state} peek={state.peek} />}
         {overlay?.kind === 'command' && (
           <CommandBar
             state={state}

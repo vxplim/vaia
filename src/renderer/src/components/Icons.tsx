@@ -112,3 +112,8 @@ export const IconArchive = (p: P) => (
     <path d="M3.5 6v6a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V6M6.5 8.5h3" />
   </Svg>
 )
+export const IconExpand = (p: P) => (
+  <Svg width="13" height="13" {...p}>
+    <path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" />
+  </Svg>
+)

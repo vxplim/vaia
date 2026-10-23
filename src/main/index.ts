@@ -2,8 +2,9 @@
 // window, and answers requests coming from the UI.
 import { BrowserWindow, app, ipcMain } from 'electron'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import type { Action, MenuItem } from '../shared/api'
-import type { Pane } from '../shared/types'
+import type { Pane, Rect } from '../shared/types'
 import { Browser } from './browser'
 import { buildMenu, popupMenu } from './menu'
 
@@ -21,12 +22,32 @@ ipcMain.handle('history:search', (_e, query: string) => browser.history.search(q
 ipcMain.handle('archive:list', (_e, query: string) => browser.archive.list(query))
 ipcMain.handle('menu:popup', (e, items: MenuItem[]) => popupMenu(e.sender, items))
 ipcMain.on('panes:set', (e, panes: Pane[]) => {
-  if (e.sender === browser.win?.webContents) browser.setPanes(panes)
+  const win = BrowserWindow.fromWebContents(e.sender)
+  if (win) browser.setPanes(win, panes)
+})
+ipcMain.on('peek:rect', (e, rect: Rect | null) => {
+  if (e.sender === browser.win?.webContents) browser.setPeekRect(rect)
+})
+
+// Links opened from other apps (when VAIA is the default browser). They can
+// arrive before VAIA has finished starting, so hold on to them until it's ready.
+const pendingLinks: string[] = []
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  if (app.isReady()) browser.openExternalLink(url)
+  else pendingLinks.push(url)
+})
+app.on('open-file', (event, path) => {
+  event.preventDefault()
+  const url = pathToFileURL(path).href
+  if (app.isReady()) browser.openExternalLink(url)
+  else pendingLinks.push(url)
 })
 
 app.whenReady().then(() => {
   buildMenu(browser)
   browser.createWindow()
+  for (const url of pendingLinks.splice(0)) browser.openExternalLink(url)
 
   // Check for tabs to auto-archive at start-up and then every minute.
   browser.autoArchive()

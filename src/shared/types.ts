@@ -63,6 +63,8 @@ export interface Settings {
   adBlock: boolean
   sidebarVisible: boolean
   sidebarWidth: number
+  /** Links from pinned tabs/favorites to other sites open in a Peek card. */
+  peekPinnedLinks: boolean
 }
 
 export interface Boost {
@@ -105,6 +107,10 @@ export interface DownloadItem {
 export interface AppState extends PersistedState {
   runtime: Record<string, TabRuntime>
   downloads: DownloadItem[]
+  /** The page open in the Peek card, if any. */
+  peek: TabItem | null
+  /** Pages open in Little windows, by tab id. */
+  littles: Record<string, TabItem>
 }
 
 export interface HistoryEntry {
