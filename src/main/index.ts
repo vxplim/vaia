@@ -19,6 +19,10 @@ ipcMain.handle('action', (_e, action: Action) => browser.dispatch(action))
 ipcMain.handle('capture', (_e, tabIds: string[]) => browser.capture(tabIds))
 ipcMain.handle('suggest', (_e, query: string) => browser.suggest(query))
 ipcMain.handle('history:search', (_e, query: string) => browser.history.search(query))
+ipcMain.handle('history:list', (_e, query: string) => browser.history.list(query))
+ipcMain.on('window:traffic-lights', (e, visible: boolean) => {
+  BrowserWindow.fromWebContents(e.sender)?.setWindowButtonVisibility(visible)
+})
 ipcMain.handle('archive:list', (_e, query: string) => browser.archive.list(query))
 ipcMain.handle('menu:popup', (e, items: MenuItem[]) => popupMenu(e.sender, items))
 ipcMain.on('panes:set', (e, panes: Pane[]) => {
@@ -46,6 +50,7 @@ app.on('open-file', (event, path) => {
 
 app.whenReady().then(() => {
   buildMenu(browser)
+  browser.init()
   browser.createWindow()
   for (const url of pendingLinks.splice(0)) browser.openExternalLink(url)
 

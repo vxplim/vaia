@@ -117,3 +117,24 @@ export const IconExpand = (p: P) => (
     <path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" />
   </Svg>
 )
+export const IconFolderOpen = (p: P) => (
+  <Svg width="13" height="13" {...p}>
+    <path d="M2.5 12V4.5a1 1 0 0 1 1-1h3l1.5 1.5h4.5a1 1 0 0 1 1 1V7" />
+    <path d="M2.5 12l1.6-4.2a1 1 0 0 1 .9-.6h8.6a.6.6 0 0 1 .6.8L12.6 12a1 1 0 0 1-.9.6H3.1a.6.6 0 0 1-.6-.6Z" />
+  </Svg>
+)
+export const IconDownload = (p: P) => (
+  <Svg {...p}>
+    <path d="M8 2.5v8M4.5 7 8 10.5 11.5 7M3 13.5h10" />
+  </Svg>
+)
+export const IconChevronUp = (p: P) => (
+  <Svg width="12" height="12" {...p}>
+    <path d="M4 10l4-4 4 4" />
+  </Svg>
+)
+export const IconChevronDown = (p: P) => (
+  <Svg width="12" height="12" {...p}>
+    <path d="M4 6l4 4 4-4" />
+  </Svg>
+)

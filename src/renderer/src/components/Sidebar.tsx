@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type WheelEvent } from 'react'
-import type { AppState, Space, TabItem } from '../../../shared/types'
+import type { AppState, Panel, Space, TabItem } from '../../../shared/types'
 import { useDropArea } from '../dnd'
 import { pinnedAreaMenu } from '../menus'
 import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
-import { IconBack, IconForward, IconMore, IconPlus, IconReload, IconStop } from './Icons'
+import { IconBack, IconForward, IconMore, IconPlus, IconReload, IconSidebar, IconStop } from './Icons'
 import { ItemList } from './PinnedList'
 import { SpaceBar } from './SpaceBar'
 import { UrlBar } from './UrlBar'
@@ -17,7 +17,8 @@ interface Props {
   setUrlEditing: (editing: boolean) => void
   onNewTab: () => void
   onEditSpace: (spaceId: string) => void
-  onOpenArchive: () => void
+  onOpenPanel: (panel: Panel) => void
+  onToggleSidebar: () => void
 }
 
 /** Two-finger horizontal swipes on the sidebar switch Spaces. */
@@ -42,7 +43,8 @@ function useSwipe(onSwipe: (delta: 1 | -1) => void) {
   }
 }
 
-export function Sidebar({ state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenArchive }: Props) {
+export function Sidebar(props: Props) {
+  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onToggleSidebar } = props
   const spaceIndex = state.spaces.findIndex((s) => s.id === space.id)
   // Slide the tab list in from the side the new Space is on.
   const lastIndex = useRef(spaceIndex)
@@ -66,6 +68,11 @@ export function Sidebar({ state, space, activeTab, urlEditing, setUrlEditing, on
   return (
     <aside className="sidebar" style={{ width: state.settings.sidebarWidth }} onWheel={onWheel}>
       <div className="sidebar-top">
+        <div className="nav-buttons">
+          <button className="icon-button" title={state.settings.sidebarVisible ? 'Hide sidebar (⌘S)' : 'Keep sidebar open (⌘S)'} onClick={onToggleSidebar}>
+            <IconSidebar />
+          </button>
+        </div>
         <div className="nav-buttons">
           <button
             className="icon-button"
@@ -145,7 +152,7 @@ export function Sidebar({ state, space, activeTab, urlEditing, setUrlEditing, on
         </section>
       </div>
 
-      <SpaceBar state={state} onEdit={onEditSpace} onOpenArchive={onOpenArchive} />
+      <SpaceBar state={state} onEdit={onEditSpace} onOpenPanel={onOpenPanel} />
     </aside>
   )
 }

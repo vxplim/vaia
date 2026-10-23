@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { locate } from '../../../shared/tree'
 import type { AppState, Pane, Space, TabItem } from '../../../shared/types'
 import { useDnd } from '../dnd'
@@ -9,6 +9,8 @@ interface Props {
   space: Space
   /** When true, live pages are swapped for still pictures so overlays can sit on top. */
   frozen: boolean
+  /** Find-in-page bar shown above the page (or null). */
+  findBar: ReactNode
 }
 
 let lastSent = ''
@@ -28,7 +30,7 @@ const MIN_PANE = 0.15
  * View. The pages are drawn by the brain on top of these exact spots; we
  * measure each card and report where it is.
  */
-export function Content({ state, space, frozen }: Props) {
+export function Content({ state, space, frozen, findBar }: Props) {
   const { drag, setDrag, setIndicator } = useDnd()
   const loc = space.activeId ? locate(state, space.activeId) : null
   const split = loc?.item.kind === 'split' ? loc.item : null
@@ -147,6 +149,7 @@ export function Content({ state, space, frozen }: Props) {
         setIndicator(null)
       }}
     >
+      {findBar}
       <div className="panes" ref={container}>
         {tabs.length === 0 && (
           <div className="content-card">

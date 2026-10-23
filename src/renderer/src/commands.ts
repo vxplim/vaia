@@ -1,6 +1,6 @@
 // App commands you can run from the Command Bar (⌘T), e.g. "Toggle Sidebar".
 import { locate } from '../../shared/tree'
-import type { AppState } from '../../shared/types'
+import type { AppState, Panel } from '../../shared/types'
 import { sameUrl } from '../../shared/url'
 import { dispatch } from './state'
 
@@ -10,9 +10,11 @@ export interface CommandContext {
   /** Things only the UI can do, like opening a panel. */
   ui: {
     editSpace: (spaceId: string) => void
-    openPanel: (panel: 'archive') => void
+    openPanel: (panel: Panel) => void
     /** Reopen the Command Bar to pick what goes in a new Split View pane. */
     openSplitPicker: () => void
+    toggleSidebar: () => void
+    find: () => void
   }
 }
 
@@ -47,7 +49,7 @@ export const COMMANDS: Command[] = [
     title: 'Toggle Sidebar',
     shortcut: '⌘S',
     keywords: 'hide show sidebar',
-    run: (ctx) => dispatch({ type: 'settings/update', patch: { sidebarVisible: !ctx.state.settings.sidebarVisible } })
+    run: (ctx) => ctx.ui.toggleSidebar()
   },
   {
     id: 'reload',
@@ -140,6 +142,48 @@ export const COMMANDS: Command[] = [
     title: 'Make VAIA Your Default Browser',
     keywords: 'default',
     run: () => dispatch({ type: 'app/makeDefaultBrowser' })
+  },
+  {
+    id: 'settings',
+    title: 'Settings',
+    shortcut: '⌘,',
+    keywords: 'preferences options search engine',
+    run: () => dispatch({ type: 'app/openSettings' })
+  },
+  {
+    id: 'history',
+    title: 'Show History',
+    shortcut: '⌘Y',
+    keywords: 'visited past',
+    run: (ctx) => ctx.ui.openPanel('history')
+  },
+  {
+    id: 'downloads',
+    title: 'Show Downloads',
+    shortcut: '⇧⌘J',
+    keywords: 'files',
+    run: (ctx) => ctx.ui.openPanel('downloads')
+  },
+  {
+    id: 'find',
+    title: 'Find in Page',
+    shortcut: '⌘F',
+    keywords: 'search text',
+    enabled: hasTab,
+    run: (ctx) => ctx.ui.find()
+  },
+  {
+    id: 'duplicate',
+    title: 'Duplicate Tab',
+    keywords: 'copy clone',
+    enabled: hasTab,
+    run: (ctx) => dispatch({ type: 'tab/duplicate', id: ctx.activeTabId! })
+  },
+  {
+    id: 'adblock',
+    title: 'Toggle Ad Blocker',
+    keywords: 'ads trackers block',
+    run: (ctx) => dispatch({ type: 'settings/update', patch: { adBlock: !ctx.state.settings.adBlock } })
   },
   {
     id: 'reopen-closed',

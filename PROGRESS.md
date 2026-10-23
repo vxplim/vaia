@@ -71,9 +71,19 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - ⌘W closes the Little window (or the Peek); ⌘L focuses the Little window's address pill
   - **Default browser**: VAIA menu → "Make VAIA Your Default Browser" (or Command Bar). Links clicked in other apps then open in a Little window. The app is set up to register for http/https links and .html files
 
+- [x] **Phase 8: Sidebar and polish** (tag `v0.8.0`)
+  - ⌘S (or the sidebar button at the top-left) hides the sidebar; the page then fills the window and the window buttons hide too. Hover the far-left edge to slide the sidebar out over the page; it tucks away when you move off it or pick a tab. ⌘L with the sidebar hidden slides it out to type an address
+  - Toasts ("Copied URL", "Downloading …") now float above web pages
+  - Right-click a tab: Pin/Unpin, Add to Favorites, Open in Split View, **Duplicate**, Copy Link, **Move to Space ▸**, Close
+  - **Settings window** (⌘, or VAIA menu → Settings…): search engine (Google / DuckDuckGo / Bing / Ecosia), archive timing, Peek on/off, ad blocker, default browser, each Space's theme (Edit… opens the theme editor), clear browsing data (history / cache / cookies / archive, across all profiles), keyboard shortcuts list
+  - **Downloads**: files save to your Downloads folder; the ↓ button at the bottom of the sidebar (or ⇧⌘J) opens a popover with progress, open, show in Finder, cancel, clear. A progress line shows on the button while downloading
+  - **History** page (⌘Y, History menu, or Command Bar): grouped by day, searchable, click to open, remove entries, clear all
+  - **Find in page** (⌘F): match count, Enter / ⌘G next, ⇧Enter / ⇧⌘G previous, Esc closes
+  - **Ad blocker** (Settings or Command Bar "Toggle Ad Blocker"): Ghostery's open-source engine with the EasyList ad + tracker lists, for every profile. Tested: an ad script is blocked when on and loads when off
+  - Animations: tabs fold away when closed with ×, the sidebar slides in, plus the existing Command Bar / Space / panel animations
+
 ## Next
 
-- [ ] Phase 8: Sidebar and polish
 - [ ] Phase 9: Boosts
 - [ ] Phase 10: Ship it (icon, .dmg, GitHub Release), to do together
 
@@ -102,6 +112,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Dragging a tab over the page freezes it into a picture** (like the Command Bar) so the page area can show the left/right drop zones.
 - **Peek only triggers for links to other sites** (same-site links navigate the pinned tab as usual), and **never for sign-in pages** (accounts.*, login.*, /oauth, …) so logging in keeps working. It also ignores redirects that happen while a page is still loading.
 - **"Make default browser" only works in the installed app**, not in `npm run dev` (in development it would register the bare Electron program as your browser). In dev it shows a toast explaining that.
+- **⌘S now toggles the sidebar** (as requested), so "Save Page" isn't available.
+- **Toasts are drawn by the brain** in a tiny see-through view placed on top of everything, because nothing in the normal interface can float above a live web page.
+- **Downloads go straight to ~/Downloads** without asking; a name clash gets " (1)", " (2)", …
+- **The filter lists for the ad blocker are downloaded the first time you turn it on** (needs internet once) and cached in VAIA's data folder.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Needs Vanessa

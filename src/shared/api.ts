@@ -15,6 +15,7 @@ export interface MenuItem {
   label?: string
   type?: 'separator'
   enabled?: boolean
+  submenu?: MenuItem[]
 }
 
 export type Action =
@@ -55,6 +56,17 @@ export type Action =
   | { type: 'little/new'; url?: string }
   | { type: 'little/toMain'; id: string }
   | { type: 'app/makeDefaultBrowser' }
+  | { type: 'tab/duplicate'; id: string }
+  | { type: 'find/query'; text: string; forward?: boolean; next?: boolean }
+  | { type: 'find/stop' }
+  | { type: 'download/open'; id: string }
+  | { type: 'download/show'; id: string }
+  | { type: 'download/cancel'; id: string }
+  | { type: 'downloads/clear' }
+  | { type: 'data/clear'; history?: boolean; cookies?: boolean; cache?: boolean; archive?: boolean }
+  | { type: 'history/remove'; url: string }
+  | { type: 'app/openSettings' }
+  | { type: 'app/editSpace'; id: string }
   | { type: 'tab/reopenClosed' }
   | { type: 'archive/restore'; id: string }
   | { type: 'archive/remove'; id: string }
@@ -75,6 +87,9 @@ export interface VaiaApi {
   suggest(query: string): Promise<string[]>
   searchHistory(query: string): Promise<HistoryEntry[]>
   listArchive(query: string): Promise<ArchivedTab[]>
+  listHistory(query: string): Promise<HistoryEntry[]>
+  /** Show or hide the window's red/yellow/green buttons (hidden along with the sidebar). */
+  setTrafficLights(visible: boolean): void
   /** Show a native right-click menu; resolves with the chosen item's id (or null). */
   popupMenu(items: MenuItem[]): Promise<string | null>
   onCommand(listener: (command: UiCommand) => void): () => void

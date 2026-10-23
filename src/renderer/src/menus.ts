@@ -4,11 +4,11 @@ import type { MenuItem } from '../../shared/api'
 import type { Zone } from '../../shared/tree'
 import type { FolderItem, SplitItem, TabItem } from '../../shared/types'
 import { sameUrl } from '../../shared/url'
-import { dispatch } from './state'
+import { dispatch, getAppState } from './state'
 
 type Handlers = Record<string, () => void>
 
-async function show(items: (MenuItem & { run?: () => void })[]): Promise<void> {
+async function show(items: (MenuItem & { run?: () => void })[], moveTabId?: string): Promise<void> {
   const handlers: Handlers = {}
   const plain: MenuItem[] = items.map(({ run, ...item }, i) => {
     if (run) {
@@ -19,10 +19,23 @@ async function show(items: (MenuItem & { run?: () => void })[]): Promise<void> {
     return item
   })
   const chosen = await window.vaia.popupMenu(plain)
-  if (chosen) handlers[chosen]?.()
+  if (chosen?.startsWith('move-') && moveTabId) {
+    dispatch({ type: 'tab/moveToSpace', id: moveTabId, spaceId: chosen.slice(5) })
+  } else if (chosen) handlers[chosen]?.()
 }
 
 const sep = { type: 'separator' as const }
+
+/** "Move to Space ▸" with every other Space. */
+function moveToSpaceItem(tabId: string): MenuItem & { run?: () => void } {
+  const state = getAppState()
+  const others = state ? state.spaces.filter((s) => s.id !== state.activeSpaceId) : []
+  return {
+    label: 'Move to Space',
+    enabled: others.length > 0,
+    submenu: others.map((s) => ({ id: `move-${s.id}`, label: `${s.icon}  ${s.name}` }))
+  }
+}
 
 export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = false): Promise<void> {
   const navigatedAway = !!tab.pinnedUrl && !sameUrl(tab.url, tab.pinnedUrl)
@@ -45,7 +58,13 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
   if (!active && tab.url) {
     items.push(sep, { label: 'Open in Split View', run: () => dispatch({ type: 'split/add', tabId: id }) })
   }
-  items.push(sep, { label: 'Copy Link', enabled: !!tab.url, run: () => dispatch({ type: 'tab/copyUrl', id }) }, sep)
+  items.push(
+    sep,
+    { label: 'Duplicate', enabled: !!tab.url, run: () => dispatch({ type: 'tab/duplicate', id }) },
+    { label: 'Copy Link', enabled: !!tab.url, run: () => dispatch({ type: 'tab/copyUrl', id }) }
+  )
+  if (zone !== 'favorites') items.push(moveToSpaceItem(id))
+  items.push(sep)
   if (zone === 'today') {
     items.push({ label: 'Close Tab', run: () => dispatch({ type: 'tab/close', id }) })
   } else {
@@ -54,7 +73,7 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
       { label: zone === 'favorites' ? 'Delete Favorite' : 'Delete Pinned Tab', run: () => dispatch({ type: 'item/delete', id }) }
     )
   }
-  return show(items)
+  return show(items, id)
 }
 
 export function folderMenu(folder: FolderItem, rename: () => void): Promise<void> {

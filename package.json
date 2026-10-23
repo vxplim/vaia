@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },
   "dependencies": {
+    "@ghostery/adblocker-electron": "^2.20.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

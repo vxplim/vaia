@@ -143,10 +143,16 @@ export interface Pane {
   rect: Rect
 }
 
+/** Floating panels in the main window. */
+export type Panel = 'archive' | 'history' | 'downloads'
+
 /** Commands the brain asks the UI to perform (usually from keyboard shortcuts). */
 export type UiCommand =
   | { type: 'focus-url' }
   | { type: 'command-bar'; mode?: 'new' | 'split' }
   | { type: 'edit-space'; id: string }
-  | { type: 'open-panel'; panel: 'archive' }
-  | { type: 'toast'; message: string }
+  | { type: 'open-panel'; panel: Panel }
+  | { type: 'find' }
+  | { type: 'find-next'; forward: boolean }
+  | { type: 'find-result'; matches: number; active: number }
+  | { type: 'toggle-sidebar' }

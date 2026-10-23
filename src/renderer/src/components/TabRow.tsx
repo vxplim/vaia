@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Zone } from '../../../shared/tree'
 import type { AppState, TabItem } from '../../../shared/types'
 import { sameUrl } from '../../../shared/url'
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function TabRow({ tab, state, active, zone, spaceId, parentId, index, depth = 0 }: Props) {
+  const [closing, setClosing] = useState(false)
   const rt = state.runtime[tab.id]
   const loaded = !!rt
   const navigatedAway = !!tab.pinnedUrl && !!tab.url && !sameUrl(tab.url, tab.pinnedUrl)
@@ -34,7 +36,7 @@ export function TabRow({ tab, state, active, zone, spaceId, parentId, index, dep
 
   return (
     <div
-      className={`tab-row${active ? ' active' : ''}${dragging ? ' dragging' : ''}${dropClass}`}
+      className={`tab-row${active ? ' active' : ''}${dragging ? ' dragging' : ''}${closing ? ' closing' : ''}${dropClass}`}
       style={{ paddingLeft: 10 + depth * 14 }}
       role="button"
       title={tab.url}
@@ -77,7 +79,10 @@ export function TabRow({ tab, state, active, zone, spaceId, parentId, index, dep
           title={zone === 'today' ? 'Close tab (⌘W)' : 'Put to sleep (stays pinned)'}
           onClick={(e) => {
             e.stopPropagation()
-            dispatch({ type: 'tab/close', id: tab.id })
+            if (zone !== 'today') return dispatch({ type: 'tab/close', id: tab.id })
+            // Let the row fold away before it's removed.
+            setClosing(true)
+            setTimeout(() => dispatch({ type: 'tab/close', id: tab.id }), 150)
           }}
         >
           <IconClose />

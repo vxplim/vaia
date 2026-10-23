@@ -5,17 +5,20 @@ import {
   Menu,
   app,
   net,
+  shell,
   WebContentsView,
   clipboard,
   session,
   type ContextMenuParams,
   type Session
 } from 'electron'
-import { join } from 'node:path'
+import { basename, extname, join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, locate, tabsIn } from '../shared/tree'
-import type { ArchivedTab, Pane, Rect, Space, TabItem, UiCommand } from '../shared/types'
+import type { ArchivedTab, DownloadItem, Pane, Rect, Space, TabItem, UiCommand } from '../shared/types'
 import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
+import { existsSync } from 'node:fs'
+import { AdBlock } from './adblock'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { History } from './history'
 import {
@@ -31,7 +34,7 @@ import {
   unpinTab
 } from './organize'
 import { THEME_PRESETS } from '../shared/themes'
-import { Store, newId, newSpace } from './store'
+import { Store, newId, newSpace, readJson, writeJson } from './store'
 
 const PRELOAD = join(__dirname, '../preload/index.js')
 
@@ -53,6 +56,11 @@ export class Browser {
   readonly store = new Store()
   readonly history = new History()
   readonly archive = new Archive()
+  readonly adblock = new AdBlock()
+  private settingsWin: BrowserWindow | null = null
+  private downloadItems = new Map<string, Electron.DownloadItem>()
+  private toastView: WebContentsView | null = null
+  private toastTimer: NodeJS.Timeout | null = null
   private views = new Map<string, WebContentsView>()
   /** Which tab views are currently shown in each window. */
   private attached = new Map<BrowserWindow, string[]>()
@@ -122,6 +130,149 @@ export class Browser {
     this.win.webContents.send('ui:command', cmd)
   }
 
+  /** Tell the main window's UI something without moving keyboard focus. */
+  notify(cmd: UiCommand): void {
+    this.win?.webContents.send('ui:command', cmd)
+  }
+
+  /**
+   * A small message at the bottom of the window. It lives in its own tiny
+   * see-through view so it shows on top of web pages, too.
+   */
+  showToast(message: string): void {
+    const target = BrowserWindow.getFocusedWindow() ?? this.win
+    if (!target) return
+    if (!this.toastView) {
+      this.toastView = new WebContentsView({
+        webPreferences: { sandbox: true, contextIsolation: true, javascript: false }
+      })
+      this.toastView.setBackgroundColor('#00000000')
+    }
+    const view = this.toastView
+    const safe = message.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`)
+    const html = `<!doctype html><html><head><style>
+      html,body{margin:0;height:100%;background:transparent;overflow:hidden}
+      body{display:flex;align-items:center;justify-content:center;font:500 12.5px -apple-system,system-ui,sans-serif}
+      div{padding:8px 16px;border-radius:999px;background:rgba(30,30,32,.9);color:#fff;white-space:nowrap;
+        box-shadow:0 6px 20px rgba(0,0,0,.22);animation:t 1.8s cubic-bezier(.2,.8,.2,1) both}
+      @keyframes t{0%{opacity:0;transform:translateY(8px)}10%,85%{opacity:1;transform:none}100%{opacity:0}}
+    </style></head><body><div>${safe}</div></body></html>`
+    view.webContents.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch(() => {})
+    const [w, h] = target.getContentSize()
+    const width = Math.min(420, w - 40)
+    view.setBounds({ x: Math.round((w - width) / 2), y: h - 72, width, height: 56 })
+    // Adding it again moves it on top of everything else in the window.
+    target.contentView.addChildView(view)
+    if (this.toastTimer) clearTimeout(this.toastTimer)
+    this.toastTimer = setTimeout(() => {
+      if (!target.isDestroyed()) target.contentView.removeChildView(view)
+    }, 1900)
+  }
+
+  // ---------- Settings window ----------
+
+  openSettings(): void {
+    if (this.settingsWin && !this.settingsWin.isDestroyed()) {
+      this.settingsWin.focus()
+      return
+    }
+    const win = new BrowserWindow({
+      width: 680,
+      height: 640,
+      minWidth: 560,
+      minHeight: 420,
+      title: 'VAIA Settings',
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 16, y: 16 },
+      vibrancy: 'sidebar',
+      visualEffectState: 'active',
+      backgroundColor: '#00000000',
+      show: false,
+      webPreferences: { preload: PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true }
+    })
+    this.settingsWin = win
+    this.store.subscribe(win.webContents)
+    this.hardenUiWindow(win)
+    win.once('ready-to-show', () => win.show())
+    win.on('closed', () => (this.settingsWin = null))
+    loadUi(win, 'settings')
+  }
+
+  /** Erase the chosen kinds of browsing data in every profile. */
+  async clearData(what: { history?: boolean; cookies?: boolean; cache?: boolean; archive?: boolean }): Promise<void> {
+    if (what.history) this.history.clear()
+    if (what.archive) this.archive.clear()
+    const partitions = new Set(['persist:default'])
+    for (const s of this.state.spaces) if (s.profileId) partitions.add(`persist:profile-${s.profileId}`)
+    for (const p of partitions) {
+      const ses = session.fromPartition(p)
+      if (what.cookies) await ses.clearStorageData()
+      if (what.cache) await ses.clearCache()
+    }
+    this.showToast('Browsing data cleared')
+  }
+
+  // ---------- Downloads ----------
+
+  private loadDownloads(): void {
+    // Only finished downloads are remembered between launches.
+    this.store.downloads = readJson<DownloadItem[]>('downloads.json', []).filter((d) => d.state !== 'progressing')
+  }
+
+  private saveDownloads(): void {
+    try {
+      writeJson('downloads.json', this.store.downloads.filter((d) => d.state !== 'progressing'))
+    } catch (err) {
+      console.error('[downloads] save failed', err)
+    }
+  }
+
+  private trackDownload(item: Electron.DownloadItem): void {
+    const path = uniquePath(app.getPath('downloads'), item.getFilename())
+    item.setSavePath(path)
+    const entry: DownloadItem = {
+      id: newId(),
+      filename: basename(path),
+      path,
+      url: item.getURL(),
+      state: 'progressing',
+      received: 0,
+      total: item.getTotalBytes(),
+      startedAt: Date.now()
+    }
+    this.store.downloads.unshift(entry)
+    this.store.downloads.length = Math.min(this.store.downloads.length, 30)
+    this.downloadItems.set(entry.id, item)
+    this.store.changed(false)
+    this.showToast(`Downloading ${entry.filename}`)
+    item.on('updated', (_e, st) => {
+      entry.received = item.getReceivedBytes()
+      entry.total = item.getTotalBytes()
+      entry.state = st === 'interrupted' ? 'interrupted' : 'progressing'
+      this.store.changed(false)
+    })
+    item.once('done', (_e, st) => {
+      entry.received = item.getReceivedBytes()
+      entry.state = st === 'completed' ? 'completed' : st === 'cancelled' ? 'cancelled' : 'interrupted'
+      this.downloadItems.delete(entry.id)
+      if (st === 'completed') {
+        app.dock?.downloadFinished(path)
+        this.showToast(`Downloaded ${entry.filename}`)
+      }
+      this.store.changed(false)
+      this.saveDownloads()
+    })
+  }
+
+  private downloadAction(id: string, what: 'open' | 'show' | 'cancel'): void {
+    const entry = this.store.downloads.find((d) => d.id === id)
+    if (!entry) return
+    if (what === 'cancel') this.downloadItems.get(id)?.cancel()
+    else if (!existsSync(entry.path)) this.showToast('That file was moved or deleted')
+    else if (what === 'open') shell.openPath(entry.path)
+    else shell.showItemInFolder(entry.path)
+  }
+
   // ---------- Web page views ----------
 
   /** Each Space with its own profile gets a separate cookie jar; everything else shares one. */
@@ -142,6 +293,14 @@ export class Browser {
   /** One-time setup for each browsing session (cookie jar). */
   private configureSession(ses: Session): void {
     cleanUserAgent(ses)
+    ses.on('will-download', (_e, item) => this.trackDownload(item))
+    this.adblock.addSession(ses)
+  }
+
+  /** Start-up work that needs the saved settings. */
+  init(): void {
+    this.loadDownloads()
+    if (this.state.settings.adBlock) this.adblock.setEnabled(true)
   }
 
   private ensureView(tab: TabItem): WebContentsView {
@@ -235,6 +394,11 @@ export class Browser {
       }
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
+    wc.on('found-in-page', (_e, result) => {
+      if (result.finalUpdate) {
+        this.notify({ type: 'find-result', matches: result.matches, active: result.activeMatchOrdinal })
+      }
+    })
     // In a split, the pane you click becomes the one the address bar shows.
     wc.on('focus', () => {
       const split = locate(this.state, tabId)?.split
@@ -834,7 +998,7 @@ export class Browser {
         const tab = this.tab(action.id)
         if (tab?.url) {
           clipboard.writeText(tab.url)
-          this.command({ type: 'toast', message: 'Copied URL' })
+          this.showToast('Copied URL')
         }
         return
       }
@@ -947,10 +1111,7 @@ export class Browser {
         return this.littleToMain(action.id)
       case 'app/makeDefaultBrowser': {
         const ok = this.makeDefaultBrowser()
-        this.command({
-          type: 'toast',
-          message: ok ? 'Asked macOS to make VAIA your default browser' : 'Available in the installed VAIA app'
-        })
+        this.showToast(ok ? 'Asked macOS to make VAIA your default browser' : 'Available in the installed VAIA app')
         return ok
       }
       case 'tab/reopenClosed':
@@ -961,7 +1122,41 @@ export class Browser {
         return this.archive.remove(action.id)
       case 'archive/clear':
         return this.archive.clear()
+      case 'tab/duplicate': {
+        const tab = this.tab(action.id)
+        if (tab?.url) this.newTab(tab.url, true, tab.id)
+        return
+      }
+      case 'find/query': {
+        const page = this.activeWebContents()
+        if (!page) return
+        if (!action.text) page.stopFindInPage('clearSelection')
+        else page.findInPage(action.text, { forward: action.forward ?? true, findNext: action.next ?? false })
+        return
+      }
+      case 'find/stop':
+        this.activeWebContents()?.stopFindInPage('clearSelection')
+        return
+      case 'download/open':
+      case 'download/show':
+      case 'download/cancel':
+        return this.downloadAction(action.id, action.type.split('/')[1] as 'open' | 'show' | 'cancel')
+      case 'downloads/clear':
+        this.store.downloads = this.store.downloads.filter((d) => d.state === 'progressing')
+        this.saveDownloads()
+        return this.store.changed(false)
+      case 'data/clear':
+        return this.clearData(action)
+      case 'history/remove':
+        return this.history.remove(action.url)
+      case 'app/openSettings':
+        return this.openSettings()
+      case 'app/editSpace':
+        this.win?.show()
+        this.win?.focus()
+        return this.command({ type: 'edit-space', id: action.id })
       case 'settings/update':
+        if (action.patch.adBlock !== undefined) this.adblock.setEnabled(action.patch.adBlock)
         Object.assign(this.state.settings, action.patch)
         if (action.patch.archiveAfter) this.autoArchive()
         this.store.changed()
@@ -991,6 +1186,15 @@ function isAuthUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+/** ~/Downloads/report.pdf, or report (1).pdf if that name is taken. */
+function uniquePath(dir: string, filename: string): string {
+  const ext = extname(filename)
+  const stem = filename.slice(0, filename.length - ext.length) || 'download'
+  let candidate = join(dir, filename || 'download')
+  for (let n = 1; existsSync(candidate); n++) candidate = join(dir, `${stem} (${n})${ext}`)
+  return candidate
 }
 
 function originOf(url: string): string {

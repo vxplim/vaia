@@ -1,21 +1,31 @@
 import { useRef, useState } from 'react'
-import type { AppState, Space } from '../../../shared/types'
+import type { AppState, Panel, Space } from '../../../shared/types'
 import { useDnd } from '../dnd'
 import { dispatch } from '../state'
-import { IconArchive, IconPlus } from './Icons'
+import { IconArchive, IconDownload, IconPlus } from './Icons'
 
 interface Props {
   state: AppState
   onEdit: (spaceId: string) => void
-  onOpenArchive: () => void
+  onOpenPanel: (panel: Panel) => void
 }
 
 /** The row of Space icons at the bottom of the sidebar. */
-export function SpaceBar({ state, onEdit, onOpenArchive }: Props) {
+export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
+  const active = state.downloads.filter((d) => d.state === 'progressing')
+  const progress = active.reduce((sum, d) => sum + (d.total ? d.received / d.total : 0), 0) / (active.length || 1)
   return (
     <div className="space-bar">
-      <button className="icon-button" title="Archive" onClick={onOpenArchive}>
+      <button className="icon-button" title="Archive" onClick={() => onOpenPanel('archive')}>
         <IconArchive />
+      </button>
+      <button
+        className={`icon-button downloads-button${active.length ? ' busy' : ''}`}
+        title="Downloads (⇧⌘J)"
+        onClick={() => onOpenPanel('downloads')}
+        style={{ '--progress': `${Math.round(progress * 100)}%` } as React.CSSProperties}
+      >
+        <IconDownload />
       </button>
       <div className="space-icons">
         {state.spaces.map((space, i) => (

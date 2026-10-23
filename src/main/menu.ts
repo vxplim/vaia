@@ -21,6 +21,8 @@ export function buildMenu(browser: Browser): void {
       submenu: [
         { role: 'about', label: 'About VAIA' },
         { type: 'separator' },
+        { label: 'Settings…', id: 'settings', accelerator: 'CmdOrCtrl+,', click: () => browser.openSettings() },
+        { type: 'separator' },
         {
           label: 'Make VAIA Your Default Browser',
           click: () => browser.dispatch({ type: 'app/makeDefaultBrowser' })
@@ -82,10 +84,42 @@ export function buildMenu(browser: Browser): void {
         { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' }
       ]
     },
-    { role: 'editMenu' },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'selectAll' },
+        { type: 'separator' },
+        { label: 'Find…', id: 'find', accelerator: 'CmdOrCtrl+F', click: () => browser.command({ type: 'find' }) },
+        {
+          label: 'Find Next',
+          accelerator: 'CmdOrCtrl+G',
+          click: () => browser.notify({ type: 'find-next', forward: true })
+        },
+        {
+          label: 'Find Previous',
+          accelerator: 'CmdOrCtrl+Shift+G',
+          click: () => browser.notify({ type: 'find-next', forward: false })
+        }
+      ]
+    },
     {
       label: 'View',
       submenu: [
+        {
+          label: 'Toggle Sidebar',
+          id: 'toggle-sidebar',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => browser.notify({ type: 'toggle-sidebar' })
+        },
+        { label: 'Downloads', id: 'downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => browser.command({ type: 'open-panel', panel: 'downloads' }) },
+        { type: 'separator' },
         { label: 'Reload Page', id: 'reload', accelerator: 'CmdOrCtrl+R', click: () => page()?.reload() },
         { label: 'Hard Reload Page', accelerator: 'CmdOrCtrl+Shift+R', click: () => page()?.reloadIgnoringCache() },
         { type: 'separator' },
@@ -114,6 +148,7 @@ export function buildMenu(browser: Browser): void {
           accelerator: 'CmdOrCtrl+Shift+T',
           click: () => browser.reopenClosed()
         },
+        { label: 'Show All History', id: 'history', accelerator: 'CmdOrCtrl+Y', click: () => browser.command({ type: 'open-panel', panel: 'history' }) },
         { label: 'Archive…', id: 'archive', click: () => browser.command({ type: 'open-panel', panel: 'archive' }) }
       ]
     },
@@ -156,6 +191,12 @@ export function buildMenu(browser: Browser): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
+function toNative(item: MenuItem, choose: (id: string | null) => void): MenuItemConstructorOptions {
+  if (item.type === 'separator') return { type: 'separator' }
+  if (item.submenu) return { label: item.label, enabled: item.enabled ?? true, submenu: item.submenu.map((i) => toNative(i, choose)) }
+  return { label: item.label, enabled: item.enabled ?? true, click: () => choose(item.id ?? null) }
+}
+
 /** A native right-click menu requested by the UI. Native menus can float over web pages. */
 export function popupMenu(sender: WebContents, items: MenuItem[]): Promise<string | null> {
   return new Promise((resolve) => {
@@ -170,7 +211,7 @@ export function popupMenu(sender: WebContents, items: MenuItem[]): Promise<strin
       items.map((item) =>
         item.type === 'separator'
           ? { type: 'separator' as const }
-          : { label: item.label, enabled: item.enabled ?? true, click: () => finish(item.id ?? null) }
+          : toNative(item, finish)
       )
     )
     menu.popup({
