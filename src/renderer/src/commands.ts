@@ -7,6 +7,8 @@ import { dispatch } from './state'
 export interface CommandContext {
   state: AppState
   activeTabId: string | null
+  /** Things only the UI can do, like opening a panel. */
+  ui: { editSpace: (spaceId: string) => void }
 }
 
 export interface Command {
@@ -122,10 +124,46 @@ export const COMMANDS: Command[] = [
   }
 ]
 
+const SPACE_COMMANDS: Command[] = [
+  {
+    id: 'new-space',
+    title: 'New Space',
+    keywords: 'create workspace',
+    run: async (ctx) => ctx.ui.editSpace((await dispatch({ type: 'space/new' })) as string)
+  },
+  {
+    id: 'edit-space',
+    title: 'Edit Space Theme…',
+    keywords: 'color colour rename emoji icon appearance dark light profile',
+    run: (ctx) => ctx.ui.editSpace(ctx.state.activeSpaceId)
+  }
+]
+
+/** "Switch to Space: Work", "Move Tab to Space: Work" for every other Space. */
+function perSpaceCommands(ctx: CommandContext): Command[] {
+  return ctx.state.spaces
+    .filter((s) => s.id !== ctx.state.activeSpaceId)
+    .flatMap((s): Command[] => [
+      {
+        id: `switch-space-${s.id}`,
+        title: `Switch to Space: ${s.icon} ${s.name}`,
+        keywords: 'go',
+        run: () => dispatch({ type: 'space/switch', id: s.id })
+      },
+      {
+        id: `move-space-${s.id}`,
+        title: `Move Tab to Space: ${s.icon} ${s.name}`,
+        keywords: 'send',
+        enabled: hasTab,
+        run: (c) => dispatch({ type: 'tab/moveToSpace', id: c.activeTabId!, spaceId: s.id })
+      }
+    ])
+}
+
 /** Commands whose title or keywords contain every typed word. */
 export function matchCommands(query: string, ctx: CommandContext): Command[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  return COMMANDS.filter((c) => {
+  return [...COMMANDS, ...SPACE_COMMANDS, ...perSpaceCommands(ctx)].filter((c) => {
     if (c.enabled && !c.enabled(ctx)) return false
     const hay = `${c.title} ${c.keywords ?? ''}`.toLowerCase()
     return words.every((w) => hay.includes(w))

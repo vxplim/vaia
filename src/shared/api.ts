@@ -1,6 +1,6 @@
 // The contract between the UI and the brain: every request the UI can make.
 import type { Zone } from './tree'
-import type { AppState, HistoryEntry, Pane, Settings, UiCommand } from './types'
+import type { AppState, HistoryEntry, Pane, Settings, Theme, UiCommand } from './types'
 
 export interface DropTarget {
   zone: Zone
@@ -37,6 +37,15 @@ export type Action =
   | { type: 'folder/rename'; id: string; name: string }
   | { type: 'folder/toggle'; id: string }
   | { type: 'today/clear' }
+  | { type: 'space/new'; name?: string; icon?: string }
+  | { type: 'space/switch'; id: string }
+  | { type: 'space/switchIndex'; index: number }
+  | { type: 'space/switchRelative'; delta: number }
+  | { type: 'space/update'; id: string; patch: { name?: string; icon?: string; theme?: Partial<Theme> } }
+  | { type: 'space/setProfile'; id: string; separate: boolean }
+  | { type: 'space/delete'; id: string }
+  | { type: 'space/reorder'; id: string; index: number }
+  | { type: 'tab/moveToSpace'; id: string; spaceId: string }
   | { type: 'settings/update'; patch: Partial<Settings> }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */

@@ -99,3 +99,10 @@ export const IconFolderPlus = (p: P) => (
     <path d="M8 7.2v3.6M6.2 9h3.6" />
   </Svg>
 )
+export const IconMore = (p: P) => (
+  <Svg {...p}>
+    <circle cx="4" cy="8" r="0.6" fill="currentColor" />
+    <circle cx="8" cy="8" r="0.6" fill="currentColor" />
+    <circle cx="12" cy="8" r="0.6" fill="currentColor" />
+  </Svg>
+)

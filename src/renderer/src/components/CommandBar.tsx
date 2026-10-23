@@ -21,12 +21,13 @@ interface Props {
   activeTabId: string | null
   closing: boolean
   onClose: () => void
+  onEditSpace: (spaceId: string) => void
 }
 
 const CommandIcon = () => <span className="cmd-glyph">⌘</span>
 
 /** The floating, Spotlight-style bar for opening sites, switching tabs and running commands. */
-export function CommandBar({ state, activeTabId, closing, onClose }: Props) {
+export function CommandBar({ state, activeTabId, closing, onClose, onEditSpace }: Props) {
   const [query, setQuery] = useState('')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -61,7 +62,7 @@ export function CommandBar({ state, activeTabId, closing, onClose }: Props) {
   const results = useMemo(() => {
     const q = query.trim()
     const ql = q.toLowerCase()
-    const ctx: CommandContext = { state, activeTabId }
+    const ctx: CommandContext = { state, activeTabId, ui: { editSpace: onEditSpace } }
     const out: Result[] = []
     const openUrl = (url: string) => () => dispatch({ type: 'tab/new', url })
     const words = ql.split(/\s+/).filter(Boolean)
@@ -135,7 +136,7 @@ export function CommandBar({ state, activeTabId, closing, onClose }: Props) {
       }
     }
     return out
-  }, [query, state, activeTabId, history, suggestions, engine])
+  }, [query, state, activeTabId, history, suggestions, engine, onEditSpace])
 
   // Remember the highlighted row by its key, so late-arriving suggestions don't move it.
   const found = results.findIndex((r) => r.key === selectedKey)

@@ -73,3 +73,37 @@ export function themeStyle(theme: Theme, systemDark: boolean): ThemeStyle {
     }
   }
 }
+
+/** Hue 0–360, saturation and value 0–1. */
+export interface HSV {
+  h: number
+  s: number
+  v: number
+}
+
+export function hexToHsv(hex: string): HSV {
+  const [r, g, b] = hexToRgb(hex).map((c) => c / 255)
+  const max = Math.max(r, g, b)
+  const d = max - Math.min(r, g, b)
+  let h = 0
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6
+    else if (max === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+  }
+  return { h: (h * 60 + 360) % 360, s: max ? d / max : 0, v: max }
+}
+
+export function hsvToHex({ h, s, v }: HSV): string {
+  const f = (n: number) => {
+    const k = (n + h / 60) % 6
+    return v - v * s * Math.max(0, Math.min(k, 4 - k, 1))
+  }
+  return rgbToHex([f(5) * 255, f(3) * 255, f(1) * 255])
+}
+
+/** CSS background for a list of colors (used for swatches and the window). */
+export function colorsToCss(colors: string[]): string {
+  if (colors.length <= 1) return colors[0] ?? '#e8e4dc'
+  return `linear-gradient(160deg, ${colors.join(', ')})`
+}

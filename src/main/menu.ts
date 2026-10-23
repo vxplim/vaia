@@ -73,6 +73,40 @@ export function buildMenu(browser: Browser): void {
         { label: 'Forward', id: 'forward', accelerator: 'CmdOrCtrl+]', click: () => page()?.navigationHistory.goForward() }
       ]
     },
+    {
+      label: 'Spaces',
+      submenu: [
+        {
+          label: 'New Space',
+          id: 'new-space',
+          click: () => {
+            const id = browser.dispatch({ type: 'space/new' }) as string
+            browser.command({ type: 'edit-space', id })
+          }
+        },
+        {
+          label: 'Edit Space…',
+          id: 'edit-space',
+          click: () => browser.command({ type: 'edit-space', id: browser.state.activeSpaceId })
+        },
+        { type: 'separator' },
+        {
+          label: 'Next Space',
+          click: () => browser.dispatch({ type: 'space/switchRelative', delta: 1 })
+        },
+        {
+          label: 'Previous Space',
+          click: () => browser.dispatch({ type: 'space/switchRelative', delta: -1 })
+        },
+        { type: 'separator' },
+        ...Array.from({ length: 9 }, (_, i) => ({
+          label: `Space ${i + 1}`,
+          id: `space-${i + 1}`,
+          accelerator: `Ctrl+${i + 1}`,
+          click: () => browser.dispatch({ type: 'space/switchIndex', index: i })
+        }))
+      ]
+    },
     { role: 'windowMenu' }
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))

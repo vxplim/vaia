@@ -18,7 +18,8 @@ import type { Pane, Space, TabItem, UiCommand } from '../shared/types'
 import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
 import { History } from './history'
 import { addFavorite, deleteFolder, moveItem, newFolder, pinTab, unpinTab } from './organize'
-import { Store, newId } from './store'
+import { THEME_PRESETS } from '../shared/themes'
+import { Store, newId, newSpace } from './store'
 
 const PRELOAD = join(__dirname, '../preload/index.js')
 
@@ -102,13 +103,24 @@ export class Browser {
 
   // ---------- Web page views ----------
 
-  private sessionFor(_tabId: string): Session {
-    const ses = session.fromPartition('persist:default')
+  /** Each Space with its own profile gets a separate cookie jar; everything else shares one. */
+  partitionFor(tabId: string): string {
+    const profileId = locate(this.state, tabId)?.space?.profileId
+    return profileId ? `persist:profile-${profileId}` : 'persist:default'
+  }
+
+  private sessionFor(tabId: string): Session {
+    const ses = session.fromPartition(this.partitionFor(tabId))
     if (!this.configuredSessions.has(ses)) {
       this.configuredSessions.add(ses)
-      cleanUserAgent(ses)
+      this.configureSession(ses)
     }
     return ses
+  }
+
+  /** One-time setup for each browsing session (cookie jar). */
+  private configureSession(ses: Session): void {
+    cleanUserAgent(ses)
   }
 
   private ensureView(tab: TabItem): WebContentsView {
@@ -391,6 +403,72 @@ export class Browser {
     this.store.changed()
   }
 
+  // ---------- Spaces ----------
+
+  switchSpace(id: string): void {
+    const space = this.state.spaces.find((s) => s.id === id)
+    if (!space || this.state.activeSpaceId === id) return
+    this.state.activeSpaceId = id
+    if (space.activeId) this.activate(space.activeId)
+    this.store.changed()
+  }
+
+  createSpace(name?: string, icon?: string): string {
+    const n = this.state.spaces.length + 1
+    const preset = THEME_PRESETS[n % THEME_PRESETS.length]
+    const space = newSpace(name ?? `Space ${n}`, icon ?? '⭐️', [...preset.colors])
+    this.state.spaces.push(space)
+    this.switchSpace(space.id)
+    this.store.changed()
+    return space.id
+  }
+
+  deleteSpace(id: string): void {
+    if (this.state.spaces.length <= 1) return
+    const index = this.state.spaces.findIndex((s) => s.id === id)
+    if (index < 0) return
+    const space = this.state.spaces[index]
+    for (const tab of [...tabsIn(space.pinned), ...tabsIn(space.today)]) this.destroyView(tab.id)
+    this.state.spaces.splice(index, 1)
+    if (space.profileId) this.forgetProfile(space.profileId)
+    if (this.state.activeSpaceId === id) {
+      this.state.activeSpaceId = ''
+      this.switchSpace(this.state.spaces[Math.max(0, index - 1)].id)
+    }
+    this.store.changed()
+  }
+
+  /** Turn a Space's separate profile on/off. Its tabs reload in the new cookie jar. */
+  setSeparateProfile(id: string, separate: boolean): void {
+    const space = this.state.spaces.find((s) => s.id === id)
+    if (!space || separate === !!space.profileId) return
+    for (const tab of [...tabsIn(space.pinned), ...tabsIn(space.today)]) this.destroyView(tab.id)
+    if (space.profileId) this.forgetProfile(space.profileId)
+    space.profileId = separate ? newId() : null
+    if (space.activeId) this.activate(space.activeId)
+    this.store.changed()
+  }
+
+  private forgetProfile(profileId: string): void {
+    session
+      .fromPartition(`persist:profile-${profileId}`)
+      .clearStorageData()
+      .catch(() => {})
+  }
+
+  moveToSpace(tabId: string, spaceId: string): void {
+    const loc = locate(this.state, tabId)
+    const target = this.state.spaces.find((s) => s.id === spaceId)
+    if (!loc || !target || loc.space === target) return
+    const oldPartition = this.partitionFor(tabId)
+    const wasActive = loc.space?.activeId === tabId
+    if (!moveItem(this.state, tabId, { zone: 'today', spaceId, parentId: null, index: 0 })) return
+    // A different profile means a different cookie jar: reload the tab there.
+    if (this.partitionFor(tabId) !== oldPartition) this.destroyView(tabId)
+    if (wasActive && loc.space) this.showNext(loc.space, tabId)
+    this.store.changed()
+  }
+
   navigate(id: string, input: string): void {
     const url = inputToUrl(input, this.state.settings.searchEngine)
     const tab = this.tab(id)
@@ -448,9 +526,13 @@ export class Browser {
       case 'tab/favorite':
         addFavorite(this.state, action.id, activeSpace(this.state))
         return this.store.changed()
-      case 'item/move':
+      case 'item/move': {
+        const before = this.partitionFor(action.id)
         moveItem(this.state, action.id, action.to)
+        // Moved into a Space with a different profile: reload it in that cookie jar.
+        if (this.partitionFor(action.id) !== before) this.destroyView(action.id)
         return this.store.changed()
+      }
       case 'item/delete':
         return this.deleteItem(action.id)
       case 'folder/new': {
@@ -474,6 +556,42 @@ export class Browser {
         if (activeWasToday) this.showNext(space, '')
         return this.store.changed()
       }
+      case 'space/new':
+        return this.createSpace(action.name, action.icon)
+      case 'space/switch':
+        return this.switchSpace(action.id)
+      case 'space/switchIndex': {
+        const space = this.state.spaces[action.index]
+        if (space) this.switchSpace(space.id)
+        return
+      }
+      case 'space/switchRelative': {
+        const i = this.state.spaces.findIndex((s) => s.id === this.state.activeSpaceId)
+        const next = this.state.spaces[i + action.delta]
+        if (next) this.switchSpace(next.id)
+        return
+      }
+      case 'space/update': {
+        const space = this.state.spaces.find((s) => s.id === action.id)
+        if (!space) return
+        if (action.patch.name !== undefined) space.name = action.patch.name.trim() || space.name
+        if (action.patch.icon !== undefined) space.icon = action.patch.icon || space.icon
+        if (action.patch.theme) space.theme = { ...space.theme, ...action.patch.theme }
+        return this.store.changed()
+      }
+      case 'space/setProfile':
+        return this.setSeparateProfile(action.id, action.separate)
+      case 'space/delete':
+        return this.deleteSpace(action.id)
+      case 'space/reorder': {
+        const from = this.state.spaces.findIndex((s) => s.id === action.id)
+        if (from < 0) return
+        const [space] = this.state.spaces.splice(from, 1)
+        this.state.spaces.splice(Math.max(0, Math.min(action.index, this.state.spaces.length)), 0, space)
+        return this.store.changed()
+      }
+      case 'tab/moveToSpace':
+        return this.moveToSpace(action.id, action.spaceId)
       case 'settings/update':
         Object.assign(this.state.settings, action.patch)
         this.store.changed()

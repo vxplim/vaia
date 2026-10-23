@@ -40,9 +40,18 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Right-click menus on tabs: Pin/Unpin, Add to/Remove from Favorites, Copy Link, Close/Put to Sleep, Delete
   - Command Bar commands: Pin Tab, Unpin Tab, Add to Favorites, Remove from Favorites, Return to Pinned Page, New Folder, Clear Today Tabs
 
+- [x] **Phase 4: Spaces** (tag `v0.4.0`)
+  - Spaces = separate sets of pinned + Today tabs, each with a name, an emoji and a color theme that tints the sidebar and window
+  - Switch with the icons at the bottom of the sidebar, a two-finger sideways swipe on the sidebar, or ⌃1…⌃9
+  - Theme editor (click "…" next to the Space name, double-click a Space icon, or Command Bar "Edit Space Theme…"): name, emoji, 10 presets, 1–3 color gradient with a color wheel + brightness, Light / Auto / Dark
+  - Optional **separate profile** per Space: its own cookies and logins (tested: a cookie set in one Space is invisible in another)
+  - New Space: "+" in the Space bar, Spaces menu, or Command Bar "New Space"
+  - Drag a tab onto a Space icon to move it there (hover a moment to switch to that Space and drop it exactly where you want)
+  - Command Bar: "Switch to Space: …", "Move Tab to Space: …"
+  - Space switching animates: the tab list slides, the background cross-fades
+
 ## Next
 
-- [ ] Phase 4: Spaces
 - [ ] Phase 5: Auto-archive and Archive
 - [ ] Phase 6: Split View
 - [ ] Phase 7: Peek and Little window
@@ -67,6 +76,9 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Deleting a folder keeps its tabs** (they move to where the folder was), so nothing is lost by accident.
 - **Favorites always use the default profile** (they're shared by every Space).
 - **Right-click menus are native Mac menus**, so they can appear over web pages.
+- **Favorites stay put when switching Spaces** (they're shared), only the Space's own pinned/Today list slides.
+- **Turning a separate profile off (or deleting a Space) erases that profile's cookies/logins**, so no stray logins are left behind.
+- **No ⌃← / ⌃→ shortcuts for Spaces**: macOS already uses those to switch desktops. "Next/Previous Space" are in the Spaces menu instead.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Needs Vanessa

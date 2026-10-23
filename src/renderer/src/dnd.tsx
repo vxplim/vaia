@@ -1,6 +1,6 @@
 // Drag and drop for the sidebar. While you drag, we work out where the item
 // would land (before/after a row, or into a folder) and draw a line there.
-import { createContext, useContext, useState, type DragEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type DragEvent, type ReactNode } from 'react'
 import type { DropTarget } from '../../shared/api'
 import type { SidebarItem } from '../../shared/types'
 import { dispatch } from './state'
@@ -26,6 +26,21 @@ const DndContext = createContext<Dnd | null>(null)
 export function DndProvider({ children }: { children: ReactNode }) {
   const [drag, setDrag] = useState<Dnd['drag']>(null)
   const [indicator, setIndicator] = useState<Indicator | null>(null)
+
+  // Safety net: if the dragged row disappears mid-drag (e.g. we switched Space), its
+  // "drag end" never arrives. The first normal mouse move after a drag resets things.
+  useEffect(() => {
+    if (!drag) return
+    const reset = (e: PointerEvent) => {
+      if (e.buttons === 0) {
+        setDrag(null)
+        setIndicator(null)
+      }
+    }
+    window.addEventListener('pointermove', reset)
+    return () => window.removeEventListener('pointermove', reset)
+  }, [drag])
+
   return <DndContext.Provider value={{ drag, indicator, setDrag, setIndicator }}>{children}</DndContext.Provider>
 }
 
