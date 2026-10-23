@@ -140,4 +140,5 @@ export type UiCommand =
   | { type: 'focus-url' }
   | { type: 'command-bar' }
   | { type: 'edit-space'; id: string }
+  | { type: 'open-panel'; panel: 'archive' }
   | { type: 'toast'; message: string }

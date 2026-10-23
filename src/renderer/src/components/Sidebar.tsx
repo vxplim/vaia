@@ -17,6 +17,7 @@ interface Props {
   setUrlEditing: (editing: boolean) => void
   onNewTab: () => void
   onEditSpace: (spaceId: string) => void
+  onOpenArchive: () => void
 }
 
 export function Sidebar(props: Props) {
@@ -49,7 +50,7 @@ function useSwipe(onSwipe: (delta: 1 | -1) => void) {
   }
 }
 
-function SidebarInner({ state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace }: Props) {
+function SidebarInner({ state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenArchive }: Props) {
   const spaceIndex = state.spaces.findIndex((s) => s.id === space.id)
   // Slide the tab list in from the side the new Space is on.
   const lastIndex = useRef(spaceIndex)
@@ -152,7 +153,7 @@ function SidebarInner({ state, space, activeTab, urlEditing, setUrlEditing, onNe
         </section>
       </div>
 
-      <SpaceBar state={state} onEdit={onEditSpace} />
+      <SpaceBar state={state} onEdit={onEditSpace} onOpenArchive={onOpenArchive} />
     </aside>
   )
 }

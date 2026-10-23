@@ -1,6 +1,6 @@
 // The contract between the UI and the brain: every request the UI can make.
 import type { Zone } from './tree'
-import type { AppState, HistoryEntry, Pane, Settings, Theme, UiCommand } from './types'
+import type { AppState, ArchivedTab, HistoryEntry, Pane, Settings, Theme, UiCommand } from './types'
 
 export interface DropTarget {
   zone: Zone
@@ -46,6 +46,10 @@ export type Action =
   | { type: 'space/delete'; id: string }
   | { type: 'space/reorder'; id: string; index: number }
   | { type: 'tab/moveToSpace'; id: string; spaceId: string }
+  | { type: 'tab/reopenClosed' }
+  | { type: 'archive/restore'; id: string }
+  | { type: 'archive/remove'; id: string }
+  | { type: 'archive/clear' }
   | { type: 'settings/update'; patch: Partial<Settings> }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
@@ -59,6 +63,7 @@ export interface VaiaApi {
   capture(tabIds: string[]): Promise<Record<string, string>>
   suggest(query: string): Promise<string[]>
   searchHistory(query: string): Promise<HistoryEntry[]>
+  listArchive(query: string): Promise<ArchivedTab[]>
   /** Show a native right-click menu; resolves with the chosen item's id (or null). */
   popupMenu(items: MenuItem[]): Promise<string | null>
   onCommand(listener: (command: UiCommand) => void): () => void

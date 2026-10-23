@@ -1121,3 +1121,123 @@ button.urlbar:hover {
 .text-button.danger {
   color: #d1453b;
 }
+
+/* ---------- List panels: Archive, History (Phase 5) ---------- */
+.list-panel {
+  position: relative;
+  width: min(620px, calc(100vw - 48px));
+  height: min(640px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 14px;
+  margin-top: -8vh;
+}
+.list-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.list-panel-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.inline-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.inline-select select {
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 0;
+  background: rgba(127, 127, 127, 0.14);
+}
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: rgba(127, 127, 127, 0.1);
+  opacity: 0.95;
+}
+.search-field svg {
+  opacity: 0.5;
+}
+.search-field input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+  user-select: text;
+}
+.list-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  margin: 10px -6px 0;
+  padding: 0 6px;
+}
+.list-panel-body h3 {
+  position: sticky;
+  top: 0;
+  margin: 10px 0 4px;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: 0.55;
+  backdrop-filter: blur(20px);
+}
+.list-empty {
+  text-align: center;
+  padding: 48px 0;
+  opacity: 0.5;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 6px 0 10px;
+  border-radius: 9px;
+}
+.list-row:hover {
+  background: rgba(127, 127, 127, 0.12);
+}
+.list-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list-row-meta {
+  flex: none;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.5;
+}
+.list-row-time {
+  flex: none;
+  width: 64px;
+  text-align: right;
+  font-size: 12px;
+  opacity: 0.45;
+}
+.list-row .tab-action {
+  opacity: 0;
+  color: inherit;
+}
+.list-row:hover .tab-action {
+  opacity: 0.6;
+}

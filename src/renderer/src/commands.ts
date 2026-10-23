@@ -8,7 +8,7 @@ export interface CommandContext {
   state: AppState
   activeTabId: string | null
   /** Things only the UI can do, like opening a panel. */
-  ui: { editSpace: (spaceId: string) => void }
+  ui: { editSpace: (spaceId: string) => void; openPanel: (panel: 'archive') => void }
 }
 
 export interface Command {
@@ -114,6 +114,19 @@ export const COMMANDS: Command[] = [
     title: 'Clear Today Tabs',
     keywords: 'close all tidy',
     run: () => dispatch({ type: 'today/clear' })
+  },
+  {
+    id: 'reopen-closed',
+    title: 'Reopen Closed Tab',
+    shortcut: '⇧⌘T',
+    keywords: 'undo restore',
+    run: () => dispatch({ type: 'tab/reopenClosed' })
+  },
+  {
+    id: 'open-archive',
+    title: 'Open Archive',
+    keywords: 'archived closed old tabs',
+    run: (ctx) => ctx.ui.openPanel('archive')
   },
   {
     id: 'close-tab',

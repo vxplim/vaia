@@ -14,8 +14,9 @@ import {
 import { join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, locate, tabsIn } from '../shared/tree'
-import type { Pane, Space, TabItem, UiCommand } from '../shared/types'
+import type { ArchivedTab, Pane, Space, TabItem, UiCommand } from '../shared/types'
 import { SEARCH_ENGINES, inputToUrl } from '../shared/url'
+import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { History } from './history'
 import { addFavorite, deleteFolder, moveItem, newFolder, pinTab, unpinTab } from './organize'
 import { THEME_PRESETS } from '../shared/themes'
@@ -40,6 +41,7 @@ export class Browser {
   win: BrowserWindow | null = null
   readonly store = new Store()
   readonly history = new History()
+  readonly archive = new Archive()
   private views = new Map<string, WebContentsView>()
   private attached: string[] = []
   private focusOnAttach: string | null = null
@@ -338,10 +340,20 @@ export class Browser {
     return tab
   }
 
+  /** Mark the tab(s) currently shown in a Space as "just viewed" (used when leaving them). */
+  private touchActive(space: Space): void {
+    const loc = space.activeId ? locate(this.state, space.activeId) : null
+    if (!loc) return
+    const now = Date.now()
+    if (loc.item.kind === 'tab') loc.item.lastViewedAt = now
+    if (loc.item.kind === 'split') for (const t of loc.item.tabs) t.lastViewedAt = now
+  }
+
   activate(id: string): void {
     const loc = locate(this.state, id)
     if (!loc) return
     const space = loc.space ?? activeSpace(this.state)
+    this.touchActive(space)
     // Clicking a tab inside a split shows the whole split.
     space.activeId = loc.split ? loc.split.id : id
     if (loc.item.kind === 'tab') {
@@ -372,6 +384,7 @@ export class Browser {
       if (wasActive) this.showNext(space, id)
     } else {
       loc.list.splice(loc.index, 1)
+      this.archive.add(tab, space.id, true)
       if (wasActive) {
         // Prefer the neighbour below, like closing a tab in a list.
         const next = loc.list[loc.index] ?? loc.list[loc.index - 1]
@@ -403,11 +416,58 @@ export class Browser {
     this.store.changed()
   }
 
+  // ---------- Archive ----------
+
+  /** Tidy away Today tabs nobody has looked at for a while (the time is set in Settings). */
+  autoArchive(): void {
+    const limit = ARCHIVE_AFTER_MS[this.state.settings.archiveAfter]
+    if (!limit) return
+    const cutoff = Date.now() - limit
+    let changed = false
+    for (const space of this.state.spaces) {
+      space.today = space.today.filter((item) => {
+        if (item.kind === 'folder' || item.id === space.activeId) return true
+        const tabs = item.kind === 'tab' ? [item] : item.tabs
+        if (tabs.some((t) => t.lastViewedAt > cutoff || this.attached.includes(t.id))) return true
+        for (const tab of tabs) {
+          this.destroyView(tab.id)
+          this.archive.add(tab, space.id, false)
+        }
+        changed = true
+        return false
+      })
+    }
+    if (changed) this.store.changed()
+  }
+
+  /** Open an archived tab again (in its old Space if it still exists). */
+  private reopen(entry: ArchivedTab, preferOriginalSpace: boolean): void {
+    if (preferOriginalSpace && this.state.spaces.some((s) => s.id === entry.spaceId)) this.switchSpace(entry.spaceId)
+    const tab = this.newTab(entry.url, true)
+    tab.title = entry.title
+    tab.favicon = entry.favicon
+    this.store.changed()
+  }
+
+  reopenClosed(): void {
+    const entry = this.archive.popRecentlyClosed()
+    if (entry) this.reopen(entry, true)
+  }
+
+  restoreArchived(id: string): void {
+    const entry = this.archive.get(id)
+    if (!entry) return
+    this.archive.remove(id)
+    this.reopen(entry, false)
+  }
+
   // ---------- Spaces ----------
 
   switchSpace(id: string): void {
     const space = this.state.spaces.find((s) => s.id === id)
     if (!space || this.state.activeSpaceId === id) return
+    const leaving = this.state.spaces.find((s) => s.id === this.state.activeSpaceId)
+    if (leaving) this.touchActive(leaving)
     this.state.activeSpaceId = id
     if (space.activeId) this.activate(space.activeId)
     this.store.changed()
@@ -550,7 +610,10 @@ export class Browser {
       }
       case 'today/clear': {
         const space = activeSpace(this.state)
-        for (const tab of tabsIn(space.today)) this.destroyView(tab.id)
+        for (const tab of tabsIn(space.today)) {
+          this.destroyView(tab.id)
+          this.archive.add(tab, space.id, false)
+        }
         const activeWasToday = space.today.some((i) => i.id === space.activeId)
         space.today = []
         if (activeWasToday) this.showNext(space, '')
@@ -592,8 +655,17 @@ export class Browser {
       }
       case 'tab/moveToSpace':
         return this.moveToSpace(action.id, action.spaceId)
+      case 'tab/reopenClosed':
+        return this.reopenClosed()
+      case 'archive/restore':
+        return this.restoreArchived(action.id)
+      case 'archive/remove':
+        return this.archive.remove(action.id)
+      case 'archive/clear':
+        return this.archive.clear()
       case 'settings/update':
         Object.assign(this.state.settings, action.patch)
+        if (action.patch.archiveAfter) this.autoArchive()
         this.store.changed()
         return
     }

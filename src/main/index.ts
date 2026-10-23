@@ -18,6 +18,7 @@ ipcMain.handle('action', (_e, action: Action) => browser.dispatch(action))
 ipcMain.handle('capture', (_e, tabIds: string[]) => browser.capture(tabIds))
 ipcMain.handle('suggest', (_e, query: string) => browser.suggest(query))
 ipcMain.handle('history:search', (_e, query: string) => browser.history.search(query))
+ipcMain.handle('archive:list', (_e, query: string) => browser.archive.list(query))
 ipcMain.handle('menu:popup', (e, items: MenuItem[]) => popupMenu(e.sender, items))
 ipcMain.on('panes:set', (e, panes: Pane[]) => {
   if (e.sender === browser.win?.webContents) browser.setPanes(panes)
@@ -26,6 +27,10 @@ ipcMain.on('panes:set', (e, panes: Pane[]) => {
 app.whenReady().then(() => {
   buildMenu(browser)
   browser.createWindow()
+
+  // Check for tabs to auto-archive at start-up and then every minute.
+  browser.autoArchive()
+  setInterval(() => browser.autoArchive(), 60_000)
 
   // macOS: clicking the Dock icon with no windows open makes a new one.
   app.on('activate', () => {
@@ -36,6 +41,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   browser.store.flush()
   browser.history.flush()
+  browser.archive.flush()
 })
 
 app.on('window-all-closed', () => {

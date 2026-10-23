@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { activeSpace, locate } from '../../shared/tree'
 import type { TabItem } from '../../shared/types'
+import { ArchivePanel } from './components/ArchivePanel'
 import { Backdrop } from './components/Backdrop'
 import { CommandBar } from './components/CommandBar'
 import { Content } from './components/Content'
@@ -13,7 +14,7 @@ import { themeStyle, useSystemDark } from './theme'
 const CLOSE_ANIMATION_MS = 140
 
 /** Things that float over the page (the page is "frozen" into a picture while one is open). */
-export type Overlay = { kind: 'command' } | { kind: 'space-editor'; spaceId: string }
+export type Overlay = { kind: 'command' } | { kind: 'space-editor'; spaceId: string } | { kind: 'archive' }
 
 export default function App() {
   const state = useAppState()
@@ -48,6 +49,7 @@ export default function App() {
         if (cmd.type === 'focus-url') setUrlEditing(true)
         if (cmd.type === 'command-bar') openOverlay({ kind: 'command' })
         if (cmd.type === 'edit-space') editSpace(cmd.id)
+        if (cmd.type === 'open-panel') openOverlay({ kind: cmd.panel })
         if (cmd.type === 'toast') setToast({ message: cmd.message, key: Date.now() })
       }),
     [openOverlay, editSpace]
@@ -76,6 +78,7 @@ export default function App() {
           setUrlEditing={setUrlEditing}
           onNewTab={() => openOverlay({ kind: 'command' })}
           onEditSpace={editSpace}
+          onOpenArchive={() => openOverlay({ kind: 'archive' })}
         />
       )}
       <Content tab={activeTab} frozen={overlay !== null} />
@@ -85,9 +88,10 @@ export default function App() {
           activeTabId={activeTab?.id ?? null}
           closing={closing}
           onClose={closeOverlay}
-          onEditSpace={editSpace}
+          ui={{ editSpace, openPanel: (panel) => openOverlay({ kind: panel }) }}
         />
       )}
+      {overlay?.kind === 'archive' && <ArchivePanel state={state} closing={closing} onClose={closeOverlay} />}
       {editing && <SpaceEditor state={state} space={editing} closing={closing} onClose={closeOverlay} />}
       {toast && <Toast key={toast.key} message={toast.message} onDone={() => setToast(null)} />}
     </div>

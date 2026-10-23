@@ -70,7 +70,15 @@ export function buildMenu(browser: Browser): void {
       label: 'History',
       submenu: [
         { label: 'Back', id: 'back', accelerator: 'CmdOrCtrl+[', click: () => page()?.navigationHistory.goBack() },
-        { label: 'Forward', id: 'forward', accelerator: 'CmdOrCtrl+]', click: () => page()?.navigationHistory.goForward() }
+        { label: 'Forward', id: 'forward', accelerator: 'CmdOrCtrl+]', click: () => page()?.navigationHistory.goForward() },
+        { type: 'separator' },
+        {
+          label: 'Reopen Closed Tab',
+          id: 'reopen-closed',
+          accelerator: 'CmdOrCtrl+Shift+T',
+          click: () => browser.reopenClosed()
+        },
+        { label: 'Archive…', id: 'archive', click: () => browser.command({ type: 'open-panel', panel: 'archive' }) }
       ]
     },
     {

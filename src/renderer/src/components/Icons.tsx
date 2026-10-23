@@ -106,3 +106,9 @@ export const IconMore = (p: P) => (
     <circle cx="12" cy="8" r="0.6" fill="currentColor" />
   </Svg>
 )
+export const IconArchive = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="3" width="11" height="3" rx="1" />
+    <path d="M3.5 6v6a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V6M6.5 8.5h3" />
+  </Svg>
+)

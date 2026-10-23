@@ -19,6 +19,7 @@ const api: VaiaApi = {
   capture: (tabIds) => ipcRenderer.invoke('capture', tabIds),
   suggest: (query) => ipcRenderer.invoke('suggest', query),
   searchHistory: (query) => ipcRenderer.invoke('history:search', query),
+  listArchive: (query) => ipcRenderer.invoke('archive:list', query),
   popupMenu: (items) => ipcRenderer.invoke('menu:popup', items),
   onCommand: (listener) => listen<UiCommand>('ui:command', listener)
 }

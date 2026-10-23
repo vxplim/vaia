@@ -50,9 +50,15 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Command Bar: "Switch to Space: …", "Move Tab to Space: …"
   - Space switching animates: the tab list slides, the background cross-fades
 
+- [x] **Phase 5: Auto-archive and Archive** (tag `v0.5.0`)
+  - Today tabs you haven't looked at for 12 hours are archived automatically (checked at start-up and every minute). Change it to 24 hours / 7 days / 30 days / never at the top of the Archive (and later in Settings)
+  - Closed Today tabs and "Clear" also go to the Archive, so nothing is lost
+  - Archive view (archive icon at the bottom-left of the sidebar, History menu → Archive…, or Command Bar "Open Archive"): grouped by day, searchable, click to reopen, × to remove, "Clear Archive"
+  - ⇧⌘T reopens the most recently closed tab (in its original Space), repeatedly
+  - Pinned tabs and favorites are never auto-archived; neither is anything on screen
+
 ## Next
 
-- [ ] Phase 5: Auto-archive and Archive
 - [ ] Phase 6: Split View
 - [ ] Phase 7: Peek and Little window
 - [ ] Phase 8: Sidebar and polish
@@ -72,7 +78,8 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **⌘T no longer creates an empty "New Tab".** A tab is created only when you pick something in the Command Bar, so no blank tabs pile up.
 - **⌘L still edits the address in the sidebar** (the Phase 1 behaviour), while ⌘T is for new tabs.
 - **A command ranks first** when its name starts with what you typed (e.g. "copy" → Copy URL); otherwise the address/search row is first.
-- **"Clear" closes Today tabs for now**; in Phase 5 it will archive them instead so you can get them back.
+- **"Clear" archives Today tabs** (it doesn't add them to the ⇧⌘T list, which is only for tabs you closed one by one).
+- **"Not viewed" means not on screen**: the timer starts when you leave a tab, not when you opened it.
 - **Deleting a folder keeps its tabs** (they move to where the folder was), so nothing is lost by accident.
 - **Favorites always use the default profile** (they're shared by every Space).
 - **Right-click menus are native Mac menus**, so they can appear over web pages.
