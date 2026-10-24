@@ -39,11 +39,11 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - ✅ Clean black-and-white design with soft pastel Spaces (intensity, tone, gradients, light/dark)
 - ✅ Spaces with their own emoji, color/gradient theme, light/dark mode, and optional separate profile (separate logins); switch with ⌃1…⌃9 or a swipe
 - ✅ Auto-archive of Today tabs you haven't viewed in a while (12h / 24h / 7d / 30d / never), a searchable Archive, and ⇧⌘T to reopen closed tabs
-- ✅ Split View: 2–4 tabs side by side with resizable dividers (drag a tab onto the page, right-click, or ⌃⇧=)
+- ✅ Split View: 2–4 tabs side by side or in a 2×2 grid, with layout presets (50/50, 70/30, 30/70, three columns, grid), a slim toolbar per pane, and resizable dividers
 - ✅ Peek: links from pinned tabs open in a floating preview card you can expand into a tab
 - ✅ Little window (⌥⌘N) for quick lookups, and links from other apps when VAIA is your default browser
 - ✅ Hideable sidebar (⌘S) that slides out when you hover the left edge
-- ✅ Settings window, Downloads popover, History page, Find in page (⌘F)
+- ✅ Settings window, Downloads (hover for recent, click for a searchable page with thumbnails), History page, Find in page (⌘F)
 - ✅ Built-in ad and tracker blocker (open-source EasyList filters)
 - ✅ Boosts: recolor any website, change its font, zap away elements, and add your own CSS/JS
 - ✅ Tidy: group Today tabs by website and close duplicates in one click (with Undo), or let Claude sort them into topic folders with your own API key

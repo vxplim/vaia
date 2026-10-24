@@ -215,7 +215,12 @@ export function buildMenu(browser: Browser): void {
 function toNative(item: MenuItem, choose: (id: string | null) => void): MenuItemConstructorOptions {
   if (item.type === 'separator') return { type: 'separator' }
   if (item.submenu) return { label: item.label, enabled: item.enabled ?? true, submenu: item.submenu.map((i) => toNative(i, choose)) }
-  return { label: item.label, enabled: item.enabled ?? true, click: () => choose(item.id ?? null) }
+  return {
+    label: item.label,
+    enabled: item.enabled ?? true,
+    ...(item.checked !== undefined ? { type: 'checkbox' as const, checked: item.checked } : {}),
+    click: () => choose(item.id ?? null)
+  }
 }
 
 /** A native right-click menu requested by the UI. Native menus can float over web pages. */

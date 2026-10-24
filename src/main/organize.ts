@@ -2,7 +2,7 @@
 // These functions change the app data directly and report whether they did.
 import type { DropTarget } from '../shared/api'
 import { locate, type Zone } from '../shared/tree'
-import type { FolderItem, PersistedState, SidebarItem, Space, SplitItem, TabItem } from '../shared/types'
+import type { FolderItem, PersistedState, SidebarItem, Space, SplitItem, SplitPreset, TabItem } from '../shared/types'
 import { newId } from './store'
 
 function tabsOf(item: SidebarItem): TabItem[] {
@@ -105,7 +105,45 @@ function tidySplit(state: PersistedState, split: SplitItem): SidebarItem | null 
   }
   if (!split.tabs.some((t) => t.id === split.focusedId)) split.focusedId = split.tabs[0].id
   split.sizes = evenSizes(split.tabs.length)
+  // A grid needs exactly four panes.
+  if (split.layout === 'grid' && split.tabs.length !== 4) split.layout = 'columns'
   return split
+}
+
+const PRESETS: Record<SplitPreset, { panes: number; sizes: number[]; grid?: boolean }> = {
+  '50-50': { panes: 2, sizes: [0.5, 0.5] },
+  '70-30': { panes: 2, sizes: [0.7, 0.3] },
+  '30-70': { panes: 2, sizes: [0.3, 0.7] },
+  three: { panes: 3, sizes: evenSizes(3) },
+  grid: { panes: 4, sizes: evenSizes(4), grid: true }
+}
+
+/**
+ * Give a split one of the ready-made layouts. Missing panes are filled with
+ * empty tabs (type an address in their toolbar); extra panes become separate tabs.
+ */
+export function applySplitPreset(state: PersistedState, splitId: string, preset: SplitPreset, emptyTab: () => TabItem): void {
+  const loc = locate(state, splitId)
+  if (!loc || loc.item.kind !== 'split') return
+  const split = loc.item
+  const want = PRESETS[preset]
+  while (split.tabs.length > want.panes) {
+    const extra = split.tabs.pop()!
+    loc.list.splice(loc.index + 1, 0, extra)
+  }
+  while (split.tabs.length < want.panes) split.tabs.push(emptyTab())
+  if (!split.tabs.some((t) => t.id === split.focusedId)) split.focusedId = split.tabs[0].id
+  split.sizes = [...want.sizes]
+  split.layout = want.grid ? 'grid' : 'columns'
+  split.grid = want.grid ? { col: 0.5, row: 0.5 } : undefined
+}
+
+/** Make every pane the same size again. */
+export function evenSplit(state: PersistedState, splitId: string): void {
+  const loc = locate(state, splitId)
+  if (!loc || loc.item.kind !== 'split') return
+  loc.item.sizes = evenSizes(loc.item.tabs.length)
+  if (loc.item.grid) loc.item.grid = { col: 0.5, row: 0.5 }
 }
 
 /**

@@ -47,7 +47,14 @@ export interface SplitItem {
   sizes: number[]
   /** The pane you last clicked: the address bar and shortcuts act on it. */
   focusedId?: string
+  /** Side by side (default), or a 2×2 grid when there are exactly four panes. */
+  layout?: 'columns' | 'grid'
+  /** For the grid: left column's share of the width, top row's share of the height. */
+  grid?: { col: number; row: number }
 }
+
+/** Ready-made Split View layouts. */
+export type SplitPreset = '50-50' | '70-30' | '30-70' | 'three' | 'grid'
 
 export type SidebarItem = TabItem | FolderItem | SplitItem
 

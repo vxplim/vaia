@@ -138,6 +138,13 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - **Settings → Appearance**: pick a Space, same controls, live preview
   - Hidden sidebar slide-out: rest ~150ms at the left edge, the page is frozen into a picture first, *then* the sidebar slides in (ease-out) with a soft shadow. It stays open through brief slips (~0.3s grace, ~0.6s if the pointer leaves the window), slides away smoothly, and brushing past the edge doesn't open it
 
+- [x] **Phase 14: Split View + Downloads upgrades** (tag `v1.4.0`)
+  - Split View layouts: **50/50, 70/30, 30/70, three columns, 2×2 grid**. Pick them from the layout button on any pane, a tab's right-click menu ("Split View Layout"), the split's right-click menu, or the Command Bar ("Split Layout: …"). A layout that needs more panes adds empty ones (type an address in their toolbar); fewer panes turns the extras back into tabs
+  - Dividers stay draggable; **double-click a divider to make the panes even**. In the grid, drag the vertical or horizontal line, or the spot where they cross to move both
+  - Each pane has a slim toolbar: back, forward, reload, the address (click to edit), layout, and × (removes the pane from the split; it stays open as a tab)
+  - Downloads: **hover** the downloads button for the latest few (a popover above the bottom bar); **click** (or ⇧⌘J) for the full Downloads page: search, grouped by day, real thumbnails (Quick Look) or file-type icons, open / Show in Finder / move to Trash
+  - Fixes: overlays could fail to appear when a tab had never drawn a page (taking its picture waited forever); a new tab whose link turns into a download now closes itself
+
 ## Next ideas (not started)
 
 - Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
@@ -198,6 +205,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **A Space set to Dark looks dark even if the Mac is in light mode** (and vice versa); the Settings window follows the Mac's setting.
 - **Black is the accent color** (switches, selected buttons, checked to-dos); red stays for overdue/danger and the Private window stays purple.
 - **The slide-out sidebar waits for the page picture before sliding in.** Before, it animated *behind* the live page and then popped into view (the flicker).
+- **The pane toolbar's × removes the pane but keeps the page as a tab** (closing would lose it). Empty panes are closed instead.
+- **The grid is only for exactly four panes**; closing one switches back to columns.
+- **"Delete" on the Downloads page moves the file to the Trash** (you can still get it back); failed/cancelled items are just removed from the list. VAIA now remembers your last 200 downloads (was 30).
+- **The downloads popover lives inside the sidebar** (above the bottom bar), so it never covers or freezes the page.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)

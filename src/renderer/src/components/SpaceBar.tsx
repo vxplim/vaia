@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { AppState, Panel, Space } from '../../../shared/types'
 import { useDnd } from '../dnd'
 import { dispatch } from '../state'
 import { dueCount } from '../todos'
+import { DownloadsPopover } from './DownloadsPanel'
 import { IconArchive, IconCheckCircle, IconDownload, IconPlus } from './Icons'
 
 interface Props {
@@ -20,14 +21,12 @@ export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
       <button className="icon-button" title="Archive" onClick={() => onOpenPanel('archive')}>
         <IconArchive />
       </button>
-      <button
-        className={`icon-button downloads-button${active.length ? ' busy' : ''}`}
-        title="Downloads (⇧⌘J)"
-        onClick={() => onOpenPanel('downloads')}
-        style={{ '--progress': `${Math.round(progress * 100)}%` } as React.CSSProperties}
-      >
-        <IconDownload />
-      </button>
+      <DownloadsButton
+        state={state}
+        busy={active.length > 0}
+        progress={progress}
+        onOpen={() => onOpenPanel('downloads')}
+      />
       <TodoButton state={state} onOpen={() => onOpenPanel('todo')} />
       <div className="space-icons">
         {state.spaces.map((space, i) => (
@@ -44,6 +43,48 @@ export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
       >
         <IconPlus />
       </button>
+    </div>
+  )
+}
+
+const POPOVER_OPEN_MS = 250
+const POPOVER_CLOSE_MS = 220
+
+/** Hover for your latest downloads; click for the full Downloads page. */
+function DownloadsButton({ state, busy, progress, onOpen }: { state: AppState; busy: boolean; progress: number; onOpen: () => void }) {
+  const [open, setOpen] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const later = (fn: () => void, ms: number) => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(fn, ms)
+  }
+  useEffect(() => () => void (timer.current && clearTimeout(timer.current)), [])
+  return (
+    <div
+      className="downloads-anchor"
+      onMouseEnter={() => later(() => setOpen(true), open ? 0 : POPOVER_OPEN_MS)}
+      onMouseLeave={() => later(() => setOpen(false), POPOVER_CLOSE_MS)}
+    >
+      <button
+        className={`icon-button downloads-button${busy ? ' busy' : ''}`}
+        title="Downloads (⇧⌘J)"
+        onClick={() => {
+          setOpen(false)
+          onOpen()
+        }}
+        style={{ '--progress': `${Math.round(progress * 100)}%` } as React.CSSProperties}
+      >
+        <IconDownload />
+      </button>
+      {open && (
+        <DownloadsPopover
+          state={state}
+          onShowAll={() => {
+            setOpen(false)
+            onOpen()
+          }}
+        />
+      )}
     </div>
   )
 }

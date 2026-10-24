@@ -25,6 +25,7 @@ const api: VaiaApi = {
   listHistory: (query) => ipcRenderer.invoke('history:list', query),
   setTrafficLights: (visible) => ipcRenderer.send('window:traffic-lights', visible),
   popupMenu: (items) => ipcRenderer.invoke('menu:popup', items),
+  downloadThumbnail: (id) => ipcRenderer.invoke('download:thumbnail', id),
   onCommand: (listener) => listen<UiCommand>('ui:command', listener)
 }
 

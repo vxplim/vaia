@@ -5,6 +5,7 @@ import {
   Menu,
   MenuItem,
   app,
+  nativeImage,
   net,
   shell,
   WebContentsView,
@@ -17,7 +18,20 @@ import {
 import { basename, extname, join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, allTabs, locate, tabsIn } from '../shared/tree'
-import type { ArchivedTab, Boost, DownloadItem, FolderItem, Pane, Rect, SidebarItem, Space, TabItem, Todo, UiCommand } from '../shared/types'
+import type {
+  ArchivedTab,
+  Boost,
+  DownloadItem,
+  FolderItem,
+  Pane,
+  Rect,
+  SidebarItem,
+  Space,
+  SplitPreset,
+  TabItem,
+  Todo,
+  UiCommand
+} from '../shared/types'
 import { SEARCH_ENGINES, displayHost, inputToUrl, sameUrl, siteKey } from '../shared/url'
 import { errorPageScript } from './errorPage'
 import { existsSync } from 'node:fs'
@@ -32,9 +46,11 @@ import { History } from './history'
 import {
   addFavorite,
   addToSplit,
+  applySplitPreset,
   deleteFolder,
   detachFromSplit,
   dissolveSplit,
+  evenSplit,
   moveItem,
   newFolder,
   pinTab,
@@ -330,7 +346,7 @@ export class Browser {
       startedAt: Date.now()
     }
     this.store.downloads.unshift(entry)
-    this.store.downloads.length = Math.min(this.store.downloads.length, 30)
+    this.store.downloads.length = Math.min(this.store.downloads.length, 200)
     this.downloadItems.set(entry.id, item)
     this.store.changed(false)
     this.showToast(`Downloading ${entry.filename}`)
@@ -351,6 +367,27 @@ export class Browser {
       this.store.changed(false)
       this.saveDownloads()
     })
+  }
+
+  /** A thumbnail of a downloaded file (macOS Quick Look), or its Finder icon. Cached per file. */
+  private thumbnails = new Map<string, string | null>()
+  async downloadThumbnail(id: string): Promise<string | null> {
+    const entry = this.store.downloads.find((d) => d.id === id)
+    if (!entry || entry.state !== 'completed' || !existsSync(entry.path)) return null
+    if (this.thumbnails.has(id)) return this.thumbnails.get(id)!
+    let url: string | null = null
+    try {
+      const thumb = await nativeImage.createThumbnailFromPath(entry.path, { width: 96, height: 96 })
+      if (!thumb.isEmpty()) url = thumb.toDataURL()
+    } catch {
+      try {
+        url = (await app.getFileIcon(entry.path, { size: 'normal' })).toDataURL()
+      } catch {
+        url = null
+      }
+    }
+    this.thumbnails.set(id, url)
+    return url
   }
 
   private downloadAction(id: string, what: 'open' | 'show' | 'cancel'): void {
@@ -388,7 +425,12 @@ export class Browser {
   /** One-time setup for each browsing session (cookie jar). */
   private configureSession(ses: Session, isPrivate: boolean): void {
     cleanUserAgent(ses)
-    ses.on('will-download', (_e, item) => this.trackDownload(item))
+    ses.on('will-download', (_e, item, wc) => {
+      this.trackDownload(item)
+      // A brand-new tab whose only "page" was a download closes again (like Chrome).
+      const id = wc && !wc.isDestroyed() ? this.tabIdOf(wc) : null
+      if (id && !wc.getURL() && wc.navigationHistory.length() <= 1) setImmediate(() => this.closeTab(id))
+    })
     this.adblock.addSession(ses)
     this.permissions.attach(ses, isPrivate)
   }
@@ -714,8 +756,13 @@ export class Browser {
         const view = this.views.get(id)
         if (!view || !this.isAttached(id)) return
         try {
-          const img = await view.webContents.capturePage()
-          if (!img.isEmpty()) out[id] = `data:image/jpeg;base64,${img.toJPEG(82).toString('base64')}`
+          // A page that never drew anything (e.g. a link that turned into a download) can keep
+          // capturePage waiting forever; give up quickly so overlays still open.
+          const img = await Promise.race([
+            view.webContents.capturePage(),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 700))
+          ])
+          if (img && !img.isEmpty()) out[id] = `data:image/jpeg;base64,${img.toJPEG(82).toString('base64')}`
         } catch {
           // A page that can't be captured just shows a blank card.
         }
@@ -1410,7 +1457,7 @@ export class Browser {
    * Put a tab (an existing one, or a new one for `url`) next to what's on screen.
    * Pinned tabs and favorites are copied rather than moved, so they stay where they are.
    */
-  splitAdd(opts: { tabId?: string; url?: string; side?: 'left' | 'right' }): void {
+  splitAdd(opts: { tabId?: string; url?: string; blank?: boolean; side?: 'left' | 'right' }): void {
     const space = activeSpace(this.state)
     let baseId = space.activeId
     if (!baseId) {
@@ -1433,8 +1480,8 @@ export class Browser {
         const original = fresh.item as TabItem
         add = this.makeTab(original.url, original.title, original.favicon)
       }
-    } else if (opts.url) {
-      add = this.makeTab(opts.url)
+    } else if (opts.url || opts.blank) {
+      add = this.makeTab(opts.url ?? '')
     }
     if (!add) return
     // A favorite on screen can't become a split itself: split a copy of it instead.
@@ -1453,6 +1500,24 @@ export class Browser {
       space.activeId = split.id
       this.focusOnAttach = add.id
     }
+    this.store.changed()
+  }
+
+  /** Give the split on screen (or the given tab, made into a split) a ready-made layout. */
+  splitLayout(id: string, preset: SplitPreset): void {
+    let loc = locate(this.state, id)
+    if (!loc) return
+    if (loc.item.kind === 'tab' && !loc.split) {
+      // A single tab: show it, then split it with an empty pane.
+      const space = loc.space
+      if (space && space.id !== this.state.activeSpaceId) this.switchSpace(space.id)
+      this.activate(id)
+      this.splitAdd({ blank: true })
+      loc = locate(this.state, activeSpace(this.state).activeId ?? '')
+    }
+    const split = loc?.split ?? (loc?.item.kind === 'split' ? loc.item : null)
+    if (!split) return
+    applySplitPreset(this.state, split.id, preset, () => this.makeTab(''))
     this.store.changed()
   }
 
@@ -1667,6 +1732,20 @@ export class Browser {
       case 'split/dissolve':
         dissolveSplit(this.state, action.id)
         return this.store.changed()
+      case 'split/layout':
+        return this.splitLayout(action.id, action.preset)
+      case 'split/even':
+        evenSplit(this.state, action.id)
+        return this.store.changed()
+      case 'split/resizeGrid': {
+        const loc = locate(this.state, action.id)
+        if (loc?.item.kind === 'split') {
+          const clamp = (v: number) => Math.min(0.85, Math.max(0.15, v))
+          loc.item.grid = { col: clamp(action.col), row: clamp(action.row) }
+          this.store.changed()
+        }
+        return
+      }
       case 'split/resize': {
         const loc = locate(this.state, action.id)
         if (loc?.item.kind === 'split' && action.sizes.length === loc.item.tabs.length) {
@@ -1712,6 +1791,17 @@ export class Browser {
       case 'find/stop':
         this.activeWebContents()?.stopFindInPage('clearSelection')
         return
+      case 'download/trash':
+      case 'download/remove': {
+        const entry = this.store.downloads.find((d) => d.id === action.id)
+        if (!entry) return
+        if (action.type === 'download/trash' && existsSync(entry.path)) {
+          shell.trashItem(entry.path).catch(() => this.showToast('Couldn’t move that file to the Trash'))
+        }
+        this.store.downloads = this.store.downloads.filter((d) => d.id !== action.id)
+        this.saveDownloads()
+        return this.store.changed(false)
+      }
       case 'download/open':
       case 'download/show':
       case 'download/cancel':

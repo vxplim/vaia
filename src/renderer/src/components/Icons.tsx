@@ -207,3 +207,9 @@ export const IconMask = (p: P) => (
     <path d="M5 7.6h1.4M9.6 7.6H11" />
   </Svg>
 )
+export const IconLayout = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="3" width="11" height="10" rx="2" />
+    <path d="M8 3v10" />
+  </Svg>
+)

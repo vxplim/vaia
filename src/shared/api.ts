@@ -10,6 +10,7 @@ import type {
   PermissionKind,
   Rect,
   Settings,
+  SplitPreset,
   Theme,
   Todo,
   UiCommand
@@ -28,6 +29,8 @@ export interface MenuItem {
   label?: string
   type?: 'separator'
   enabled?: boolean
+  /** Shows a check mark next to the item. */
+  checked?: boolean
   submenu?: MenuItem[]
 }
 
@@ -64,6 +67,10 @@ export type Action =
   | { type: 'split/detach'; tabId: string }
   | { type: 'split/dissolve'; id: string }
   | { type: 'split/resize'; id: string; sizes: number[] }
+  | { type: 'split/resizeGrid'; id: string; col: number; row: number }
+  | { type: 'split/even'; id: string }
+  /** Apply a layout to a split, or turn a single tab into one (id = tab or split). */
+  | { type: 'split/layout'; id: string; preset: SplitPreset }
   | { type: 'peek/close' }
   | { type: 'peek/expand' }
   | { type: 'little/new'; url?: string }
@@ -75,6 +82,9 @@ export type Action =
   | { type: 'download/open'; id: string }
   | { type: 'download/show'; id: string }
   | { type: 'download/cancel'; id: string }
+  /** Move the downloaded file to the Trash and remove it from the list. */
+  | { type: 'download/trash'; id: string }
+  | { type: 'download/remove'; id: string }
   | { type: 'downloads/clear' }
   | { type: 'data/clear'; history?: boolean; cookies?: boolean; cache?: boolean; archive?: boolean }
   | { type: 'history/remove'; url: string }
@@ -129,6 +139,8 @@ export interface VaiaApi {
   listHistory(query: string): Promise<HistoryEntry[]>
   /** Show or hide the window's red/yellow/green buttons (hidden along with the sidebar). */
   setTrafficLights(visible: boolean): void
+  /** A small picture of a downloaded file (a thumbnail, or its Finder icon), as a data: URL. */
+  downloadThumbnail(id: string): Promise<string | null>
   /** Show a native right-click menu; resolves with the chosen item's id (or null). */
   popupMenu(items: MenuItem[]): Promise<string | null>
   onCommand(listener: (command: UiCommand) => void): () => void

@@ -4,6 +4,7 @@ import type { MenuItem } from '../../shared/api'
 import type { Zone } from '../../shared/tree'
 import type { FolderItem, SplitItem, TabItem } from '../../shared/types'
 import { sameUrl } from '../../shared/url'
+import { applyLayoutChoice, layoutMenuItems } from './splitLayouts'
 import { dispatch, getAppState } from './state'
 
 type Handlers = Record<string, () => void>
@@ -19,6 +20,7 @@ async function show(items: (MenuItem & { run?: () => void })[], moveTabId?: stri
     return item
   })
   const chosen = await window.vaia.popupMenu(plain)
+  if (moveTabId && applyLayoutChoice(chosen, moveTabId)) return
   if (chosen?.startsWith('move-') && moveTabId) {
     dispatch({ type: 'tab/moveToSpace', id: moveTabId, spaceId: chosen.slice(5) })
   } else if (chosen) handlers[chosen]?.()
@@ -55,8 +57,11 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
     items.push({ label: 'Remove from Favorites', run: () => dispatch({ type: 'tab/unpin', id }) })
   }
   if (navigatedAway) items.push({ label: 'Return to Pinned Page', run: () => dispatch({ type: 'tab/resetPinned', id }) })
-  if (!active && tab.url) {
-    items.push(sep, { label: 'Open in Split View', run: () => dispatch({ type: 'split/add', tabId: id }) })
+  items.push(sep)
+  if (!active && tab.url) items.push({ label: 'Open in Split View', run: () => dispatch({ type: 'split/add', tabId: id }) })
+  if (zone !== 'favorites') {
+    const loc = getAppState()?.spaces.flatMap((s) => [...s.pinned, ...s.today]).find((i) => i.kind === 'split' && i.tabs.some((t) => t.id === id))
+    items.push({ label: 'Split View Layout', submenu: layoutMenuItems(loc?.kind === 'split' ? loc : null) })
   }
   items.push(
     sep,
@@ -91,10 +96,12 @@ export function pinnedAreaMenu(newFolder: () => void): Promise<void> {
 
 export function splitMenu(split: SplitItem, tab: TabItem): Promise<void> {
   return show([
+    { label: 'Layout', submenu: layoutMenuItems(split) },
+    sep,
     { label: 'Remove from Split View', run: () => dispatch({ type: 'split/detach', tabId: tab.id }) },
     { label: 'Separate All Tabs', run: () => dispatch({ type: 'split/dissolve', id: split.id }) },
     sep,
     { label: 'Copy Link', run: () => dispatch({ type: 'tab/copyUrl', id: tab.id }) },
     { label: 'Close Tab', run: () => dispatch({ type: 'tab/close', id: tab.id }) }
-  ])
+  ], tab.id)
 }

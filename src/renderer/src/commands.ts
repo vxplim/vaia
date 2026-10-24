@@ -2,6 +2,7 @@
 import { locate } from '../../shared/tree'
 import type { AppState, Panel } from '../../shared/types'
 import { sameUrl } from '../../shared/url'
+import { SPLIT_LAYOUTS } from './splitLayouts'
 import { dispatch } from './state'
 
 export interface CommandContext {
@@ -277,6 +278,15 @@ export const COMMANDS: Command[] = [
   }
 ]
 
+/** "Split Layout: Grid (2 × 2)" and the other ready-made layouts. */
+const LAYOUT_COMMANDS: Command[] = SPLIT_LAYOUTS.map((l) => ({
+  id: `layout-${l.preset}`,
+  title: `Split Layout: ${l.label}`,
+  keywords: 'split view side by side columns grid panes',
+  enabled: hasTab,
+  run: (ctx) => dispatch({ type: 'split/layout', id: ctx.activeTabId!, preset: l.preset })
+}))
+
 const SPACE_COMMANDS: Command[] = [
   {
     id: 'new-space',
@@ -316,7 +326,7 @@ function perSpaceCommands(ctx: CommandContext): Command[] {
 /** Commands whose title or keywords contain every typed word. */
 export function matchCommands(query: string, ctx: CommandContext): Command[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  return [...COMMANDS, ...SPACE_COMMANDS, ...perSpaceCommands(ctx)].filter((c) => {
+  return [...COMMANDS, ...LAYOUT_COMMANDS, ...SPACE_COMMANDS, ...perSpaceCommands(ctx)].filter((c) => {
     if (c.enabled && !c.enabled(ctx)) return false
     const hay = `${c.title} ${c.keywords ?? ''}`.toLowerCase()
     return words.every((w) => hay.includes(w))

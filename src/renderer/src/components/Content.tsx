@@ -1,8 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { locate } from '../../../shared/tree'
-import type { AppState, Pane, Space, TabItem } from '../../../shared/types'
+import type { AppState, Pane, Space, SplitItem, TabItem } from '../../../shared/types'
+import { displayHost } from '../../../shared/url'
 import { useDnd } from '../dnd'
+import { showLayoutMenu } from '../splitLayouts'
 import { dispatch } from '../state'
+import { IconBack, IconClose, IconForward, IconLayout, IconReload, IconStop } from './Icons'
 
 interface Props {
   state: AppState
@@ -41,6 +44,9 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
 
   const [liveSizes, setLiveSizes] = useState<number[] | null>(null)
   const sizes = liveSizes ?? (split && split.sizes.length === tabs.length ? split.sizes : tabs.map(() => 1 / tabs.length))
+  const isGrid = !!split && split.layout === 'grid' && tabs.length === 4
+  const [liveGrid, setLiveGrid] = useState<{ col: number; row: number } | null>(null)
+  const grid = liveGrid ?? split?.grid ?? { col: 0.5, row: 0.5 }
 
   // Dragging a tab from the sidebar onto the page makes a split.
   const canDropTab = drag?.kind === 'tab' && !tabs.some((t) => t.id === drag.id) && tabs.length < 4
@@ -101,7 +107,7 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
       observer.disconnect()
       window.removeEventListener('resize', report)
     }
-  }, [tabKey, hidden, sizes.join(',')])
+  }, [tabKey, hidden, sizes.join(','), isGrid, grid.col, grid.row])
 
   const startResize = (index: number) => (e: PointerEvent<HTMLDivElement>) => {
     const el = container.current
@@ -129,6 +135,59 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
+
+  /** Drag the grid's middle lines: 'col' moves the vertical one, 'row' the horizontal one, 'both' the crossing. */
+  const startGridResize = (axis: 'col' | 'row' | 'both') => (e: PointerEvent<HTMLDivElement>) => {
+    const el = container.current
+    if (!el || !split) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const r = el.getBoundingClientRect()
+    let latest = grid
+    const move = (ev: globalThis.PointerEvent) => {
+      const clamp = (v: number) => Math.min(0.85, Math.max(0.15, v))
+      latest = {
+        col: axis === 'row' ? latest.col : clamp((ev.clientX - r.left) / r.width),
+        row: axis === 'col' ? latest.row : clamp((ev.clientY - r.top) / r.height)
+      }
+      setLiveGrid(latest)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      dispatch({ type: 'split/resizeGrid', id: split.id, ...latest })
+      setTimeout(() => setLiveGrid(null), 60)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  const even = () => split && dispatch({ type: 'split/even', id: split.id })
+
+  const pane = (tab: TabItem) => (
+    <>
+      {split && <PaneToolbar tab={tab} split={split} state={state} />}
+      <div
+        className={`content-card${split && split.focusedId === tab.id ? ' focused' : ''}`}
+        ref={(el) => {
+          if (el) paneEls.current.set(tab.id, el)
+          else paneEls.current.delete(tab.id)
+        }}
+        onMouseDown={() => split && dispatch({ type: 'tab/activate', id: tab.id })}
+      >
+        {tab.url && snapshots[tab.id] && hidden && <img className="page-snapshot" src={snapshots[tab.id]} alt="" />}
+        {state.runtime[tab.id]?.crashed && (
+          <div className="empty-state crashed">
+            <div className="empty-mark">Oops</div>
+            <p>This page crashed. Your other tabs are fine.</p>
+            <button className="primary-button" onClick={() => dispatch({ type: 'tab/reload', id: tab.id })}>
+              Reload
+            </button>
+          </div>
+        )}
+        {!tab.url && (split ? <EmptyPane /> : <EmptyState />)}
+      </div>
+    </>
+  )
 
   return (
     <main
@@ -159,33 +218,56 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
             <EmptyState />
           </div>
         )}
-        {tabs.map((tab, i) => (
-          <div key={tab.id} className="pane-slot" style={{ flexGrow: sizes[i] ?? 1 }}>
-            {i > 0 && <div className="split-divider" onPointerDown={startResize(i - 1)} />}
+        {isGrid ? (
+          <div
+            className="pane-grid"
+            style={{
+              gridTemplateColumns: `${grid.col}fr ${1 - grid.col}fr`,
+              gridTemplateRows: `${grid.row}fr ${1 - grid.row}fr`
+            }}
+          >
+            {tabs.map((tab) => (
+              <div key={tab.id} className="pane-slot">
+                {pane(tab)}
+              </div>
+            ))}
             <div
-              className={`content-card${split && split.focusedId === tab.id ? ' focused' : ''}`}
-              ref={(el) => {
-                if (el) paneEls.current.set(tab.id, el)
-                else paneEls.current.delete(tab.id)
-              }}
-              onMouseDown={() => split && dispatch({ type: 'tab/activate', id: tab.id })}
-            >
-              {tab.url && snapshots[tab.id] && hidden && (
-                <img className="page-snapshot" src={snapshots[tab.id]} alt="" />
-              )}
-              {state.runtime[tab.id]?.crashed && (
-                <div className="empty-state crashed">
-                  <div className="empty-mark">Oops</div>
-                  <p>This page crashed. Your other tabs are fine.</p>
-                  <button className="primary-button" onClick={() => dispatch({ type: 'tab/reload', id: tab.id })}>
-                    Reload
-                  </button>
-                </div>
-              )}
-              {!tab.url && <EmptyState />}
-            </div>
+              className="grid-divider row"
+              style={{ top: `calc(${grid.row * 100}% - 4px)` }}
+              onPointerDown={startGridResize('row')}
+              onDoubleClick={even}
+              title="Drag to resize · double-click to make even"
+            />
+            <div
+              className="grid-divider col"
+              style={{ left: `calc(${grid.col * 100}% - 4px)` }}
+              onPointerDown={startGridResize('col')}
+              onDoubleClick={even}
+              title="Drag to resize · double-click to make even"
+            />
+            <div
+              className="grid-divider both"
+              style={{ left: `calc(${grid.col * 100}% - 8px)`, top: `calc(${grid.row * 100}% - 8px)` }}
+              onPointerDown={startGridResize('both')}
+              onDoubleClick={even}
+              title="Drag to resize both ways · double-click to make even"
+            />
           </div>
-        ))}
+        ) : (
+          tabs.map((tab, i) => (
+            <div key={tab.id} className="pane-slot" style={{ flexGrow: sizes[i] ?? 1 }}>
+              {i > 0 && (
+                <div
+                  className="split-divider"
+                  onPointerDown={startResize(i - 1)}
+                  onDoubleClick={even}
+                  title="Drag to resize · double-click to make even"
+                />
+              )}
+              {pane(tab)}
+            </div>
+          ))
+        )}
         {canDropTab && hidden && (
           <div className="drop-zones">
             <div className={`drop-zone${dropSide === 'left' ? ' active' : ''}`}>
@@ -198,6 +280,85 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
         )}
       </div>
     </main>
+  )
+}
+
+/** An empty Split View pane: its toolbar's address field is waiting for you. */
+function EmptyPane() {
+  return (
+    <div className="empty-state">
+      <p>Type an address or search above.</p>
+    </div>
+  )
+}
+
+/** The slim toolbar on top of each Split View pane. */
+function PaneToolbar({ tab, split, state }: { tab: TabItem; split: SplitItem; state: AppState }) {
+  const rt = state.runtime[tab.id]
+  const [editing, setEditing] = useState(!tab.url)
+  const [text, setText] = useState('')
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!editing) return
+    setText(tab.url)
+    requestAnimationFrame(() => input.current?.select())
+  }, [editing])
+  const submit = () => {
+    if (text.trim()) dispatch({ type: 'tab/navigate', id: tab.id, input: text })
+    if (text.trim() || tab.url) setEditing(false)
+  }
+  return (
+    <div className={`pane-toolbar${split.focusedId === tab.id ? ' focused' : ''}`} onMouseDown={() => dispatch({ type: 'tab/activate', id: tab.id })}>
+      <button className="pane-button" title="Back" disabled={!rt?.canGoBack} onClick={() => dispatch({ type: 'tab/back', id: tab.id })}>
+        <IconBack />
+      </button>
+      <button
+        className="pane-button"
+        title="Forward"
+        disabled={!rt?.canGoForward}
+        onClick={() => dispatch({ type: 'tab/forward', id: tab.id })}
+      >
+        <IconForward />
+      </button>
+      <button
+        className="pane-button"
+        title={rt?.loading ? 'Stop' : 'Reload'}
+        disabled={!tab.url}
+        onClick={() => dispatch({ type: rt?.loading ? 'tab/stop' : 'tab/reload', id: tab.id })}
+      >
+        {rt?.loading ? <IconStop /> : <IconReload />}
+      </button>
+      {editing ? (
+        <input
+          ref={input}
+          className="pane-address editing"
+          value={text}
+          autoFocus
+          spellCheck={false}
+          placeholder="Search or enter address"
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => tab.url && setEditing(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') submit()
+            if (e.key === 'Escape' && tab.url) setEditing(false)
+          }}
+        />
+      ) : (
+        <button className="pane-address" title={tab.url} onClick={() => setEditing(true)}>
+          {displayHost(tab.url) || 'New Tab'}
+        </button>
+      )}
+      <button className="pane-button" title="Layout" onClick={() => showLayoutMenu(split.id, split)}>
+        <IconLayout />
+      </button>
+      <button
+        className="pane-button"
+        title="Remove this pane (it stays open as a tab)"
+        onClick={() => dispatch(tab.url ? { type: 'split/detach', tabId: tab.id } : { type: 'tab/close', id: tab.id })}
+      >
+        <IconClose />
+      </button>
+    </div>
   )
 }
 

@@ -25,6 +25,7 @@ ipcMain.on('window:traffic-lights', (e, visible: boolean) => {
 })
 ipcMain.handle('archive:list', (_e, query: string) => browser.archive.list(query))
 ipcMain.handle('menu:popup', (e, items: MenuItem[]) => popupMenu(e.sender, items))
+ipcMain.handle('download:thumbnail', (_e, id: string) => browser.downloadThumbnail(id))
 ipcMain.on('panes:set', (e, panes: Pane[]) => {
   const win = BrowserWindow.fromWebContents(e.sender)
   if (win) browser.setPanes(win, panes)
