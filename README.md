@@ -54,6 +54,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - Peek previews (also: hold Shift over a link), Little windows (⌥⌘N), and **private windows** (⇧⌘N)
 - **Sound controls** on tabs and a **Mini Player** for the video, music or call you just left
 - Built-in **PDF viewer**, **printing** (⌘P), full-screen video, picture in picture, Find in page (⌘F), spelling suggestions
+- **Protected video** (Widevine) via castlabs' Electron for Content Security
 - Friendly error pages, blocked certificate errors, and crash recovery
 
 **Create & organize**
@@ -108,4 +109,4 @@ npm run dev
 
 VAIA is free software, licensed under the [GNU General Public License v3.0](LICENSE). © 2026 Vanessa Minerva Lim.
 
-You can use, study, share and change VAIA; if you share a changed version, you share its source code under the same licence. VAIA uses [electron-chrome-extensions](https://github.com/samuelmaddock/electron-browser-shell) (GPL-3.0) for Chrome extension support.
+You can use, study, share and change VAIA; if you share a changed version, you share its source code under the same licence. VAIA uses [electron-chrome-extensions](https://github.com/samuelmaddock/electron-browser-shell) (GPL-3.0) for Chrome extension support, and runs on castlabs' [Electron for Content Security](https://github.com/castlabs/electron-releases) for protected video; Google's Widevine module is downloaded separately at first launch.

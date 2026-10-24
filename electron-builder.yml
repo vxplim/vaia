@@ -7,6 +7,11 @@ directories:
 files:
   - out/**/*
   - package.json
+# VAIA runs on castlabs' Electron for Content Security (Widevine for protected video).
+electronDownload:
+  mirror: https://github.com/castlabs/electron-releases/releases/download/
+# Widevine's "VMP" signature for the installed app (skipped until castlabs EVS is set up).
+afterPack: build/vmp-sign.cjs
 mac:
   category: public.app-category.productivity
   # "-" = a free ad-hoc signature. It keeps the app intact on Apple Silicon, but it

@@ -1,5 +1,7 @@
 // The "main process": the brain of the app. It starts VAIA, creates the
 // window, and answers requests coming from the UI.
+// The whole module (castlabs' extra `components` isn't copied into named imports).
+import electron from 'electron'
 import { BrowserWindow, app, ipcMain, protocol, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -102,7 +104,26 @@ app.setAboutPanelOptions({
   copyright: '© 2026 Vanessa Minerva Lim · GNU GPL v3'
 })
 
+/**
+ * Protected video (Netflix & co.): VAIA runs on castlabs' "Electron for Content Security", which
+ * adds Google's Widevine module. The component updater downloads it the first time (a few
+ * seconds, in the background, so the window doesn't wait) and keeps it up to date. With plain
+ * Electron there's no `components` and VAIA simply runs without it.
+ */
+function readyWidevine(): void {
+  const components = (electron as unknown as { components?: Electron.Components }).components
+  if (!components) return
+  components.whenReady().then(
+    () => {
+      const widevine = components.status()[components.WIDEVINE_CDM_ID]
+      console.log(`[widevine] ${widevine ? `${widevine.status} ${widevine.version ?? ''}`.trim() : 'not available'}`)
+    },
+    (err) => console.warn('[widevine] not available yet:', err instanceof Error ? err.message : err)
+  )
+}
+
 app.whenReady().then(() => {
+  readyWidevine()
   // The installed app gets its icon from the bundle; while developing, show it in the Dock too.
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   buildMenu(browser)

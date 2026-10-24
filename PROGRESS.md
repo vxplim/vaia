@@ -201,6 +201,17 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
   - **Ask on Page** (Command Bar "Ask about this page…"): sends the page's text and your question to Claude with the key saved for AI Tidy, and shows the answer as it's written in a small panel (follow-up questions too). Without a key it explains where to add one
   - The + at the bottom of the sidebar is now a menu: New Tab, Note, Easel, Folder, Live Folder, Space, Little window, private window
 
+- [x] **Phase 19: Protected video (Netflix etc.)** (tag `v1.10.0`)
+  - VAIA now runs on **castlabs' Electron for Content Security** (`v45.0.0-alpha.14+wvcus`), which adds Google's **Widevine** module for protected (DRM) video. The component updater downloads Widevine the first time VAIA starts (a few seconds, in the background) and keeps it up to date
+  - **Tested in `npm run dev` and in a packaged app:** the browser reports Widevine support, and a Widevine-protected test video (Google's Shaka "Angel One" demo with its test license server) plays. Everything else still works on the new Electron: extensions from the Chrome Web Store, split views, the Mini Player, notes, captures, the Library… (all earlier test suites pass)
+  - `npm install` now also fetches castlabs' Electron app (a `postinstall` step), and `npm run build:mac` downloads castlabs' Electron for both Apple Silicon and Intel
+  - Packaging has a **VMP signing step** (`build/vmp-sign.cjs`) that runs automatically once castlabs' free EVS service is set up; until then it's skipped and says so
+
+### Protected video: what works now, and what needs EVS
+
+- **Works now:** Widevine test streams and services that accept "development" clients, in `npm run dev` and in the built app.
+- **Needs EVS signing:** big streaming services (Netflix, Disney+, Prime Video, Spotify's web player…) only send video to apps with a production **VMP signature**. castlabs gives this out for free through **EVS**. Once you've made the account (see "Needs Vanessa"), every `npm run build:mac` signs VAIA automatically. Until then those sites may show an error like "unsupported browser"/"M7701", and everything else keeps working as before.
+
 ### Google sign-in: what the tests showed
 
 - With compatibility on, Google's sign-in page sees Firefox (checked) while other sites in the same Space see Chrome (checked).
@@ -304,6 +315,10 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - **Air Traffic Control rules match a domain and its subdomains** when you type something like `figma.com`; anything else (e.g. `/meeting/`) matches text anywhere in the address. A rule pointing at a deleted Space is ignored.
 - **Ask on Page sends the page's visible text** (up to about 30,000 words) and your question, only when you ask. The answer streams in; closing the panel stops it.
 - **With the sidebar on the right**, the page card starts a little lower so the window's red/yellow/green buttons (always top-left on a Mac) sit above it.
+- **castlabs' Electron 45 is a test ("alpha") release.** It's the only Widevine build for our Electron version (45); the newest finished one is for Electron 44 (v44.9.3+wvcus), which would have meant going back a version. The alpha passed every VAIA test. When castlabs publishes `v45.x.x+wvcus` (finished), switch to it by changing the version in package.json and running `npm install`.
+- **Widevine installs in the background** instead of making the window wait (castlabs' examples wait first, which would delay VAIA's very first start by ~7 seconds). Only protected video started in the first seconds of the very first launch could fail; reloading fixes it.
+- **The Widevine module is downloaded from Google at first launch, not shipped inside VAIA**, so VAIA's own code and download stay GPL-3.0; castlabs' Electron itself is open source (MIT, like Electron).
+- **Automated tests of Widevine launch VAIA normally and connect over a debugging port**, because the test tool (Playwright) always switches off Chromium's component updater, which is what installs Widevine.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -315,6 +330,12 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - Peek decides "another site" by comparing the last two parts of the domain (e.g. `news.example.com` and `example.com` count as the same site); unusual domains like `example.co.uk` may be treated as the same site as other `.co.uk` sites.
 
 ## Needs Vanessa
+
+- **Netflix & co. in the installed app: create a free castlabs EVS account** (needed once, for the "VMP signing" streaming services require). In Terminal (or in Claude Code with `!` in front):
+  1. `python3 -m pip install --user --upgrade castlabs-evs` (if it says "externally-managed-environment", use `brew install pipx` then `pipx install castlabs-evs`, and drop `python3 -m` from the next commands: `evs-account …`)
+  2. `python3 -m castlabs_evs.account signup`: type your email, first and last name, a password for EVS, and accept castlabs' terms. It emails you a confirmation code: type it in.
+  3. From then on `npm run build:mac` signs VAIA automatically (look for "Signing" from castlabs in the output). If it ever says the login expired, run `python3 -m castlabs_evs.account reauth` and build again.
+  This doesn't need your Mac password. In `npm run dev`, Netflix may still refuse (development builds aren't production-signed); the installed, signed app is the real test.
 
 - **Try Ask on Page and Live Folders on real sites:** Ask needs your Claude API key (Settings → Tidy & to-do); for a Live Folder try a blog's feed, e.g. `https://www.theverge.com/rss/index.xml`.
 - **Air Traffic Control only applies once VAIA is your default browser** (links from other apps). Make it the default from the installed app (VAIA menu → Make VAIA Your Default Browser).

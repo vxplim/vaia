@@ -96,6 +96,7 @@ vaia/
 │               ├── TodoList.tsx, TodoPanel.tsx, TodoSection.tsx  ← the to-do list's pieces
 │               └── Icons.tsx, Favicon.tsx
 ├── build/icon.svg, icon.png    ← the app icon (the SVG is the source, the PNG is what gets packaged)
+├── build/vmp-sign.cjs         ← packaging step: Widevine VMP signing (castlabs EVS)
 ├── screenshots/                ← pictures used in the README
 ├── electron.vite.config.ts     ← build settings (Vite, the fast build tool)
 ├── electron-builder.yml        ← packaging settings for the Mac .app/.dmg
@@ -145,6 +146,10 @@ The Spaces section reuses the same "move" action as dragging in the sidebar (`it
 
 - `src/preload/passwords.ts` runs inside every web page (except in private windows), in a separate "isolated world" the page's own code can't see. It notices when you submit a login form and tells the brain; when you click into a login field it asks the brain for a saved login for exactly that site.
 - The brain (`src/main/passwords.ts`) double-checks every request (is it the page's main frame? is the page really on that site?), asks you before saving, and keeps everything in `passwords.bin`, encrypted by macOS's Keychain. Showing a password in Settings needs Touch ID first.
+
+## Protected video (Widevine)
+
+VAIA runs on castlabs' "Electron for Content Security", a version of Electron that can use Google's Widevine module for protected video (Netflix & co.). At start-up `readyWidevine()` (in `src/main/index.ts`) asks the component updater to install or update Widevine in the background. Streaming services also check a "VMP" signature on the app; `build/vmp-sign.cjs` adds it while packaging, using castlabs' free EVS service.
 
 ## How the Mac app is made
 
