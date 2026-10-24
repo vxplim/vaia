@@ -1,0 +1,13 @@
+VAIA: a calm, sidebar-first browser for Mac
+Copyright (C) 2026 Vanessa Minerva Lim
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation, version 3 (see LICENSE).
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+VAIA includes electron-chrome-extensions (Copyright (C) Samuel Maddock),
+which is licensed under the GNU General Public License version 3.
