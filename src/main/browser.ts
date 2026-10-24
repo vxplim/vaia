@@ -2,6 +2,7 @@
 // action the UI can ask for (open tab, close tab, navigate, ...).
 import {
   BrowserWindow,
+  ClipboardItem,
   Menu,
   MenuItem,
   app,
@@ -20,7 +21,9 @@ import type { Action } from '../shared/api'
 import { activeSpace, allTabs, locate, tabLabel, tabsIn, visibleTabIds } from '../shared/tree'
 import type {
   ArchivedTab,
+  AtcRule,
   Boost,
+  DocKind,
   DownloadItem,
   FolderItem,
   Pane,
@@ -33,13 +36,15 @@ import type {
   Todo,
   UiCommand
 } from '../shared/types'
-import { SEARCH_ENGINES, displayHost, inputToUrl, sameUrl, siteKey } from '../shared/url'
+import { SEARCH_ENGINES, displayHost, inputToUrl, internalPage, sameUrl, siteKey } from '../shared/url'
 import { errorPageScript } from './errorPage'
-import { existsSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { AdBlock } from './adblock'
-import { AiTidyError, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './ai'
+import { AiTidyError, askAboutPage, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './ai'
 import { ImportError, bookmarksHtml, countLinks, readChrome, readHtmlFile, readSafari, type BookmarkNode, type BookmarkTree } from './bookmarks'
 import { EXTENSIONS_PARTITION, Extensions } from './extensions'
+import { Docs, htmlText } from './docs'
+import { FEED_REFRESH_MS, FeedError, fetchFeed } from './feeds'
 import { Media } from './media'
 import { MiniPlayerView } from './miniPlayer'
 import { Passwords } from './passwords'
@@ -167,7 +172,8 @@ export class Browser {
       this.store.downloads = this.store.downloads.filter((d) => d.path !== path)
       this.saveDownloads()
       this.store.changed(false)
-    }
+    },
+    () => capturesDir()
   )
   /** Which password profile each cookie jar belongs to ("default" or a Space's profile id). */
   private sessionProfiles = new Map<Session, string>()
@@ -212,6 +218,15 @@ export class Browser {
   private lastVisible = new Set<string>()
   /** Ctrl+Tab was pressed in a page; letting go of Ctrl picks the tab. */
   private switcherCtrl = false
+  /** Notes and Easels. A change renames their tabs (a note is named after its first line). */
+  readonly docs = new Docs((doc) => {
+    for (const tab of allTabs(this.state)) if (internalPage(tab.url)?.id === doc.id) tab.title = doc.title
+    this.store.docs = this.docs.list()
+    this.store.changed()
+  })
+  /** Ask on Page requests still running (so they can be cancelled). */
+  private asks = new Map<string, AbortController>()
+  private refreshingFeeds = new Set<string>()
 
   get state() {
     return this.store.state
@@ -618,6 +633,7 @@ export class Browser {
 
   /** Start-up work that needs the saved settings. */
   init(): void {
+    this.store.docs = this.docs.list()
     this.loadDownloads()
     this.store.aiKeySet = hasApiKey()
     this.store.sitePermissions = { ...this.permissions.saved }
@@ -743,7 +759,7 @@ export class Browser {
         return { action: 'deny' }
       }
       if (disposition === 'foreground-tab' && this.opensLinksInPeek(tabId) && !isAuthUrl(url)) this.openPeek(url)
-      else this.newTab(url, disposition !== 'background-tab', tabId)
+      else if (!(this.littles.has(tabId) && this.openByRule(url))) this.newTab(url, disposition !== 'background-tab', tabId)
       return { action: 'deny' }
     })
     // Clicking a link to another site from a pinned tab opens it in Peek instead.
@@ -1074,7 +1090,8 @@ export class Browser {
     }
     for (const pane of panes) {
       const tab = this.tab(pane.tabId)
-      if (!tab) continue
+      // Notes and Easels are drawn by the interface itself: no web page.
+      if (!tab || internalPage(tab.url)) continue
       const view = this.ensureView(tab)
       view.setBorderRadius(fs ? 0 : 10)
       const r = pane.rect
@@ -1228,6 +1245,7 @@ export class Browser {
     const loc = locate(this.state, id)
     if (loc && loc.item.kind === 'tab') return loc.item
     if (this.store.peek?.id === id) return this.store.peek
+    if (this.state.sidePanel?.tab.id === id) return this.state.sidePanel.tab
     return this.littles.get(id)?.tab ?? null
   }
 
@@ -1307,7 +1325,9 @@ export class Browser {
     if (loc.split) loc.split.focusedId = id
     if (loc.item.kind === 'tab') {
       loc.item.lastViewedAt = Date.now()
-      if (loc.item.url) this.focusOnAttach = id
+      // Opening a Live Folder item marks it read.
+      loc.item.unread = undefined
+      if (loc.item.url && !internalPage(loc.item.url)) this.focusOnAttach = id
     }
     this.store.changed()
   }
@@ -1523,6 +1543,9 @@ export class Browser {
     this.littles.delete(tabId)
     delete this.store.littles[tabId]
     if (!this.win) this.createWindow()
+    // Air Traffic Control can send it to a particular Space.
+    const ruleSpace = this.state.spaces.find((sp) => sp.id === this.ruleFor(little.tab.url)?.target)
+    if (ruleSpace) this.switchSpace(ruleSpace.id)
     activeSpace(this.state).today.unshift(little.tab)
     this.activate(tabId)
     little.win.close()
@@ -1531,9 +1554,243 @@ export class Browser {
     this.store.changed()
   }
 
-  /** Links from other apps (when VAIA is the default browser) open in a Little window. */
+  /**
+   * Links from other apps (when VAIA is the default browser): Air Traffic Control decides
+   * where they go; without a matching rule they open in a Little window.
+   */
   openExternalLink(url: string): void {
-    this.openLittle(url)
+    if (!this.openByRule(url)) this.openLittle(url)
+  }
+
+  // ---------- Air Traffic Control ----------
+
+  /** The first rule that matches this address. */
+  private ruleFor(url: string): AtcRule | null {
+    return this.state.airTraffic.find((rule) => atcMatches(rule, url)) ?? null
+  }
+
+  /** Open a link where its rule says (a Space or a Little window). False when no rule matches. */
+  private openByRule(url: string): boolean {
+    const rule = this.ruleFor(url)
+    if (!rule) return false
+    if (rule.target === 'little') {
+      this.openLittle(url)
+      return true
+    }
+    const space = this.state.spaces.find((sp) => sp.id === rule.target)
+    if (!space) return false
+    if (!this.win) this.createWindow()
+    this.switchSpace(space.id)
+    this.newTab(url)
+    this.win?.show()
+    this.win?.focus()
+    return true
+  }
+
+  // ---------- Notes and Easels ----------
+
+  private static DOC_ICONS: Record<DocKind, string> = {
+    note: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="2.5" y="1.5" width="11" height="13" rx="2" fill="#fff" stroke="#111" stroke-width="1.2"/><path d="M5 5h6M5 8h6M5 11h4" stroke="#111" stroke-width="1.2" stroke-linecap="round"/></svg>')}`,
+    easel: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="2" fill="#fff" stroke="#111" stroke-width="1.2"/><rect x="3.5" y="4.5" width="4" height="3" rx=".6" fill="#111"/><path d="M9 5h3.5M9 7h2.5M3.5 10h9" stroke="#111" stroke-width="1.2" stroke-linecap="round"/></svg>')}`
+  }
+
+  newDoc(kind: DocKind): string {
+    const doc = this.docs.create(kind)
+    this.store.docs = this.docs.list()
+    const tab = this.newTab(`vaia:${kind}/${doc.id}`)
+    Object.assign(tab, { title: doc.title, favicon: Browser.DOC_ICONS[kind] })
+    this.store.changed()
+    return doc.id
+  }
+
+  /** Show a note or Easel: its open tab (in whichever Space), or a new tab for it. */
+  openDoc(id: string): void {
+    const doc = this.docs.get(id)
+    if (!doc) return
+    const url = `vaia:${doc.kind}/${id}`
+    const existing = allTabs(this.state).find((t) => t.url === url)
+    if (!this.win) this.createWindow()
+    if (existing) {
+      const space = locate(this.state, existing.id)?.space
+      if (space && space.id !== this.state.activeSpaceId) this.switchSpace(space.id)
+      this.activate(existing.id)
+    } else {
+      Object.assign(this.newTab(url), { title: doc.title, favicon: Browser.DOC_ICONS[doc.kind] })
+      this.store.changed()
+    }
+  }
+
+  // ---------- Capture ----------
+
+  /** ⇧⌘2: picture of part of a page → clipboard, Library → Media, or an Easel. */
+  async captureTake(tabId: string, rect: Rect | null, to: 'copy' | 'media' | 'easel', easelId?: string): Promise<void> {
+    const wc = this.views.get(tabId)?.webContents
+    const tab = this.tab(tabId)
+    if (!wc || !tab) return this.showToast('Only web pages can be captured')
+    // The capture screen showed a picture of the page; wait (briefly) for the live page to be back.
+    for (let i = 0; i < 20 && !this.isAttached(tabId); i++) await new Promise((r) => setTimeout(r, 50))
+    const area = rect
+      ? { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.max(1, Math.round(rect.width)), height: Math.max(1, Math.round(rect.height)) }
+      : undefined
+    const image = await wc.capturePage(area)
+    if (image.isEmpty()) return this.showToast('Couldn’t capture that part of the page')
+    if (to === 'copy') {
+      await clipboard.write([new ClipboardItem({ 'image/png': new Blob([image.toPNG()], { type: 'image/png' }) })])
+      return this.showToast('Capture copied')
+    }
+    if (to === 'media') {
+      const dir = capturesDir()
+      mkdirSync(dir, { recursive: true })
+      const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19)
+      writeFileSync(uniquePath(dir, `Capture ${stamp}.png`), image.toPNG())
+      return this.showToast('Saved to Library → Media', { action: { label: 'Show', run: () => this.command({ type: 'open-library', section: 'media' }) } })
+    }
+    // An Easel: the one you picked, or a new one.
+    let id = easelId && this.docs.get(easelId)?.kind === 'easel' ? easelId : null
+    if (!id) {
+      id = this.docs.create('easel').id
+      this.store.docs = this.docs.list()
+    }
+    const size = image.getSize()
+    const scale = Math.min(1, 480 / size.width)
+    this.docs.addEaselItem(id, {
+      kind: 'image',
+      src: image.toDataURL(),
+      w: Math.round(size.width * scale),
+      h: Math.round(size.height * scale),
+      sourceUrl: tab.url
+    })
+    const target = id
+    this.showToast(`Added to “${this.docs.get(id)?.title ?? 'Easel'}”`, { action: { label: 'Open', run: () => this.openDoc(target) } })
+  }
+
+  // ---------- Live Folders ----------
+
+  /** A pinned folder that fills itself from an RSS / Atom feed. */
+  async newLiveFolder(input: string, spaceId?: string): Promise<string | null> {
+    let url = input.trim()
+    if (!/^https?:\/\//i.test(url)) {
+      // No http(s):// typed: use https, unless the site only answers on plain http.
+      url = `https://${url}`
+      const secure = await fetchFeed(url).then(() => true, (err) => !(err instanceof FeedError && err.message === 'Couldn’t reach the feed'))
+      if (!secure) url = url.replace(/^https:/, 'http:')
+    }
+    try {
+      new URL(url)
+    } catch {
+      this.showToast('That isn’t a web address')
+      return null
+    }
+    const space = this.state.spaces.find((sp) => sp.id === spaceId) ?? activeSpace(this.state)
+    const folder = newFolder(space, 'Live Folder')
+    folder.feed = { url }
+    this.store.changed()
+    await this.refreshFeed(folder.id, true)
+    return folder.id
+  }
+
+  /** Fetch a Live Folder's feed: newest 20 entries, new ones marked unread. */
+  async refreshFeed(folderId: string, first = false): Promise<void> {
+    const folder = locate(this.state, folderId)?.item
+    if (folder?.kind !== 'folder' || !folder.feed || this.refreshingFeeds.has(folderId)) return
+    this.refreshingFeeds.add(folderId)
+    try {
+      const { title, entries } = await fetchFeed(folder.feed.url)
+      const current = locate(this.state, folderId)?.item
+      if (current?.kind !== 'folder' || !current.feed) return
+      const old = new Map(tabsIn(current.children).map((t) => [t.pinnedUrl ?? t.url, t]))
+      const children: TabItem[] = entries.map((entry) => {
+        const kept = old.get(entry.url)
+        if (kept) return kept
+        // The first fill isn't "unread" (it would be a wall of dots); later arrivals are.
+        return { ...this.makeTab(entry.url, entry.title), pinnedUrl: entry.url, ...(first ? {} : { unread: true }) }
+      })
+      for (const tab of old.values()) if (!children.includes(tab)) this.destroyView(tab.id)
+      current.children = children
+      if (current.name === 'Live Folder' && title) current.name = title.slice(0, 60)
+      current.feed = { url: current.feed.url, lastChecked: Date.now() }
+    } catch (err) {
+      const current = locate(this.state, folderId)?.item
+      if (current?.kind === 'folder' && current.feed) {
+        current.feed = { ...current.feed, lastChecked: Date.now(), error: err instanceof FeedError ? err.message : 'Couldn’t read the feed' }
+      }
+      if (first) this.showToast(err instanceof FeedError ? err.message : 'Couldn’t read the feed')
+    } finally {
+      this.refreshingFeeds.delete(folderId)
+      this.store.changed()
+    }
+  }
+
+  /** Called every minute: refresh Live Folders that are due (every 30 minutes). */
+  refreshDueFeeds(): void {
+    const due = Date.now() - FEED_REFRESH_MS
+    const walk = (items: SidebarItem[]): void => {
+      for (const item of items) {
+        if (item.kind !== 'folder') continue
+        if (item.feed && (item.feed.lastChecked ?? 0) < due) this.refreshFeed(item.id)
+        walk(item.children)
+      }
+    }
+    for (const space of this.state.spaces) walk(space.pinned)
+  }
+
+  // ---------- Side panel ----------
+
+  private openSidePanel(tabId: string): void {
+    const source = this.tab(tabId)
+    if (!source?.url || internalPage(source.url) || source.private) return
+    const old = this.state.sidePanel
+    if (old) this.destroyView(old.tab.id)
+    this.state.sidePanel = { tab: this.makeTab(source.url, source.title, source.favicon), width: old?.width ?? 380, open: true }
+    // A Today tab moves into the panel; pinned tabs and favorites stay where they are.
+    if (locate(this.state, tabId)?.zone === 'today') this.closeTab(tabId)
+    this.store.changed()
+  }
+
+  private sidePanelAction(what: 'toggle' | 'toTab' | 'close', width?: number): void {
+    const panel = this.state.sidePanel
+    if (!panel) return
+    if (what === 'toggle') panel.open = !panel.open
+    if (what === 'toTab' || what === 'close') {
+      const url = panel.tab.url
+      this.destroyView(panel.tab.id)
+      this.state.sidePanel = null
+      if (what === 'toTab' && url) this.newTab(url)
+    }
+    if (width) panel.width = width
+    this.store.changed()
+  }
+
+  // ---------- Ask on Page ----------
+
+  private async ask(tabId: string, question: string, askId: string): Promise<void> {
+    const tab = this.tab(tabId)
+    const send = (text: string, done: boolean, error?: string) => this.notify({ type: 'ask-update', askId, text, done, error })
+    if (!tab) return send('', true, 'There’s no page to ask about')
+    let text = ''
+    const doc = internalPage(tab.url) ? this.docs.get(internalPage(tab.url)!.id) : null
+    if (doc) {
+      text = doc.kind === 'note' ? htmlText(doc.html ?? '') : (doc.items ?? []).map((i) => i.text ?? i.url ?? '').join('\n')
+    } else {
+      const wc = this.views.get(tabId)?.webContents
+      if (!wc) return send('', true, 'Open the page first, then ask again')
+      text = String((await wc.executeJavaScript('document.body ? document.body.innerText : ""').catch(() => '')) ?? '')
+    }
+    if (!text.trim()) return send('', true, 'This page has no text to read')
+    const controller = new AbortController()
+    this.asks.set(askId, controller)
+    let answer = ''
+    try {
+      await askAboutPage({ title: tabLabel(tab), url: tab.url, text }, question, (delta) => {
+        answer += delta
+        send(answer, false)
+      }, controller.signal)
+      if (!controller.signal.aborted) send(answer, true)
+    } catch (err) {
+      send(answer, true, err instanceof AiTidyError ? err.message : 'Something went wrong asking Claude')
+    } finally {
+      this.asks.delete(askId)
+    }
   }
 
   // ---------- Bookmarks ----------
@@ -1991,6 +2248,8 @@ export class Browser {
     const url = inputToUrl(input, this.state.settings.searchEngine)
     const tab = this.tab(id)
     if (!url || !tab) return
+    // Typing an address into a note's or Easel's tab turns it into a web page (the note is kept).
+    if (internalPage(tab.url)) Object.assign(tab, { title: url, favicon: undefined })
     tab.url = url
     if (!tab.title || tab.title === 'New Tab') tab.title = url
     const view = this.views.get(id)
@@ -2356,6 +2615,46 @@ export class Browser {
       case 'mini/dragStart':
       case 'mini/dragEnd':
         return this.miniAction(action.type.split('/')[1] as 'playPause' | 'pip' | 'back' | 'close' | 'dragStart' | 'dragEnd')
+      case 'doc/new':
+        return this.newDoc(action.kind)
+      case 'doc/save':
+        return this.docs.save(action.id, action.patch)
+      case 'doc/open':
+        return this.openDoc(action.id)
+      case 'capture/take':
+        return this.captureTake(action.tabId, action.rect, action.to, action.easelId)
+      case 'liveFolder/new':
+        return this.newLiveFolder(action.url, action.spaceId)
+      case 'liveFolder/refresh':
+        return this.refreshFeed(action.id)
+      case 'liveFolder/markAllRead': {
+        const folder = locate(this.state, action.id)?.item
+        if (folder?.kind === 'folder') for (const t of tabsIn(folder.children)) t.unread = undefined
+        return this.store.changed()
+      }
+      case 'atc/add': {
+        const match = action.match.trim()
+        if (!match) return
+        this.state.airTraffic.push({ id: newId(), match, target: action.target })
+        return this.store.changed()
+      }
+      case 'atc/remove':
+        this.state.airTraffic = this.state.airTraffic.filter((r) => r.id !== action.id)
+        return this.store.changed()
+      case 'sidePanel/open':
+        return this.openSidePanel(action.tabId)
+      case 'sidePanel/toggle':
+      case 'sidePanel/toTab':
+      case 'sidePanel/close':
+        return this.sidePanelAction(action.type.split('/')[1] as 'toggle' | 'toTab' | 'close')
+      case 'sidePanel/resize':
+        if (this.state.sidePanel) this.state.sidePanel.width = Math.round(Math.min(800, Math.max(260, action.width)))
+        return this.store.changed()
+      case 'ai/ask':
+        return this.ask(action.tabId, action.question, action.askId)
+      case 'ai/cancelAsk':
+        this.asks.get(action.askId)?.abort()
+        return
       case 'space/exportBookmarks':
         return this.exportBookmarks(action.id)
       case 'media/open':
@@ -2386,6 +2685,27 @@ function siteOf(url: string): string {
   } catch {
     return ''
   }
+}
+
+/** Does an Air Traffic Control rule match this address? */
+function atcMatches(rule: AtcRule, url: string): boolean {
+  const match = rule.match.trim().toLowerCase()
+  if (!match) return false
+  // "example.com" matches that site and its subdomains; anything else matches text in the address.
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(match)) {
+    try {
+      const host = new URL(url).hostname.toLowerCase()
+      return host === match || host.endsWith(`.${match}`)
+    } catch {
+      return false
+    }
+  }
+  return url.toLowerCase().includes(match)
+}
+
+/** Where captures saved to Library → Media live. */
+export function capturesDir(): string {
+  return join(app.getPath('userData'), 'Captures')
 }
 
 /** A video call page (Google Meet, Zoom in the browser): gets the Mini Player and never sleeps. */

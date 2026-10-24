@@ -255,3 +255,21 @@ export const IconPause = (p: P) => (
     <path d="M5.5 3.5v9M10.5 3.5v9" strokeWidth="2.2" />
   </Svg>
 )
+export const IconFeed = (p: P) => (
+  <Svg {...p}>
+    <path d="M3.5 3.5a9 9 0 0 1 9 9M3.5 7.2a5.3 5.3 0 0 1 5.3 5.3" />
+    <circle cx="4.2" cy="11.8" r="0.9" fill="currentColor" />
+  </Svg>
+)
+export const IconPanelRight = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="3" width="11" height="10" rx="2" />
+    <path d="M10 3v10" />
+  </Svg>
+)
+export const IconNote = (p: P) => (
+  <Svg {...p}>
+    <rect x="3" y="2" width="10" height="12" rx="2" />
+    <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" />
+  </Svg>
+)

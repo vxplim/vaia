@@ -19,6 +19,9 @@ export interface CommandContext {
     toggleSidebar: () => void
     find: () => void
     boost: () => void
+    capture: () => void
+    ask: () => void
+    newLiveFolder: () => void
   }
 }
 
@@ -263,6 +266,65 @@ export const COMMANDS: Command[] = [
       ctx.ui.boost()
       dispatch({ type: 'boost/zapStart', tabId: ctx.activeTabId! })
     }
+  },
+  {
+    id: 'new-note',
+    title: 'New Note',
+    keywords: 'write text notes document',
+    run: () => dispatch({ type: 'doc/new', kind: 'note' })
+  },
+  {
+    id: 'new-easel',
+    title: 'New Easel',
+    keywords: 'canvas board collage moodboard',
+    run: () => dispatch({ type: 'doc/new', kind: 'easel' })
+  },
+  {
+    id: 'capture',
+    title: 'Capture…',
+    shortcut: '⇧⌘2',
+    keywords: 'screenshot snip picture clip',
+    enabled: hasTab,
+    run: (ctx) => ctx.ui.capture()
+  },
+  {
+    id: 'ask',
+    title: 'Ask about this page…',
+    keywords: 'claude ai question summarise summarize explain',
+    enabled: hasTab,
+    run: (ctx) => ctx.ui.ask()
+  },
+  {
+    id: 'live-folder',
+    title: 'New Live Folder…',
+    keywords: 'rss atom feed news blog subscribe',
+    run: (ctx) => ctx.ui.newLiveFolder()
+  },
+  {
+    id: 'side-panel-open',
+    title: 'Open in Side Panel',
+    keywords: 'panel sidebar right narrow',
+    enabled: (ctx) => !!activeTab(ctx)?.url && !activeTab(ctx)!.url.startsWith('vaia:'),
+    run: (ctx) => dispatch({ type: 'sidePanel/open', tabId: ctx.activeTabId! })
+  },
+  {
+    id: 'side-panel',
+    title: 'Toggle Side Panel',
+    keywords: 'panel show hide',
+    enabled: (ctx) => !!ctx.state.sidePanel,
+    run: () => dispatch({ type: 'sidePanel/toggle' })
+  },
+  {
+    id: 'compact',
+    title: 'Toggle Compact Mode',
+    keywords: 'minimal sidebar simple clean',
+    run: (ctx) => dispatch({ type: 'settings/update', patch: { compactMode: !ctx.state.settings.compactMode } })
+  },
+  {
+    id: 'sidebar-side',
+    title: 'Move Sidebar to the Other Side',
+    keywords: 'left right position',
+    run: (ctx) => dispatch({ type: 'settings/update', patch: { sidebarSide: ctx.state.settings.sidebarSide === 'right' ? 'left' : 'right' } })
   },
   {
     id: 'mute',

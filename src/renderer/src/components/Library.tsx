@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import type { AppState, LibrarySection } from '../../../shared/types'
 import type { SpaceEditorFocus } from '../menus'
 import { ArchiveView } from './ArchiveView'
@@ -24,14 +24,14 @@ interface Props {
   onSection: (section: LibrarySection) => void
   closing: boolean
   onClose: () => void
-  /** Where the content area starts (just right of the sidebar). */
-  left: number
+  /** Where the panel sits: over the page area, next to the sidebar. */
+  place: CSSProperties
   editSpace: (spaceId: string, setup?: boolean, focus?: SpaceEditorFocus) => void
   editBoost: (site: string) => void
 }
 
 /** The Library: everything you've collected, sliding out over the page (⇧⌘L). */
-export function Library({ state, section, onSection, closing, onClose, left, editSpace, editBoost }: Props) {
+export function Library({ state, section, onSection, closing, onClose, place, editSpace, editBoost }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   // Keep the keyboard inside the Library (so Esc works) unless a section focused a field itself.
   useEffect(() => {
@@ -44,7 +44,7 @@ export function Library({ state, section, onSection, closing, onClose, left, edi
         ref={ref}
         tabIndex={-1}
         className="panel library"
-        style={{ left }}
+        style={place}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState, Panel, Space } from '../../../shared/types'
 import { useDnd } from '../dnd'
-import { spaceMenu, type SpaceMenuUi } from '../menus'
+import { newMenu, spaceMenu, type SpaceMenuUi } from '../menus'
 import { dispatch } from '../state'
 import { dueCount } from '../todos'
 import { DownloadsPopover } from './DownloadsView'
@@ -44,11 +44,14 @@ export function SpaceBar({ state, menuUi, onOpenPanel }: Props) {
       </div>
       <button
         className="icon-button"
-        title="New Space"
-        onClick={async () => {
-          const id = (await dispatch({ type: 'space/new' })) as string
-          onEdit(id, true)
-        }}
+        title="New tab, note, Easel, folder, Space…"
+        onClick={() =>
+          newMenu({
+            newFolder: () => menuUi.newFolder(state.activeSpaceId),
+            newLiveFolder: () => menuUi.newLiveFolder(state.activeSpaceId),
+            newSpace: async () => onEdit((await dispatch({ type: 'space/new' })) as string, true)
+          })
+        }
       >
         <IconPlus />
       </button>

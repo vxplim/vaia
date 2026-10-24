@@ -62,6 +62,8 @@ ipcMain.handle('menu:popup', ui((e, items: MenuItem[]) => popupMenu(e.sender, it
 ipcMain.handle('download:thumbnail', ui((_e, id: string) => browser.downloadThumbnail(id)))
 ipcMain.handle('media:list', ui(() => browser.media.list()))
 ipcMain.handle('media:thumbnail', ui((_e, path: string, size: number) => browser.media.thumbnail(path, size)))
+ipcMain.handle('docs:get', ui((_e, id: string) => browser.docs.get(id)))
+ipcMain.handle('docs:search', ui((_e, query: string) => browser.docs.search(query)))
 // Passwords: the list for Settings, and the login helper running inside web pages.
 ipcMain.handle('passwords:list', ui(() => browser.passwords.list()))
 ipcMain.handle('pw:lookup', (e, origin: string) => browser.lookupLogins(e, origin))
@@ -111,7 +113,9 @@ app.whenReady().then(() => {
 
   // Check for tabs to auto-archive at start-up and then every minute.
   browser.autoArchive()
+  browser.refreshDueFeeds()
   setInterval(() => {
+    browser.refreshDueFeeds()
     browser.autoArchive()
     browser.sleepTabs()
     browser.purgeDoneTodos()
@@ -127,6 +131,7 @@ app.on('before-quit', () => {
   browser.store.flush()
   browser.history.flush()
   browser.archive.flush()
+  browser.docs.flush()
 })
 
 app.on('window-all-closed', () => {

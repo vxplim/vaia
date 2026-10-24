@@ -104,6 +104,23 @@ export function SettingsApp() {
           </div>
           <div className="setting-row">
             <div>
+              <div className="setting-label">Compact mode</div>
+              <div className="setting-hint">A minimal sidebar: hides the Space name, back/forward/reload and the extension and Boost buttons.</div>
+            </div>
+            <Toggle checked={s.compactMode} onChange={(v) => set({ compactMode: v })} />
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Sidebar position</div>
+              <div className="setting-hint">Show the sidebar on the left or the right of the window.</div>
+            </div>
+            <select value={s.sidebarSide} onChange={(e) => set({ sidebarSide: e.target.value as 'left' | 'right' })}>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+          <div className="setting-row">
+            <div>
               <div className="setting-label">Put background tabs to sleep</div>
               <div className="setting-hint">
                 Tabs you haven't looked at for this long are unloaded to save memory, and load again when you click them. Tabs
@@ -163,6 +180,15 @@ export function SettingsApp() {
         </section>
 
         <AppearanceSection state={state} spaceId={lookSpaceId ?? state.activeSpaceId} onPick={setLookSpaceId} />
+
+        <section>
+          <h2>Air Traffic Control</h2>
+          <div className="setting-hint section-hint">
+            Choose where links open when they come from other apps (with VAIA as your default browser) or from a Little
+            window. The first matching rule wins; links that match nothing open in a Little window as usual.
+          </div>
+          <AirTrafficRules state={state} />
+        </section>
 
         <section>
           <h2>Tidy &amp; to-do</h2>
@@ -631,5 +657,58 @@ function PasswordsSection({ state }: { state: AppState }) {
         </div>
       )}
     </section>
+  )
+}
+
+/** Settings → Air Traffic Control: "links matching … open in …". */
+function AirTrafficRules({ state }: { state: AppState }) {
+  const [match, setMatch] = useState('')
+  const [target, setTarget] = useState(state.spaces[0]?.id ?? 'little')
+  const targetName = (id: string) => {
+    if (id === 'little') return 'a Little window'
+    const space = state.spaces.find((sp) => sp.id === id)
+    return space ? `${space.icon} ${space.name}` : '(deleted Space: Little window)'
+  }
+  const add = () => {
+    if (!match.trim()) return
+    dispatch({ type: 'atc/add', match, target })
+    setMatch('')
+  }
+  return (
+    <div className="atc">
+      {state.airTraffic.length === 0 && <div className="setting-hint">No rules yet.</div>}
+      {state.airTraffic.map((rule) => (
+        <div className="atc-rule" key={rule.id}>
+          <span>
+            Links matching <b>{rule.match}</b> → open in <b>{targetName(rule.target)}</b>
+          </span>
+          <button className="text-button danger" onClick={() => dispatch({ type: 'atc/remove', id: rule.id })}>
+            Remove
+          </button>
+        </div>
+      ))}
+      <div className="atc-add">
+        <input
+          className="text-field"
+          value={match}
+          placeholder="figma.com, or any text in the address"
+          spellCheck={false}
+          onChange={(e) => setMatch(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+        />
+        <span>→</span>
+        <select value={target} onChange={(e) => setTarget(e.target.value)}>
+          {state.spaces.map((sp) => (
+            <option key={sp.id} value={sp.id}>
+              {sp.icon} {sp.name}
+            </option>
+          ))}
+          <option value="little">Little window</option>
+        </select>
+        <button className="secondary-button" onClick={add}>
+          Add Rule
+        </button>
+      </div>
+    </div>
   )
 }

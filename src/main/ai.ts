@@ -111,3 +111,49 @@ export async function aiTidyPlan(lines: { title: string; domain: string }[]): Pr
   if (!Array.isArray(plan.folders) || !Array.isArray(plan.names)) throw new AiTidyError('Unexpected answer from Claude')
   return plan
 }
+
+/** The most page text sent to Claude (about 30,000 words). */
+const ASK_MAX_CHARS = 200_000
+
+/**
+ * Ask on Page: sends the page's text and your question to Claude and streams the answer.
+ * Only happens when you ask; uses the same key as AI Tidy.
+ */
+export async function askAboutPage(
+  page: { title: string; url: string; text: string },
+  question: string,
+  onText: (text: string) => void,
+  signal: AbortSignal
+): Promise<void> {
+  const apiKey = await loadApiKey()
+  if (!apiKey) throw new AiTidyError('Add your Claude API key in Settings first')
+  const client = new Anthropic({ apiKey, timeout: 120_000, maxRetries: 1 })
+  const text = page.text.length > ASK_MAX_CHARS ? `${page.text.slice(0, ASK_MAX_CHARS)}\n[…the rest of the page was cut off]` : page.text
+  try {
+    const stream = client.messages.stream(
+      {
+        model: TIDY_MODEL,
+        max_tokens: 4000,
+        system:
+          'You answer questions about the web page the person is looking at, using the page text provided. Be concise and plain-spoken. If the page doesn’t contain the answer, say so briefly, then answer from general knowledge if you can, saying that you did. Use short paragraphs or simple lists; no headings.',
+        messages: [
+          {
+            role: 'user',
+            content: `<page title="${page.title.replace(/"/g, "'")}" url="${page.url}">\n${text}\n</page>\n\nQuestion: ${question}`
+          }
+        ]
+      },
+      { signal }
+    )
+    stream.on('text', onText)
+    const final = await stream.finalMessage()
+    if (final.stop_reason === 'refusal') throw new AiTidyError('Claude declined to answer')
+  } catch (err) {
+    if (signal.aborted) return
+    if (err instanceof Anthropic.AuthenticationError) throw new AiTidyError('Claude API key was rejected')
+    if (err instanceof Anthropic.RateLimitError) throw new AiTidyError('Claude is busy right now; try again in a moment')
+    if (err instanceof Anthropic.APIConnectionError) throw new AiTidyError('No internet connection')
+    if (err instanceof Anthropic.APIError) throw new AiTidyError(`Claude API error ${err.status ?? ''}`.trim())
+    throw err
+  }
+}

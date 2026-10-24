@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { activeSpace, locate } from '../../shared/tree'
-import type { LibrarySection, Panel, SplitItem, TabItem } from '../../shared/types'
+import { activeSpace, allTabs, locate } from '../../shared/tree'
+import type { AppState, LibrarySection, Panel, SplitItem, TabItem } from '../../shared/types'
+import { AskPanel } from './components/AskPanel'
 import { Backdrop } from './components/Backdrop'
+import { CaptureLayer } from './components/CaptureLayer'
 import { CommandBar } from './components/CommandBar'
 import { Content } from './components/Content'
 import { FindBar } from './components/FindBar'
 import { HistoryPanel } from './components/HistoryPanel'
 import { Library } from './components/Library'
 import { PeekLayer } from './components/PeekLayer'
+import { PromptDialog } from './components/PromptDialog'
 import { Sidebar } from './components/Sidebar'
 import { SpaceEditor } from './components/SpaceEditor'
 import { TabSwitcher, recentTabs } from './components/TabSwitcher'
@@ -34,6 +37,9 @@ export type Overlay =
   | { kind: 'library'; section: LibrarySection }
   | { kind: 'history' | 'todo' }
   | { kind: 'switcher'; ids: string[]; index: number }
+  | { kind: 'capture'; tabId: string }
+  | { kind: 'ask'; tabId: string | null }
+  | { kind: 'prompt'; title: string; hint?: string; placeholder: string; action: string; onSubmit: (value: string) => void }
 
 export default function App() {
   const state = useAppState()
@@ -53,6 +59,8 @@ export default function App() {
     setPeekPhase((p) => (on ? (p === 'closed' || p === 'closing' ? 'opening' : p) : p === 'closed' ? p : 'closing'))
   }, [])
   const [boostOpen, setBoostOpen] = useState(false)
+  /** The tab you're looking at (kept in a ref so shortcuts always see the latest). */
+  const activeTabRef = useRef<string | null>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -94,6 +102,23 @@ export default function App() {
     (panel: Panel) => (panel === 'archive' || panel === 'downloads' ? openLibrary(panel) : openOverlay({ kind: panel })),
     [openOverlay, openLibrary]
   )
+  const openCapture = useCallback(() => {
+    const id = activeTabRef.current
+    openOverlay({ kind: 'capture', tabId: id ?? '' })
+  }, [openOverlay])
+  const openAsk = useCallback(() => openOverlay({ kind: 'ask', tabId: activeTabRef.current }), [openOverlay])
+  const newLiveFolder = useCallback(
+    (spaceId?: string) =>
+      openOverlay({
+        kind: 'prompt',
+        title: 'New Live Folder',
+        hint: 'Paste the address of an RSS or Atom feed (often a site’s “/feed” or “/rss” page). The folder shows its newest 20 posts and checks for new ones every 30 minutes.',
+        placeholder: 'https://example.com/feed',
+        action: 'Create',
+        onSubmit: (url) => dispatch({ type: 'liveFolder/new', url, spaceId })
+      }),
+    [openOverlay]
+  )
   const openFind = useCallback(() => {
     setFindOpen(true)
     setFindKey((k) => k + 1)
@@ -112,7 +137,6 @@ export default function App() {
   }, [sidebarVisible])
 
   // Ctrl+Tab: open the recent-tabs switcher, or move to the next/previous tab in it.
-  const activeTabRef = useRef<string | null>(null)
   const stepSwitcher = useCallback(
     (back: boolean) => {
       setOverlay((o) => {
@@ -175,12 +199,15 @@ export default function App() {
         if (cmd.type === 'toggle-sidebar') toggleSidebar()
         if (cmd.type === 'find') openFind()
         if (cmd.type === 'boost') openBoost()
+        if (cmd.type === 'capture') openCapture()
       }),
-    [openOverlay, editSpace, openPanel, openLibrary, toggleSidebar, openFind, openBoost, sidebarVisible, stepSwitcher, commitSwitcher]
+    [openOverlay, editSpace, openPanel, openLibrary, toggleSidebar, openFind, openBoost, sidebarVisible, stepSwitcher, commitSwitcher, openCapture]
   )
 
   // Hide the window's red/yellow/green buttons along with the sidebar.
-  useEffect(() => window.vaia.setTrafficLights(sidebarVisible || sidebarPeek), [sidebarVisible, sidebarPeek])
+  // With the sidebar on the right, the buttons sit above the page and always show.
+  const sidebarRight = state?.settings.sidebarSide === 'right'
+  useEffect(() => window.vaia.setTrafficLights(sidebarVisible || sidebarPeek || sidebarRight), [sidebarVisible, sidebarPeek, sidebarRight])
 
   // Picking a tab (or finishing typing an address) in the slid-out sidebar tucks it away again.
   const activeId = state ? activeSpace(state).activeId : null
@@ -209,6 +236,7 @@ export default function App() {
   // Tuck the slid-out sidebar away once the pointer wanders off to the right of it (or out of
   // the window), with a short grace period so a brief slip doesn't close it.
   const sidebarWidth = state?.settings.sidebarWidth ?? 248
+  const rightSide = state?.settings.sidebarSide === 'right'
   useEffect(() => {
     if (peekPhase !== 'open') return
     const cancel = () => {
@@ -219,7 +247,9 @@ export default function App() {
       if (!peekTimer.current) peekTimer.current = setTimeout(() => setSidebarPeek(false), ms)
     }
     const onMove = (e: MouseEvent) => {
-      if (e.clientX > sidebarWidth + 24 && !urlEditing) closeAfter(PEEK_AWAY_GRACE_MS)
+      // "Away" = past the sidebar's inner edge (it can be on either side of the window).
+      const away = rightSide ? e.clientX < window.innerWidth - sidebarWidth - 24 : e.clientX > sidebarWidth + 24
+      if (away && !urlEditing) closeAfter(PEEK_AWAY_GRACE_MS)
       else cancel()
     }
     const onLeave = () => !urlEditing && closeAfter(PEEK_LEAVE_WINDOW_GRACE_MS)
@@ -230,7 +260,7 @@ export default function App() {
       document.documentElement.removeEventListener('mouseleave', onLeave)
       cancel()
     }
-  }, [peekPhase, urlEditing, sidebarWidth, setSidebarPeek])
+  }, [peekPhase, urlEditing, sidebarWidth, setSidebarPeek, rightSide])
 
   if (!state) return null
 
@@ -260,6 +290,7 @@ export default function App() {
       onEditSpace={editSpace}
       onOpenPanel={openPanel}
       onOpenLibrary={openLibrary}
+      onNewLiveFolder={newLiveFolder}
       onToggleSidebar={toggleSidebar}
       boostOpen={boostOpen && sidebarVisible}
       onBoost={(open) => (open ? openBoost() : setBoostOpen(false))}
@@ -269,7 +300,7 @@ export default function App() {
   return (
     <DndProvider>
       <div
-        className={`app${theme.isDark ? ' dark' : ''}${sidebarVisible ? '' : ' no-sidebar'}`}
+        className={`app${theme.isDark ? ' dark' : ''}${sidebarVisible ? '' : ' no-sidebar'}${state.settings.compactMode ? ' compact' : ''}${state.settings.sidebarSide === 'right' ? ' sidebar-right' : ''}`}
         style={theme.vars as React.CSSProperties}
       >
         <Backdrop background={theme.background} />
@@ -315,7 +346,10 @@ export default function App() {
               openSplitPicker: () => openOverlay({ kind: 'command', mode: 'split' }),
               toggleSidebar,
               find: openFind,
-              boost: openBoost
+              boost: openBoost,
+              capture: openCapture,
+              ask: openAsk,
+              newLiveFolder: () => newLiveFolder()
             }}
           />
         )}
@@ -326,7 +360,7 @@ export default function App() {
             onSection={showSection}
             closing={closing}
             onClose={closeOverlay}
-            left={sidebarVisible ? sidebarWidth + 4 : 8}
+            place={sidebarRight ? { left: 8, right: sidebarVisible ? sidebarWidth + 4 : 8 } : { left: sidebarVisible ? sidebarWidth + 4 : 8 }}
             editSpace={editSpace}
             editBoost={(site) => {
               closeOverlay()
@@ -347,12 +381,36 @@ export default function App() {
             onClose={closeOverlay}
           />
         )}
+        {overlay?.kind === 'capture' && <CaptureLayer state={state} tabId={overlay.tabId} closing={closing} onClose={closeOverlay} />}
+        {overlay?.kind === 'ask' && (
+          <AskPanel state={state} tab={overlay.tabId ? (findTab(state, overlay.tabId) ?? null) : null} closing={closing} onClose={closeOverlay} />
+        )}
+        {overlay?.kind === 'prompt' && (
+          <PromptDialog
+            title={overlay.title}
+            hint={overlay.hint}
+            placeholder={overlay.placeholder}
+            action={overlay.action}
+            closing={closing}
+            onSubmit={overlay.onSubmit}
+            onClose={closeOverlay}
+          />
+        )}
         {overlay?.kind === 'history' && <HistoryPanel closing={closing} onClose={closeOverlay} />}
         {overlay?.kind === 'todo' && (
-          <TodoPanel state={state} closing={closing} onClose={closeOverlay} left={sidebarVisible ? sidebarWidth + 4 : 10} />
+          <TodoPanel
+            state={state}
+            closing={closing}
+            onClose={closeOverlay}
+            place={sidebarRight ? { right: sidebarVisible ? sidebarWidth + 4 : 10 } : { left: sidebarVisible ? sidebarWidth + 4 : 10 }}
+          />
         )}
         {editing && <SpaceEditor key={`${editing.id}-${editorFocus ?? ''}`} state={state} space={editing} setup={setup} focus={editorFocus} closing={closing} onClose={closeOverlay} />}
       </div>
     </DndProvider>
   )
+}
+
+function findTab(state: AppState, id: string): TabItem | undefined {
+  return allTabs(state).find((t) => t.id === id)
 }

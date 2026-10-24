@@ -56,6 +56,8 @@ vaia/
 │   │   ├── passwords.ts        ← the encrypted password manager
 │   │   ├── media.ts            ← Library → Media: finding pictures/videos/PDFs, thumbnails, vaia-media://
 │   │   ├── miniPlayer.ts       ← the Mini Player's floating view (placing and dragging it)
+│   │   ├── docs.ts             ← notes and Easels (docs.json)
+│   │   ├── feeds.ts            ← reading RSS/Atom feeds for Live Folders
 │   │   ├── store.ts            ← saving/loading your data (vaia-state.json)
 │   │   ├── history.ts          ← browsing history (history.json)
 │   │   ├── archive.ts          ← archived & recently closed tabs (archive.json)
@@ -88,6 +90,8 @@ vaia/
 │               ├── Library.tsx       ← the Library (⇧⌘L) and its section list
 │               ├── ArchiveView.tsx, DownloadsView.tsx, MediaView.tsx, SpacesView.tsx, BoostsView.tsx  ← its sections
 │               ├── HistoryPanel.tsx, Toggle.tsx
+│               ├── NoteEditor.tsx, EaselView.tsx   ← notes and Easels (drawn right in the page card)
+│               ├── CaptureLayer.tsx, AskPanel.tsx, PromptDialog.tsx, TabSwitcher.tsx
 │               ├── PeekLayer.tsx, FindBar.tsx, BoostPanel.tsx
 │               ├── TodoList.tsx, TodoPanel.tsx, TodoSection.tsx  ← the to-do list's pieces
 │               └── Icons.tsx, Favicon.tsx
@@ -106,6 +110,14 @@ vaia/
 Each page reports when it starts or stops making sound (`audio-state-changed`), which puts the speaker on its tab. After every change the brain compares the tabs on screen with the ones before; if one that was making sound (or a call) just left the screen, it becomes the Mini Player's tab. The Mini Player is VAIA's own interface (`?view=mini`) in a small view placed above the pages, and its buttons run tiny scripts in the page (pause the videos, picture in picture).
 
 Once a minute the brain also looks for background tabs you haven't viewed for a while and closes their page (the tab stays in the sidebar; clicking it loads the page again).
+
+## Notes, Easels and other "VAIA pages"
+
+Most tabs are web pages drawn by the brain. Notes and Easels are different: their address is `vaia:note/<id>` or `vaia:easel/<id>`, the page card draws them with React (`NoteEditor`, `EaselView`), and the brain never creates a web page for them. Their content lives in `docs.json` (`docs.ts`); when a note is saved, the brain renames its tab after the first line.
+
+Live Folders are pinned folders with a feed address. Every minute the brain checks which ones are due (every 30 minutes), downloads the feed (`feeds.ts`) and replaces the folder's tabs with the newest 20 posts, keeping the ones you already had.
+
+The side panel is a tab that lives outside every Space (`sidePanel` in the saved data); the page card area reports it to the brain as one more pane, so it's drawn like any other page.
 
 ## The Library
 
@@ -147,7 +159,7 @@ The app gets an **ad-hoc signature**: a free self-signature that proves the file
 ## Where your data lives
 
 Everything is stored on your Mac in `~/Library/Application Support/VAIA/`:
-`vaia-state.json` (spaces, tabs, settings, boosts, to-dos), `history.json`, `archive.json`, `downloads.json`, `permissions.json` (site permissions), `claude-key.bin` (your Claude API key, encrypted), `passwords.bin` (saved passwords, encrypted), `Extensions/` (installed extensions), `adblock-engine.bin` (cached filter lists), plus each profile's cookies and site data. There are no accounts and no servers.
+`vaia-state.json` (spaces, tabs, settings, boosts, to-dos, Air Traffic Control rules), `docs.json` (notes and Easels), `Captures/` (saved captures), `history.json`, `archive.json`, `downloads.json`, `permissions.json` (site permissions), `claude-key.bin` (your Claude API key, encrypted), `passwords.bin` (saved passwords, encrypted), `Extensions/` (installed extensions), `adblock-engine.bin` (cached filter lists), plus each profile's cookies and site data. There are no accounts and no servers.
 
 ## Words you'll see
 

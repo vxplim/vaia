@@ -189,6 +189,18 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
   - **Shift + hover a link** for half a second: it opens in Peek
   - **Tab sleep** (Settings → General: 30 min / 1 hour (default) / 4 hours / never): background tabs you haven't viewed for that long are unloaded to save memory and load again when clicked. Never: tabs on screen, tabs making sound, calls, the Mini Player's tab, Peek, Little windows. Auto-archive also leaves tabs that are playing sound alone now
 
+- [x] **Phase 18: Organize + create** (tag `v1.9.0`)
+  - **Air Traffic Control** (Settings): rules "links matching [a domain, or any text in the address] → open in [a Space / a Little window]" for links from other apps and links opened from Little windows ("Open in VAIA" from a Little window follows them too). First match wins; no match = Little window as before
+  - **Live Folders:** "New Live Folder…" (the + menu at the bottom, right-click the pinned area, or the Command Bar) and paste an RSS/Atom feed address. The folder takes the feed's name, shows its newest 20 posts, checks every 30 minutes (right-click → Refresh Now), marks new posts with a dot and a count, and opening a post marks it read (right-click → Mark All as Read). A feed that can't be read shows a red "!" with the reason
+  - **Notes:** "New Note" (+ menu, Command Bar, right-click the pinned area) opens a note tab: headings, bold/italic, bullet/numbered lists, checklists, links (⌘-click to open) and pictures (button, paste or drop). Saved automatically on this Mac; the first line names the tab; pin it like any tab; the Command Bar finds notes by their text even when their tab is closed
+  - **Easels:** "New Easel" opens a canvas: double-click to write, drop pictures (files or from pages) and links, add captures; drag to move, the corner handle resizes, ⌫ removes. Pictures from pages remember where they came from ("from site ↗")
+  - **Capture (⇧⌘2, View menu, Command Bar):** drag over the page to pick an area (or take everything visible), then Copy, Save to Media (Library → Media), or Add to Easel… (an existing Easel or a new one)
+  - **Side panel:** right-click a tab → "Open in Side Panel" (or the Command Bar) shows the site in a narrow panel next to the page. Drag its edge to resize; the panel button at the top of the sidebar hides/shows it; its header can reload it, turn it back into a tab, or hide it
+  - **Compact mode** (Settings, Command Bar "Toggle Compact Mode"): hides the Space name, back/forward/reload, the extension and Boost buttons and the address icon
+  - **Sidebar on the left or right** (Settings → Sidebar position, Command Bar "Move Sidebar to the Other Side")
+  - **Ask on Page** (Command Bar "Ask about this page…"): sends the page's text and your question to Claude with the key saved for AI Tidy, and shows the answer as it's written in a small panel (follow-up questions too). Without a key it explains where to add one
+  - The + at the bottom of the sidebar is now a menu: New Tab, Note, Easel, Folder, Live Folder, Space, Little window, private window
+
 ### Google sign-in: what the tests showed
 
 - With compatibility on, Google's sign-in page sees Firefox (checked) while other sites in the same Space see Chrome (checked).
@@ -282,6 +294,16 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - **Favorites can't be renamed** (they're icon-only); a name given while the tab was pinned stays and shows as the tile's tooltip.
 - **A sleeping tab loses its back/forward history and anything typed but not sent** (same as after a restart), so 1 hour is the default rather than 30 minutes.
 - **Unread counts are read from the page title**, the same thing the page shows in its own tab; the badge hides while you hover the row so the close button has room.
+- **Notes and Easels are drawn by VAIA itself** (their tabs have addresses like `vaia:note/…`), not loaded as web pages, and are saved in `docs.json`. Closing their tab doesn't delete them: the Command Bar still finds and reopens them. Typing a web address into a note's tab turns that tab into a web page (the note stays saved).
+- **Pasted note content is cleaned** to simple formatting (headings, lists, checkboxes, links, pictures). Scripts, event handlers, styles and embedded frames are removed, and VAIA's interface refuses inline scripts anyway. (While cleaning, Chromium logs "inline event handler … blocked" for pasted `onclick=`-style attributes: that's the protection reporting what it stopped, nothing runs.)
+- **Pictures dropped or pasted from files are stored inside the note/Easel** (so they survive the file being moved); very large pictures make docs.json bigger.
+- **Easels have no zoom** (simpler version chosen): the canvas grows as you place things further out and scrolls.
+- **Live Folders mark only posts that arrive after you created them as unread** (the first 20 would be a wall of dots). A feed address typed without http(s):// uses https, or http if the site only answers on plain http.
+- **Captures saved to Media live in VAIA's data folder** (`Captures/`), shown in Library → Media with Show in Finder / Delete like downloads.
+- **The side panel uses the normal (shared) account**, is the same in every Space, and isn't put to sleep. Opening a Today tab in the side panel moves it there; pinned tabs and favorites stay where they are (a copy opens in the panel).
+- **Air Traffic Control rules match a domain and its subdomains** when you type something like `figma.com`; anything else (e.g. `/meeting/`) matches text anywhere in the address. A rule pointing at a deleted Space is ignored.
+- **Ask on Page sends the page's visible text** (up to about 30,000 words) and your question, only when you ask. The answer streams in; closing the panel stops it.
+- **With the sidebar on the right**, the page card starts a little lower so the window's red/yellow/green buttons (always top-left on a Mac) sit above it.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -294,6 +316,8 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 
 ## Needs Vanessa
 
+- **Try Ask on Page and Live Folders on real sites:** Ask needs your Claude API key (Settings → Tidy & to-do); for a Live Folder try a blog's feed, e.g. `https://www.theverge.com/rss/index.xml`.
+- **Air Traffic Control only applies once VAIA is your default browser** (links from other apps). Make it the default from the installed app (VAIA menu → Make VAIA Your Default Browser).
 - **Try the Mini Player on a real video and a real call** (e.g. a YouTube video, then switch tabs; a Google Meet call). Picture in picture should pop the video out of VAIA.
 - **Test Phase 16 with `npm run dev`:** open the Library (bottom-left button or ⇧⌘L) and try each section, the Space menu (hover the Space name → ⋯), and "Export Tabs as Bookmarks…". No new release was built, as you asked.
 - **Screenshots in Media:** turn on Settings → "Include my Mac screenshots". macOS will ask whether VAIA (while developing it says "Electron" or your Terminal app) may access the Desktop/screenshots folder: click **Allow**. If you clicked "Don't Allow", Media shows an "Open Privacy Settings" button. (The automated tests used a test folder so no prompt appeared on your Mac.)

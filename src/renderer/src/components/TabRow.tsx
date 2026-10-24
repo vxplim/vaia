@@ -91,6 +91,7 @@ export function TabRow({ tab, state, active, zone, spaceId, parentId, index, dep
     >
       <span className={`tab-icon${rt?.loading ? ' loading' : ''}`}>
         <Favicon src={tab.favicon} url={tab.url} />
+        {tab.unread && <span className="unread-dot" title="New post" />}
       </span>
       {renaming ? (
         <input

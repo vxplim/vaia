@@ -1,11 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { locate } from '../../../shared/tree'
 import type { AppState, Pane, Space, SplitItem, TabItem } from '../../../shared/types'
-import { displayHost } from '../../../shared/url'
+import { displayHost, internalPage } from '../../../shared/url'
 import { useDnd } from '../dnd'
 import { showLayoutMenu } from '../splitLayouts'
 import { dispatch } from '../state'
-import { IconBack, IconClose, IconForward, IconLayout, IconReload, IconStop } from './Icons'
+import { EaselView } from './EaselView'
+import { Favicon } from './Favicon'
+import { IconBack, IconClose, IconExpand, IconForward, IconLayout, IconReload, IconStop } from './Icons'
+import { NoteEditor } from './NoteEditor'
 
 interface Props {
   state: AppState
@@ -40,7 +43,13 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
   const loc = space.activeId ? locate(state, space.activeId) : null
   const split = loc?.item.kind === 'split' ? loc.item : null
   const tabs: TabItem[] = !loc ? [] : loc.item.kind === 'tab' ? [loc.item] : split ? split.tabs : []
-  const tabKey = tabs.map((t) => `${t.id}:${t.url ? 1 : 0}`).join(',')
+  // The side panel: a narrow page next to the main one(s).
+  const panel = state.sidePanel?.open ? state.sidePanel : null
+  const [panelWidth, setPanelWidth] = useState<number | null>(null)
+  const panelTab = panel?.tab ?? null
+  const tabKey = [...tabs, ...(panelTab ? [panelTab] : [])].map((t) => `${t.id}:${t.url ? 1 : 0}`).join(',')
+  /** Web pages (the brain draws these); notes and Easels are drawn here instead. */
+  const isWeb = (t: TabItem) => !!t.url && !internalPage(t.url)
 
   const [liveSizes, setLiveSizes] = useState<number[] | null>(null)
   const sizes = liveSizes ?? (split && split.sizes.length === tabs.length ? split.sizes : tabs.map(() => 1 / tabs.length))
@@ -68,7 +77,7 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
       const t = setTimeout(() => setSnapshots({}), 80)
       return () => clearTimeout(t)
     }
-    const ids = tabs.filter((t) => t.url).map((t) => t.id)
+    const ids = [...tabs, ...(panelTab ? [panelTab] : [])].filter(isWeb).map((t) => t.id)
     let cancelled = false
     window.vaia.capture(ids).then(async (shots) => {
       await Promise.all(
@@ -91,9 +100,9 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
     const report = () => {
       if (hidden) return sendPanes([])
       const panes: Pane[] = []
-      for (const tab of tabs) {
+      for (const tab of [...tabs, ...(panelTab ? [panelTab] : [])]) {
         const el = paneEls.current.get(tab.id)
-        if (!tab.url || !el) continue
+        if (!isWeb(tab) || !el) continue
         const r = el.getBoundingClientRect()
         panes.push({ tabId: tab.id, rect: { x: r.left, y: r.top, width: r.width, height: r.height } })
       }
@@ -107,7 +116,7 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
       observer.disconnect()
       window.removeEventListener('resize', report)
     }
-  }, [tabKey, hidden, sizes.join(','), isGrid, grid.col, grid.row])
+  }, [tabKey, hidden, sizes.join(','), isGrid, grid.col, grid.row, panelWidth, panel?.width])
 
   const startResize = (index: number) => (e: PointerEvent<HTMLDivElement>) => {
     const el = container.current
@@ -163,17 +172,47 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
   }
   const even = () => split && dispatch({ type: 'split/even', id: split.id })
 
+  const startPanelResize = (e: PointerEvent<HTMLDivElement>) => {
+    if (!panel) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    const startX = e.clientX
+    const start = panel.width
+    let latest = start
+    const left = state.settings.sidebarSide === 'right'
+    const move = (ev: globalThis.PointerEvent) => {
+      latest = Math.round(Math.min(800, Math.max(260, start + (left ? ev.clientX - startX : startX - ev.clientX))))
+      setPanelWidth(latest)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      dispatch({ type: 'sidePanel/resize', width: latest })
+      setTimeout(() => setPanelWidth(null), 60)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  const internal = (tab: TabItem) => {
+    const page = internalPage(tab.url)
+    if (!page) return null
+    return page.kind === 'note' ? <NoteEditor key={page.id} docId={page.id} /> : <EaselView key={page.id} docId={page.id} />
+  }
+
   const pane = (tab: TabItem) => (
     <>
       {split && <PaneToolbar tab={tab} split={split} state={state} />}
       <div
-        className={`content-card${split && split.focusedId === tab.id ? ' focused' : ''}`}
+        data-tab-id={tab.id}
+        className={`content-card${split && split.focusedId === tab.id ? ' focused' : ''}${internalPage(tab.url) ? ' internal' : ''}`}
         ref={(el) => {
           if (el) paneEls.current.set(tab.id, el)
           else paneEls.current.delete(tab.id)
         }}
         onMouseDown={() => split && dispatch({ type: 'tab/activate', id: tab.id })}
       >
+        {internal(tab)}
         {tab.url && snapshots[tab.id] && hidden && <img className="page-snapshot" src={snapshots[tab.id]} alt="" />}
         {state.runtime[tab.id]?.crashed && (
           <div className="empty-state crashed">
@@ -212,71 +251,103 @@ export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
       }}
     >
       {findBar}
-      <div className="panes" ref={container}>
-        {tabs.length === 0 && (
-          <div className="content-card">
-            <EmptyState />
-          </div>
-        )}
-        {isGrid ? (
-          <div
-            className="pane-grid"
-            style={{
-              gridTemplateColumns: `${grid.col}fr ${1 - grid.col}fr`,
-              gridTemplateRows: `${grid.row}fr ${1 - grid.row}fr`
-            }}
-          >
-            {tabs.map((tab) => (
-              <div key={tab.id} className="pane-slot">
+      <div className="content-row">
+        <div className="panes" ref={container}>
+          {tabs.length === 0 && (
+            <div className="content-card">
+              <EmptyState />
+            </div>
+          )}
+          {isGrid ? (
+            <div
+              className="pane-grid"
+              style={{
+                gridTemplateColumns: `${grid.col}fr ${1 - grid.col}fr`,
+                gridTemplateRows: `${grid.row}fr ${1 - grid.row}fr`
+              }}
+            >
+              {tabs.map((tab) => (
+                <div key={tab.id} className="pane-slot">
+                  {pane(tab)}
+                </div>
+              ))}
+              <div
+                className="grid-divider row"
+                style={{ top: `calc(${grid.row * 100}% - 4px)` }}
+                onPointerDown={startGridResize('row')}
+                onDoubleClick={even}
+                title="Drag to resize · double-click to make even"
+              />
+              <div
+                className="grid-divider col"
+                style={{ left: `calc(${grid.col * 100}% - 4px)` }}
+                onPointerDown={startGridResize('col')}
+                onDoubleClick={even}
+                title="Drag to resize · double-click to make even"
+              />
+              <div
+                className="grid-divider both"
+                style={{ left: `calc(${grid.col * 100}% - 8px)`, top: `calc(${grid.row * 100}% - 8px)` }}
+                onPointerDown={startGridResize('both')}
+                onDoubleClick={even}
+                title="Drag to resize both ways · double-click to make even"
+              />
+            </div>
+          ) : (
+            tabs.map((tab, i) => (
+              <div key={tab.id} className="pane-slot" style={{ flexGrow: sizes[i] ?? 1 }}>
+                {i > 0 && (
+                  <div
+                    className="split-divider"
+                    onPointerDown={startResize(i - 1)}
+                    onDoubleClick={even}
+                    title="Drag to resize · double-click to make even"
+                  />
+                )}
                 {pane(tab)}
               </div>
-            ))}
-            <div
-              className="grid-divider row"
-              style={{ top: `calc(${grid.row * 100}% - 4px)` }}
-              onPointerDown={startGridResize('row')}
-              onDoubleClick={even}
-              title="Drag to resize · double-click to make even"
-            />
-            <div
-              className="grid-divider col"
-              style={{ left: `calc(${grid.col * 100}% - 4px)` }}
-              onPointerDown={startGridResize('col')}
-              onDoubleClick={even}
-              title="Drag to resize · double-click to make even"
-            />
-            <div
-              className="grid-divider both"
-              style={{ left: `calc(${grid.col * 100}% - 8px)`, top: `calc(${grid.row * 100}% - 8px)` }}
-              onPointerDown={startGridResize('both')}
-              onDoubleClick={even}
-              title="Drag to resize both ways · double-click to make even"
-            />
-          </div>
-        ) : (
-          tabs.map((tab, i) => (
-            <div key={tab.id} className="pane-slot" style={{ flexGrow: sizes[i] ?? 1 }}>
-              {i > 0 && (
-                <div
-                  className="split-divider"
-                  onPointerDown={startResize(i - 1)}
-                  onDoubleClick={even}
-                  title="Drag to resize · double-click to make even"
-                />
-              )}
-              {pane(tab)}
+            ))
+          )}
+          {canDropTab && hidden && !panelTab && (
+            <div className="drop-zones">
+              <div className={`drop-zone${dropSide === 'left' ? ' active' : ''}`}>
+                {dropSide === 'left' && <span>Open on the left</span>}
+              </div>
+              <div className={`drop-zone${dropSide === 'right' ? ' active' : ''}`}>
+                {dropSide === 'right' && <span>Open on the right</span>}
+              </div>
             </div>
-          ))
-        )}
-        {canDropTab && hidden && (
-          <div className="drop-zones">
-            <div className={`drop-zone${dropSide === 'left' ? ' active' : ''}`}>
-              {dropSide === 'left' && <span>Open on the left</span>}
+          )}
+        </div>
+        {panelTab && (
+          <aside className="side-panel" style={{ width: panelWidth ?? panel!.width }}>
+            <div className="side-panel-divider" onPointerDown={startPanelResize} title="Drag to resize" />
+            <div className="side-panel-head">
+              <Favicon src={panelTab.favicon} url={panelTab.url} />
+              <span className="side-panel-title" title={panelTab.url}>
+                {panelTab.title || displayHost(panelTab.url)}
+              </span>
+              <button className="pane-button" title="Reload" onClick={() => dispatch({ type: 'tab/reload', id: panelTab.id })}>
+                <IconReload />
+              </button>
+              <button className="pane-button" title="Open as a tab" onClick={() => dispatch({ type: 'sidePanel/toTab' })}>
+                <IconExpand />
+              </button>
+              <button className="pane-button" title="Hide the side panel (the panel button brings it back)" onClick={() => dispatch({ type: 'sidePanel/toggle' })}>
+                <IconClose />
+              </button>
             </div>
-            <div className={`drop-zone${dropSide === 'right' ? ' active' : ''}`}>
-              {dropSide === 'right' && <span>Open on the right</span>}
+            <div
+              className="content-card"
+              data-tab-id={panelTab.id}
+              ref={(el) => {
+                if (el) paneEls.current.set(panelTab.id, el)
+                else paneEls.current.delete(panelTab.id)
+              }}
+            >
+              {snapshots[panelTab.id] && hidden && <img className="page-snapshot" src={snapshots[panelTab.id]} alt="" />}
             </div>
-          </div>
+          </aside>
         )}
       </div>
     </main>

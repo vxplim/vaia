@@ -45,7 +45,15 @@ export function inputToUrl(input: string, engine: SearchEngineId): string {
 }
 
 /** https://www.example.com/a/b -> example.com */
+/** VAIA's own pages: vaia:note/<id> and vaia:easel/<id> (drawn by VAIA, not loaded from the web). */
+export function internalPage(url: string): { kind: 'note' | 'easel'; id: string } | null {
+  const m = /^vaia:(note|easel)\/([\w-]+)$/.exec(url)
+  return m ? { kind: m[1] as 'note' | 'easel', id: m[2] } : null
+}
+
 export function displayHost(url: string): string {
+  const internal = internalPage(url)
+  if (internal) return internal.kind === 'note' ? 'Note' : 'Easel'
   try {
     const u = new URL(url)
     if (u.protocol === 'file:') return decodeURIComponent(u.pathname.split('/').pop() || 'File')

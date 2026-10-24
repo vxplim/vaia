@@ -46,7 +46,7 @@ export function SpaceEditor({ state, space, setup = false, focus, closing, onClo
         ref={panelRef}
         tabIndex={-1}
         className="panel space-editor"
-        style={{ left: state.settings.sidebarVisible ? state.settings.sidebarWidth + 16 : 24 }}
+        style={{ [state.settings.sidebarSide === 'right' ? 'right' : 'left']: state.settings.sidebarVisible ? state.settings.sidebarWidth + 16 : 24 }}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >

@@ -4,6 +4,8 @@ import type {
   AppState,
   ArchivedTab,
   Boost,
+  Doc,
+  DocKind,
   HistoryEntry,
   MediaList,
   Pane,
@@ -147,6 +149,26 @@ export type Action =
   | { type: 'mini/close' }
   | { type: 'mini/dragStart' }
   | { type: 'mini/dragEnd' }
+  | { type: 'doc/new'; kind: DocKind }
+  | { type: 'doc/save'; id: string; patch: Partial<Pick<Doc, 'title' | 'html' | 'items'>> }
+  /** Open a note or Easel (switches to its tab if it's open somewhere). */
+  | { type: 'doc/open'; id: string }
+  /** Take a picture of part of a page (rect in page pixels; null = all of it that's visible). */
+  | { type: 'capture/take'; tabId: string; rect: Rect | null; to: 'copy' | 'media' | 'easel'; easelId?: string }
+  | { type: 'liveFolder/new'; url: string; spaceId?: string }
+  | { type: 'liveFolder/refresh'; id: string }
+  | { type: 'liveFolder/markAllRead'; id: string }
+  | { type: 'atc/add'; match: string; target: string }
+  | { type: 'atc/remove'; id: string }
+  | { type: 'sidePanel/open'; tabId: string }
+  | { type: 'sidePanel/toggle' }
+  | { type: 'sidePanel/resize'; width: number }
+  /** Turn the side panel's page into a normal tab and close the panel. */
+  | { type: 'sidePanel/toTab' }
+  | { type: 'sidePanel/close' }
+  /** Ask Claude about a page; the answer arrives as ask-update commands. */
+  | { type: 'ai/ask'; tabId: string; question: string; askId: string }
+  | { type: 'ai/cancelAsk'; askId: string }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
 export interface VaiaApi {
@@ -173,6 +195,10 @@ export interface VaiaApi {
   listMedia(): Promise<MediaList>
   /** A Quick Look picture of a Media file, about `size` pixels wide, as a data: URL. */
   mediaThumbnail(path: string, size: number): Promise<string | null>
+  /** A note's or Easel's saved content. */
+  getDoc(id: string): Promise<Doc | null>
+  /** Notes whose title or text match (for the Command Bar). */
+  searchDocs(query: string): Promise<{ id: string; kind: Doc['kind']; title: string; snippet: string }[]>
   /** Show a native right-click menu; resolves with the chosen item's id (or null). */
   popupMenu(items: MenuItem[]): Promise<string | null>
   onCommand(listener: (command: UiCommand) => void): () => void

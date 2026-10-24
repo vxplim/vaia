@@ -28,6 +28,8 @@ const api: VaiaApi = {
   downloadThumbnail: (id) => ipcRenderer.invoke('download:thumbnail', id),
   listMedia: () => ipcRenderer.invoke('media:list'),
   mediaThumbnail: (path, size) => ipcRenderer.invoke('media:thumbnail', path, size),
+  getDoc: (id) => ipcRenderer.invoke('docs:get', id),
+  searchDocs: (query) => ipcRenderer.invoke('docs:search', query),
   listPasswords: () => ipcRenderer.invoke('passwords:list'),
   onCommand: (listener) => listen<UiCommand>('ui:command', listener)
 }

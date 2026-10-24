@@ -1,15 +1,16 @@
+import type { CSSProperties } from 'react'
 import type { AppState } from '../../../shared/types'
 import { dispatch } from '../state'
 import { IconClose, IconPopout } from './Icons'
 import { TodoView } from './TodoList'
 
 /** The to-do list sliding out next to the sidebar (⇧⌘K or the ✓ button). */
-export function TodoPanel({ state, closing, onClose, left }: { state: AppState; closing: boolean; onClose: () => void; left: number }) {
+export function TodoPanel({ state, closing, onClose, place }: { state: AppState; closing: boolean; onClose: () => void; place: CSSProperties }) {
   return (
     <div className={`overlay-layer light${closing ? ' closing' : ''}`} onMouseDown={onClose}>
       <div
         className="panel todo-drawer"
-        style={{ left }}
+        style={place}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.key === 'Escape' && onClose()}
       >

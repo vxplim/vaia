@@ -5,7 +5,7 @@ import { SEARCH_ENGINES, displayHost, inputToUrl, searchUrl } from '../../../sha
 import { matchCommands, type CommandContext } from '../commands'
 import { dispatch } from '../state'
 import { Favicon } from './Favicon'
-import { IconCheckCircle, IconGlobe, IconSearch } from './Icons'
+import { IconCheckCircle, IconGlobe, IconNote, IconSearch } from './Icons'
 
 interface Result {
   key: string
@@ -34,6 +34,7 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [notes, setNotes] = useState<{ id: string; kind: 'note' | 'easel'; title: string; snippet: string }[]>([])
   const input = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLDivElement>(null)
   const engine = state.settings.searchEngine
@@ -48,10 +49,12 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
     if (!q) {
       setSuggestions([])
       setHistory([])
+      setNotes([])
       return
     }
     let stale = false
     window.vaia.searchHistory(q).then((h) => !stale && setHistory(h))
+    window.vaia.searchDocs(q).then((n) => !stale && setNotes(n))
     const timer = setTimeout(() => {
       window.vaia.suggest(q).then((s) => !stale && setSuggestions(s))
     }, 120)
@@ -141,6 +144,21 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
 
     if (mode === 'new') out.push(...commandRows)
 
+    if (q && mode === 'new') {
+      // Notes and Easels whose text matches (they're searchable even when their tab is closed).
+      const openDocs = new Set(tabs.map((t) => t.url))
+      for (const n of notes.filter((n) => !openDocs.has(`vaia:${n.kind}/${n.id}`)).slice(0, 4)) {
+        out.push({
+          key: `doc-${n.id}`,
+          icon: <IconNote />,
+          title: n.title,
+          subtitle: n.snippet,
+          label: n.kind === 'note' ? 'Note' : 'Easel',
+          run: () => dispatch({ type: 'doc/open', id: n.id })
+        })
+      }
+    }
+
     if (q) {
       const openUrls = new Set(tabs.map((t) => t.url))
       for (const h of history.filter((h) => !openUrls.has(h.url)).slice(0, 4)) {
@@ -164,7 +182,7 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
       }
     }
     return out
-  }, [query, state, activeTabId, history, suggestions, engine, ui, mode])
+  }, [query, state, activeTabId, history, suggestions, notes, engine, ui, mode])
 
   // Remember the highlighted row by its key, so late-arriving suggestions don't move it.
   const found = results.findIndex((r) => r.key === selectedKey)

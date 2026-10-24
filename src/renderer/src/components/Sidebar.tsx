@@ -6,7 +6,7 @@ import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
 import { siteKey } from '../../../shared/url'
 import { BoostPanel } from './BoostPanel'
-import { IconBack, IconBoost, IconBroom, IconForward, IconMore, IconPlus, IconPuzzle, IconReload, IconSidebar, IconStop } from './Icons'
+import { IconBack, IconBoost, IconBroom, IconForward, IconMore, IconPanelRight, IconPlus, IconPuzzle, IconReload, IconSidebar, IconStop } from './Icons'
 import { ItemList } from './PinnedList'
 import { SpaceBar } from './SpaceBar'
 import { TodoSection } from './TodoSection'
@@ -22,6 +22,7 @@ interface Props {
   onEditSpace: (spaceId: string, setup?: boolean, focus?: SpaceEditorFocus) => void
   onOpenPanel: (panel: Panel) => void
   onOpenLibrary: (section?: LibrarySection) => void
+  onNewLiveFolder: (spaceId?: string) => void
   onToggleSidebar: () => void
   boostOpen: boolean
   onBoost: (open: boolean) => void
@@ -84,7 +85,7 @@ function useSwipe(onSwipe: (delta: 1 | -1) => void) {
 }
 
 export function Sidebar(props: Props) {
-  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onOpenLibrary, onToggleSidebar, boostOpen, onBoost } =
+  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onOpenLibrary, onNewLiveFolder, onToggleSidebar, boostOpen, onBoost } =
     props
   const site = activeTab ? siteKey(activeTab.url) : null
   const boosted = !!(site && state.boosts[site]?.enabled)
@@ -108,7 +109,7 @@ export function Sidebar(props: Props) {
     const folderId = (await dispatch({ type: 'folder/new', spaceId })) as string
     setRenamingId(folderId)
   }
-  const menuUi: SpaceMenuUi = { editSpace: onEditSpace, openLibrary: onOpenLibrary, newFolder }
+  const menuUi: SpaceMenuUi = { editSpace: onEditSpace, openLibrary: onOpenLibrary, newFolder, newLiveFolder: onNewLiveFolder }
   const listProps = { state, space, renamingId, setRenamingId, depth: 0, parentId: null }
 
   return (
@@ -119,6 +120,15 @@ export function Sidebar(props: Props) {
             <IconSidebar />
           </button>
         </div>
+        {state.sidePanel && (
+          <button
+            className={`icon-button side-panel-button${state.sidePanel.open ? ' on' : ''}`}
+            title={state.sidePanel.open ? 'Hide the side panel' : 'Show the side panel'}
+            onClick={() => dispatch({ type: 'sidePanel/toggle' })}
+          >
+            <IconPanelRight />
+          </button>
+        )}
         <ExtensionsBar state={state} />
         <div className="nav-buttons">
           <button
@@ -190,7 +200,7 @@ export function Sidebar(props: Props) {
           onContextMenu={(e) => {
             if (e.target === e.currentTarget) {
               e.preventDefault()
-              pinnedAreaMenu(() => newFolder())
+              pinnedAreaMenu(() => newFolder(), () => onNewLiveFolder(space.id))
             }
           }}
         >

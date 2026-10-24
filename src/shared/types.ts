@@ -29,6 +29,8 @@ export interface TabItem {
   customName?: string
   /** A page in a private window: nothing about it is saved. */
   private?: boolean
+  /** A Live Folder item you haven't opened yet. */
+  unread?: boolean
   createdAt: number
   lastViewedAt: number
 }
@@ -39,6 +41,15 @@ export interface FolderItem {
   name: string
   collapsed: boolean
   children: SidebarItem[]
+  /** A Live Folder: filled from an RSS/Atom feed. */
+  feed?: LiveFeed
+}
+
+export interface LiveFeed {
+  url: string
+  lastChecked?: number
+  /** Why the last refresh failed, if it did. */
+  error?: string
 }
 
 export interface SplitItem {
@@ -105,6 +116,61 @@ export interface Settings {
   sleepAfter: SleepAfter
   /** Where the Mini Player sits in the page area. */
   miniPlayerCorner: Corner
+  /** A minimal sidebar: no Space name, no back/forward/reload, no extension or Boost buttons. */
+  compactMode: boolean
+  sidebarSide: 'left' | 'right'
+}
+
+/** Air Traffic Control: "links matching … open in …" (for links from other apps and Little windows). */
+export interface AtcRule {
+  id: string
+  /** A domain (example.com, also matches its subdomains) or any text in the address. */
+  match: string
+  /** A Space id, or "little" for a Little window. */
+  target: string
+}
+
+/** A site shown in the narrow panel next to the page. */
+export interface SidePanel {
+  tab: TabItem
+  width: number
+  open: boolean
+}
+
+export type DocKind = 'note' | 'easel'
+
+/** Something on an Easel. Positions and sizes are in canvas pixels. */
+export interface EaselItem {
+  id: string
+  kind: 'image' | 'text' | 'link'
+  x: number
+  y: number
+  w: number
+  h: number
+  /** Image address (https:, or data: for dropped files and captures). */
+  src?: string
+  text?: string
+  url?: string
+  /** The page an image or capture came from. */
+  sourceUrl?: string
+}
+
+/** A note or an Easel (saved in docs.json). */
+export interface Doc {
+  id: string
+  kind: DocKind
+  title: string
+  /** A note's content (simple, cleaned HTML). */
+  html?: string
+  items?: EaselItem[]
+  updatedAt: number
+}
+
+export interface DocInfo {
+  id: string
+  kind: DocKind
+  title: string
+  updatedAt: number
 }
 
 export interface Todo {
@@ -142,6 +208,8 @@ export interface PersistedState {
   boosts: Record<string, Boost>
   /** One shared list, in the order you arranged it. */
   todos: Todo[]
+  airTraffic: AtcRule[]
+  sidePanel: SidePanel | null
 }
 
 export type PermissionKind =
@@ -222,6 +290,8 @@ export interface AppState extends PersistedState {
   sitePermissions: SitePermissions
   extensions: ExtensionInfo[]
   mini: MiniPlayer | null
+  /** Notes and Easels (titles only). */
+  docs: DocInfo[]
 }
 
 export interface HistoryEntry {
@@ -268,7 +338,7 @@ export interface MediaItem {
   size: number
   /** When it was downloaded (or, for screenshots, taken). */
   time: number
-  source: 'download' | 'screenshot'
+  source: 'download' | 'screenshot' | 'capture'
 }
 
 export interface MediaList {
@@ -295,3 +365,7 @@ export type UiCommand =
   | { type: 'tab-switcher'; back: boolean }
   /** Ctrl was let go in a web page: pick the highlighted tab. */
   | { type: 'tab-switcher-commit' }
+  /** ⇧⌘2: capture part of the page. */
+  | { type: 'capture' }
+  /** A piece of Claude's answer for Ask on Page (done = finished, error = what went wrong). */
+  | { type: 'ask-update'; askId: string; text: string; done: boolean; error?: string }

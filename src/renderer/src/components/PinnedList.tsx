@@ -4,7 +4,8 @@ import { useDragRow } from '../dnd'
 import { folderMenu, splitMenu } from '../menus'
 import { dispatch } from '../state'
 import { Favicon } from './Favicon'
-import { IconChevron, IconClose, IconFolder } from './Icons'
+import { tabsIn } from '../../../shared/tree'
+import { IconChevron, IconClose, IconFeed, IconFolder } from './Icons'
 import { TabRow } from './TabRow'
 
 interface ListProps {
@@ -70,6 +71,9 @@ function FolderRow({ folder, index, ...props }: ListProps & { folder: FolderItem
     }
   }, [editing, folder.name])
 
+  // Live Folders: how many posts you haven't opened yet.
+  const unread = folder.feed ? tabsIn(folder.children).filter((t) => t.unread).length : 0
+
   const commit = () => {
     if (name.trim() && name !== folder.name) dispatch({ type: 'folder/rename', id: folder.id, name })
     setRenamingId(null)
@@ -91,7 +95,7 @@ function FolderRow({ folder, index, ...props }: ListProps & { folder: FolderItem
         }}
       >
         <IconChevron className={`folder-chevron${folder.collapsed ? '' : ' open'}`} />
-        <IconFolder className="folder-icon" />
+        {folder.feed ? <IconFeed className="folder-icon" /> : <IconFolder className="folder-icon" />}
         {editing ? (
           <input
             ref={input}
@@ -107,14 +111,18 @@ function FolderRow({ folder, index, ...props }: ListProps & { folder: FolderItem
             }}
           />
         ) : (
-          <span className="tab-title">{folder.name}</span>
+          <span className="tab-title" title={folder.feed ? `${folder.feed.url}${folder.feed.error ? `\n${folder.feed.error}` : ''}` : undefined}>
+            {folder.name}
+          </span>
         )}
+        {folder.feed?.error && <span className="feed-error" title={folder.feed.error}>!</span>}
+        {unread > 0 && <span className="unread-badge">{unread}</span>}
       </div>
       {!folder.collapsed && (
         <div className="folder-children">
           {folder.children.length === 0 ? (
             <div className="folder-empty" style={{ paddingLeft: 32 + depth * 14 }}>
-              Drag tabs here
+              {folder.feed ? (folder.feed.lastChecked ? 'No posts in this feed' : 'Loading the feed…') : 'Drag tabs here'}
             </div>
           ) : (
             <ItemList {...props} items={folder.children} parentId={folder.id} depth={depth + 1} />

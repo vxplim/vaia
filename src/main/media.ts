@@ -60,7 +60,8 @@ export class Media {
     private downloads: () => DownloadItem[],
     private includeScreenshots: () => boolean,
     private toast: (text: string) => void,
-    private forgetDownload: (path: string) => void
+    private forgetDownload: (path: string) => void,
+    private capturesDir: () => string
   ) {}
 
   async list(): Promise<MediaList> {
@@ -69,6 +70,18 @@ export class Media {
       const kind = KINDS[extname(d.path).toLowerCase()]
       if (d.state !== 'completed' || !kind || !existsSync(d.path)) continue
       items.push({ path: d.path, name: basename(d.path), kind, size: d.total || d.received, time: d.startedAt, source: 'download' })
+    }
+    // Captures saved with ⇧⌘2 → "Save to Media".
+    try {
+      const dir = this.capturesDir()
+      for (const name of await readdir(dir)) {
+        if (!/\.png$/i.test(name)) continue
+        const path = join(dir, name)
+        const info = await stat(path).catch(() => null)
+        if (info?.isFile()) items.push({ path, name, kind: 'image', size: info.size, time: info.birthtimeMs || info.mtimeMs, source: 'capture' })
+      }
+    } catch {
+      // No captures yet.
     }
     const result: MediaList = { items }
     if (this.includeScreenshots()) {

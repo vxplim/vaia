@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join } from 'node:path'
 import type {
   AppState,
+  DocInfo,
   DownloadItem,
   ExtensionInfo,
   MiniPlayer,
@@ -57,7 +58,9 @@ export const DEFAULT_SETTINGS: Settings = {
   librarySection: 'archive',
   mediaScreenshots: false,
   sleepAfter: '1h',
-  miniPlayerCorner: 'bottom-right'
+  miniPlayerCorner: 'bottom-right',
+  compactMode: false,
+  sidebarSide: 'left'
 }
 
 export function newSpace(name: string, icon: string, colors: string[]): Space {
@@ -82,7 +85,9 @@ function defaultState(): PersistedState {
     favorites: [],
     settings: { ...DEFAULT_SETTINGS },
     boosts: {},
-    todos: []
+    todos: [],
+    airTraffic: [],
+    sidePanel: null
   }
 }
 
@@ -95,7 +100,9 @@ function normalize(raw: Partial<PersistedState>): PersistedState {
     settings: { ...DEFAULT_SETTINGS, ...(raw.settings ?? {}) },
     boosts: raw.boosts ?? {},
     favorites: raw.favorites ?? [],
-    todos: raw.todos ?? []
+    todos: raw.todos ?? [],
+    airTraffic: raw.airTraffic ?? [],
+    sidePanel: raw.sidePanel ?? null
   }
   if (!Array.isArray(state.spaces) || state.spaces.length === 0) state.spaces = base.spaces
   state.spaces = state.spaces.map((s) => ({ ...newSpace(s.name, s.icon, s.theme?.colors ?? ['#e5e5e5']), ...s }))
@@ -115,6 +122,7 @@ export class Store {
   sitePermissions: SitePermissions = {}
   extensions: ExtensionInfo[] = []
   mini: MiniPlayer | null = null
+  docs: DocInfo[] = []
   /** Called (soon) after every change, e.g. to update the Mini Player. */
   onChange: (() => void) | null = null
   private subscribers = new Set<WebContents>()
@@ -135,7 +143,8 @@ export class Store {
       aiKeySet: this.aiKeySet,
       sitePermissions: this.sitePermissions,
       extensions: this.extensions,
-      mini: this.mini
+      mini: this.mini,
+      docs: this.docs
     }
   }
 

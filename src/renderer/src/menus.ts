@@ -65,6 +65,7 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
   if (navigatedAway) items.push({ label: 'Return to Pinned Page', run: () => dispatch({ type: 'tab/resetPinned', id }) })
   items.push(sep)
   if (!active && tab.url) items.push({ label: 'Open in Split View', run: () => dispatch({ type: 'split/add', tabId: id }) })
+  if (tab.url && !tab.url.startsWith('vaia:')) items.push({ label: 'Open in Side Panel', run: () => dispatch({ type: 'sidePanel/open', tabId: id }) })
   if (zone !== 'favorites') {
     const loc = getAppState()?.spaces.flatMap((s) => [...s.pinned, ...s.today]).find((i) => i.kind === 'split' && i.tabs.some((t) => t.id === id))
     items.push({ label: 'Split View Layout', submenu: layoutMenuItems(loc?.kind === 'split' ? loc : null) })
@@ -75,7 +76,7 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
   if (tab.customName) items.push({ label: 'Reset Name', run: () => dispatch({ type: 'tab/rename', id, name: null }) })
   items.push(
     { label: rt?.muted ? 'Unmute Tab' : 'Mute Tab', enabled: loaded, run: () => dispatch({ type: 'tab/mute', id, muted: !rt?.muted }) },
-    { label: 'Duplicate', enabled: !!tab.url, run: () => dispatch({ type: 'tab/duplicate', id }) },
+    { label: 'Duplicate', enabled: !!tab.url && !tab.url.startsWith('vaia:'), run: () => dispatch({ type: 'tab/duplicate', id }) },
     { label: 'Copy Link', enabled: !!tab.url, run: () => dispatch({ type: 'tab/copyUrl', id }) }
   )
   if (zone !== 'favorites') items.push(moveToSpaceItem(id))
@@ -92,7 +93,15 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
 }
 
 export function folderMenu(folder: FolderItem, rename: () => void): Promise<void> {
+  const live: RunItem[] = folder.feed
+    ? [
+        { label: 'Refresh Now', run: () => dispatch({ type: 'liveFolder/refresh', id: folder.id }) },
+        { label: 'Mark All as Read', run: () => dispatch({ type: 'liveFolder/markAllRead', id: folder.id }) },
+        sep
+      ]
+    : []
   return show([
+    ...live,
     { label: 'Rename Folder', run: rename },
     { label: folder.collapsed ? 'Expand' : 'Collapse', run: () => dispatch({ type: 'folder/toggle', id: folder.id }) },
     sep,
@@ -100,8 +109,29 @@ export function folderMenu(folder: FolderItem, rename: () => void): Promise<void
   ])
 }
 
-export function pinnedAreaMenu(newFolder: () => void): Promise<void> {
-  return show([{ label: 'New Folder', run: newFolder }])
+export function pinnedAreaMenu(newFolder: () => void, newLiveFolder: () => void): Promise<void> {
+  return show([
+    { label: 'New Folder', run: newFolder },
+    { label: 'New Live Folder…', run: newLiveFolder },
+    { label: 'New Note', run: () => dispatch({ type: 'doc/new', kind: 'note' }) },
+    { label: 'New Easel', run: () => dispatch({ type: 'doc/new', kind: 'easel' }) }
+  ])
+}
+
+/** The + at the bottom of the sidebar: everything you can make. */
+export function newMenu(ui: { newFolder: () => void; newLiveFolder: () => void; newSpace: () => void }): Promise<void> {
+  return show([
+    { label: 'New Tab', run: () => dispatch({ type: 'tab/new' }) },
+    { label: 'New Note', run: () => dispatch({ type: 'doc/new', kind: 'note' }) },
+    { label: 'New Easel', run: () => dispatch({ type: 'doc/new', kind: 'easel' }) },
+    sep,
+    { label: 'New Folder', run: ui.newFolder },
+    { label: 'New Live Folder…', run: ui.newLiveFolder },
+    sep,
+    { label: 'New Space…', run: ui.newSpace },
+    { label: 'New Little Window', run: () => dispatch({ type: 'little/new' }) },
+    { label: 'New Private Window', run: () => dispatch({ type: 'private/new' }) }
+  ])
 }
 
 export function splitMenu(split: SplitItem, tab: TabItem): Promise<void> {
@@ -123,6 +153,7 @@ export interface SpaceMenuUi {
   editSpace: (spaceId: string, setup?: boolean, focus?: SpaceEditorFocus) => void
   openLibrary: (section?: LibrarySection) => void
   newFolder: (spaceId: string) => void
+  newLiveFolder: (spaceId?: string) => void
 }
 
 /** Ask first, then delete a Space (its tabs close; a separate account's logins are removed). */

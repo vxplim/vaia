@@ -56,6 +56,14 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - Built-in **PDF viewer**, **printing** (⌘P), full-screen video, picture in picture, Find in page (⌘F), spelling suggestions
 - Friendly error pages, blocked certificate errors, and crash recovery
 
+**Create & organize**
+- **Notes** and **Easels** (a canvas for pictures, text and links) as tabs, saved on your Mac and searchable
+- **Capture** (⇧⌘2) part of a page: copy it, save it to Media, or add it to an Easel
+- **Live Folders** that fill themselves from a blog's RSS/Atom feed
+- **Side panel** for a chat or music site next to the page, **compact mode**, and the sidebar on the left or right
+- **Air Traffic Control**: choose which Space links from other apps open in
+- **Ask on Page**: ask Claude about the page you're reading (with your own API key)
+
 **Your stuff**
 - **To-do list** per Space or everywhere: slide-out panel (⇧⌘K), sidebar section, and a pop-out window that can stay on top
 - **Password manager** per account: saves and fills logins on the exact same site, encrypted with your Mac's Keychain, Touch ID to view, CSV import from Google Password Manager / Chrome
@@ -70,7 +78,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - **Boosts**: recolor any website, change its font, zap away elements, add your own CSS/JS
 - Google sign-in compatibility (on by default; Settings → General)
 
-Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌃Tab, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌘P, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⇧⌘N, ⇧⌘K, ⌘Y, ⇧⌘L, ⇧⌘J, ⌘, (full list in Settings).
+Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌃Tab, ⇧⌘2, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌘P, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⇧⌘N, ⇧⌘K, ⌘Y, ⇧⌘L, ⇧⌘J, ⌘, (full list in Settings).
 
 ## Screenshots
 
