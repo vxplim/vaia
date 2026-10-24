@@ -122,6 +122,16 @@ export function SettingsApp() {
           </div>
           <div className="setting-row">
             <div>
+              <div className="setting-label">Google sign-in compatibility</div>
+              <div className="setting-hint">
+                Google blocks sign-in from browsers like VAIA. With this on, Google’s sign-in pages (only those) are told
+                VAIA is Firefox, which Google accepts. Every other site sees VAIA as usual.
+              </div>
+            </div>
+            <Toggle checked={s.googleSignInCompat} onChange={(v) => set({ googleSignInCompat: v })} />
+          </div>
+          <div className="setting-row">
+            <div>
               <div className="setting-label">Default browser</div>
               <div className="setting-hint">Links from other apps will open in a Little window.</div>
             </div>

@@ -86,7 +86,7 @@ app.on('open-file', (event, path) => {
 app.setAboutPanelOptions({
   applicationName: 'VAIA',
   credits: 'A calm, sidebar-first browser for Mac.',
-  copyright: '© 2026 Vanessa Minerva Lim'
+  copyright: '© 2026 Vanessa Minerva Lim · GNU GPL v3'
 })
 
 app.whenReady().then(() => {

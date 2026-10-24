@@ -91,6 +91,8 @@ export interface Settings {
   todoWindowOnTop: boolean
   /** Ids of installed extensions that are switched off. */
   disabledExtensions: string[]
+  /** Show Google's sign-in pages a Firefox browser name, so Google allows signing in. */
+  googleSignInCompat: boolean
 }
 
 export interface Todo {

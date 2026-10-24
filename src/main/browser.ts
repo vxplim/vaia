@@ -78,6 +78,29 @@ function cleanUserAgent(ses: Session): void {
   ses.setUserAgent(ses.getUserAgent().replace(/\s(Electron|vaia|VAIA)\/\S+/g, ''))
 }
 
+/** Google's own servers that its sign-in page talks to. */
+const GOOGLE_HOSTS = [
+  '*://*.google.com/*',
+  '*://*.gstatic.com/*',
+  '*://*.googleapis.com/*',
+  '*://*.googleusercontent.com/*',
+  '*://*.youtube.com/*',
+  '*://*.recaptcha.net/*'
+]
+
+/** Google's sign-in pages (including the YouTube hop in the sign-in redirects). */
+const GOOGLE_SIGN_IN = /^https:\/\/accounts\.(google|youtube)\.com(\/|$)/
+
+/**
+ * A current Firefox browser name. Google refuses sign-in from browsers built on
+ * Electron but accepts Firefox. The version follows Firefox's 4-week release
+ * schedule (140 shipped in June 2025), so it never looks out of date.
+ */
+function firefoxUserAgent(): string {
+  const version = 140 + Math.floor((Date.now() - Date.UTC(2025, 5, 24)) / (28 * 86_400_000))
+  return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${version}.0) Gecko/20100101 Firefox/${version}.0`
+}
+
 export function loadUi(win: BrowserWindow, view = ''): void {
   const query = view ? `?view=${view}` : ''
   const loading = process.env.ELECTRON_RENDERER_URL
@@ -442,6 +465,20 @@ export class Browser {
     })
     this.adblock.addSession(ses)
     this.permissions.attach(ses, isPrivate)
+    // Google sign-in compatibility, part 2: while a tab shows Google's sign-in page, every
+    // request it makes to Google (scripts, security checks, background lookups) must say
+    // Firefox too, without Chromium's extra "client hints" giving it away. Other sites and
+    // other tabs are left alone.
+    ses.webRequest.onBeforeSendHeaders({ urls: GOOGLE_HOSTS }, (details, callback) => {
+      const fromSignIn =
+        GOOGLE_SIGN_IN.test(details.url) ||
+        GOOGLE_SIGN_IN.test(details.referrer) ||
+        (!!details.webContents && GOOGLE_SIGN_IN.test(details.webContents.getURL()))
+      if (!this.state.settings.googleSignInCompat || !fromSignIn) return callback({ requestHeaders: details.requestHeaders })
+      const headers: Record<string, string> = { ...details.requestHeaders, 'User-Agent': firefoxUserAgent() }
+      for (const name of Object.keys(headers)) if (/^sec-ch-ua/i.test(name)) delete headers[name]
+      callback({ requestHeaders: headers })
+    })
     // The password helper runs in every page, except in private windows (nothing is saved there).
     if (!isPrivate) {
       ses.registerPreloadScript({ id: 'vaia-passwords', type: 'frame', filePath: join(__dirname, '../preload/passwords.js') })
@@ -577,8 +614,26 @@ export class Browser {
       this.extensions.addTab(view.webContents, this.win)
       this.extensionTabs.add(view.webContents)
     }
-    if (tab.url) view.webContents.loadURL(tab.url).catch(() => {})
+    if (tab.url) this.loadPage(view.webContents, tab.url)
     return view
+  }
+
+  /** The browser name a page should see: Chrome everywhere, Firefox on Google's sign-in pages (if switched on). */
+  private userAgentFor(wc: Electron.WebContents, url: string): string {
+    const normal = wc.session.getUserAgent()
+    return this.state.settings.googleSignInCompat && GOOGLE_SIGN_IN.test(url) ? firefoxUserAgent() : normal
+  }
+
+  /** Switch a page's browser name before it goes somewhere (only changes it when needed). */
+  private matchUserAgent(wc: Electron.WebContents, url: string): string {
+    const ua = this.userAgentFor(wc, url)
+    if (wc.getUserAgent() !== ua) wc.setUserAgent(ua)
+    return ua
+  }
+
+  /** Load a page with the right browser name. */
+  private loadPage(wc: Electron.WebContents, url: string): void {
+    wc.loadURL(url, { userAgent: this.matchUserAgent(wc, url) }).catch(() => {})
   }
 
   isAttached(tabId: string): boolean {
@@ -637,7 +692,7 @@ export class Browser {
       if (disposition === 'new-window') return { action: 'allow' }
       if (this.littles.get(tabId)?.tab.private) {
         // Links from a private window stay private: open them right there.
-        wc.loadURL(url).catch(() => {})
+        this.loadPage(wc, url)
         return { action: 'deny' }
       }
       if (disposition === 'foreground-tab' && this.opensLinksInPeek(tabId) && !isAuthUrl(url)) this.openPeek(url)
@@ -663,6 +718,18 @@ export class Browser {
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
 
+    // Google sign-in compatibility: Firefox's browser name on Google's sign-in pages only,
+    // switched just before the page goes there (links, redirects) and back afterwards.
+    wc.on('will-navigate', (e) => this.matchUserAgent(wc, e.url))
+    wc.on('will-redirect', (e) => e.isMainFrame && this.matchUserAgent(wc, e.url))
+    wc.on('did-create-window', (popup, details) => {
+      // "Sign in with Google" pop-ups: give them the same treatment.
+      const pwc = popup.webContents
+      pwc.on('will-navigate', (e) => this.matchUserAgent(pwc, e.url))
+      pwc.on('will-redirect', (e) => e.isMainFrame && this.matchUserAgent(pwc, e.url))
+      if (this.userAgentFor(pwc, details.url) !== pwc.getUserAgent()) this.loadPage(pwc, details.url)
+    })
+
     // Friendly error pages. Chromium shows a blank page when a site can't load;
     // we fill it in with an explanation and buttons (links to vaia-page:, caught below).
     let failed: { url: string; code: number; description: string } | null = null
@@ -679,7 +746,7 @@ export class Browser {
       if (!e.url.startsWith('vaia-page:')) return
       e.preventDefault()
       const action = e.url.slice('vaia-page:'.length)
-      if (action === 'reload' && failed) wc.loadURL(failed.url).catch(() => {})
+      if (action === 'reload' && failed) this.loadPage(wc, failed.url)
       else if (action === 'back') wc.navigationHistory.goBack()
       else if (action === 'close') this.closeTab(tabId)
     })
@@ -1181,7 +1248,8 @@ export class Browser {
   openPeek(url: string): void {
     const peek = this.store.peek
     if (peek) {
-      this.views.get(peek.id)?.webContents.loadURL(url).catch(() => {})
+      const wc = this.views.get(peek.id)?.webContents
+      if (wc) this.loadPage(wc, url)
       return
     }
     this.store.peek = this.makeTab(url)
@@ -1704,7 +1772,7 @@ export class Browser {
     if (!tab.title || tab.title === 'New Tab') tab.title = url
     const view = this.views.get(id)
     if (view) {
-      view.webContents.loadURL(url).catch(() => {})
+      this.loadPage(view.webContents, url)
       view.webContents.focus()
     } else {
       this.focusOnAttach = id

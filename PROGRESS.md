@@ -161,6 +161,18 @@ Tested in a new Space with its own account: Google's sign-in page loads, but aft
 
 Live sync with Google Password Manager **isn't possible**: Google doesn't offer an API for other browsers to read or write your saved passwords. The CSV import is a one-time copy.
 
+- [x] **v1.6.0: Google sign-in + GPL licence** (tag `v1.6.0`, first public release since 1.0)
+  - **Google sign-in compatibility** (Settings → General, on by default): on Google's sign-in pages only (`accounts.google.com`, and `accounts.youtube.com` in its sign-in redirects), VAIA presents a current Firefox browser name, both to the page and on the requests that page makes to Google, without Chromium's "client hints". Every other site keeps seeing VAIA as Chrome. Sign-in pop-ups get the same treatment
+  - **Licence: VAIA is now GPL-3.0** (`LICENSE` has the official GPL-3.0 text with Vanessa's copyright notice; `package.json` says `GPL-3.0-only`; README and About panel updated). The repository is public
+  - README: full feature list, download link to the latest release, how to update, new screenshots in the black-and-white look
+
+### Google sign-in: what the tests showed
+
+- With compatibility on, Google's sign-in page sees Firefox (checked) while other sites in the same Space see Chrome (checked).
+- In a clean test setup, a made-up email got past Google's "This browser or app may not be secure" screen and on to "Couldn't find this account", i.e. Google accepted the browser.
+- Repeating the test many times with made-up emails made Google start rejecting *every* attempt from this network (even the setup that had just worked), a normal anti-abuse reaction. Testing stopped there so your network doesn't get flagged; a real sign-in with your own account is the true test (see "Needs Vanessa").
+- Staying signed in after a restart works: a Space with its own account kept its site logins and Google cookies after quitting and reopening VAIA, and other Spaces don't see them.
+
 ## Next ideas (not started)
 
 - Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
@@ -229,6 +241,8 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - **Saved passwords belong to a profile, not a Space**: Spaces that share the normal profile share passwords; a Space with its own account keeps its own (and they're deleted when that separate profile is turned off or the Space is deleted).
 - **The save/update prompt is a native Mac sheet** (Save Password / Not Now / Never for This Site).
 - **Unlocking passwords in Settings lasts one minute** so Show, Copy and Edit don't each ask for Touch ID.
+- **Decision (Vanessa): Google sign-in workaround.** Firefox's browser name on Google's sign-in pages only, with a switch to turn it off. The Firefox version number is worked out from the date (Firefox ships every 4 weeks), so it stays current without updates.
+- **Decision (Vanessa): GPL-3.0 licence**, because VAIA includes electron-chrome-extensions (GPL-3.0). "GPL-3.0-only" (version 3, as with the library).
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -241,11 +255,9 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 
 ## Needs Vanessa
 
-- ⚠️ **Licence decision (still open, important before the next release):** VAIA now includes the GPL-3.0 extensions library (see the earlier item below). Choose: switch VAIA to GPL-3.0 and make the repo public, sponsor the author for the Patron licence, or remove extension support.
-- **Google sign-in is blocked by Google** ("This browser or app may not be secure"). Options: (a) leave it (other sites work; use Google in Safari/Chrome), (b) a workaround some open-source browsers use: showing Google's sign-in page a Firefox-style browser name. It works today but Google could stop it at any time, and it means VAIA pretends to be another browser on that one page, so it's your call. Nothing was changed.
+- **Sign in to Google once for real:** make a Space with "Use a separate account", click "Sign in with Google", sign in with your account, then quit and reopen VAIA and check you're still signed in (myaccount.google.com). If Google still says "may not be secure", try again later from your usual network (the test attempts may have made Google cautious for a while).
 - **Try the password manager on a real site:** log in somewhere, click "Save Password", then open Settings → Passwords → Show (Touch ID). The first time, macOS may ask about "VAIA Safe Storage" in your Keychain: click **Always Allow**.
 
-- **Licence decision (important before sharing VAIA):** the Chrome-extension library (electron-chrome-extensions) is GPL-3.0 unless you buy its "Patron" licence. VAIA's own code is MIT, but the *app you'd distribute* now includes GPL code, so anyone you give it to must be able to get VAIA's source under GPL terms. Options: (a) change VAIA's LICENSE to GPL-3.0 and make the repo public (simplest, free), (b) sponsor the author on GitHub for the Patron licence, or (c) remove extension support. Nothing has been published since this was added, so there's no rush, but decide before the next release.
 - **Camera, microphone and location:** test them on a real site (e.g. a video call on meet.google.com, or "my location" on a map). macOS will ask once whether VAIA may use the camera/microphone/location; click Allow. (The automated tests skipped these so no real macOS prompts popped up on your Mac.)
 - **Safari bookmarks:** in Safari choose File → Export → Bookmarks…, then VAIA → Settings → Import bookmarks → From a File….
 

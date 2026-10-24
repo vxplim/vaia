@@ -2990,3 +2990,9 @@ input.pane-address {
 .csv-warning {
   color: #b54708;
 }
+
+/* Checkboxes and radio buttons follow the black-and-white look too. */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--ui-accent);
+}

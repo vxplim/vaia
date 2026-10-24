@@ -105,10 +105,7 @@ export function SpaceEditor({ state, space, setup = false, closing, onClose }: P
                 {space.profileId ? 'Continue' : 'Skip'}
               </button>
             </div>
-            <div className="field-hint">
-              You can change this later in the Space’s settings. Google currently refuses sign-in from some newer
-              browsers, VAIA included; if that happens, other sites still work normally in this Space.
-            </div>
+            <div className="field-hint">You can change this later in the Space’s settings.</div>
           </div>
         )}
 
