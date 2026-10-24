@@ -25,6 +25,8 @@ export interface TabItem {
   pinnedUrl?: string
   /** A shorter name shown instead of the page title (set by AI Tidy). */
   name?: string
+  /** Your own name for the tab ("Rename…"). Wins over everything and survives navigation. */
+  customName?: string
   /** A page in a private window: nothing about it is saved. */
   private?: boolean
   createdAt: number
@@ -73,6 +75,9 @@ export interface Space {
 
 export type SearchEngineId = 'google' | 'duckduckgo' | 'bing' | 'ecosia'
 export type ArchiveAfter = '12h' | '24h' | '7d' | '30d' | 'never'
+/** Background tabs not viewed for this long are put to sleep (unloaded) to save memory. */
+export type SleepAfter = '30m' | '1h' | '4h' | 'never'
+export type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 export interface Settings {
   searchEngine: SearchEngineId
@@ -97,6 +102,9 @@ export interface Settings {
   librarySection: LibrarySection
   /** Library → Media also shows pictures from the Mac's screenshots folder. */
   mediaScreenshots: boolean
+  sleepAfter: SleepAfter
+  /** Where the Mini Player sits in the page area. */
+  miniPlayerCorner: Corner
 }
 
 export interface Todo {
@@ -175,6 +183,20 @@ export interface TabRuntime {
   canGoForward: boolean
   /** The page's process crashed; the tab shows a "page crashed" card with Reload. */
   crashed?: boolean
+  /** The page is making sound right now. */
+  audible?: boolean
+  /** You muted this tab. */
+  muted?: boolean
+}
+
+/** The small floating player for a tab you left while it was playing (or in a call). */
+export interface MiniPlayer {
+  tabId: string
+  /** The page has a video (offers picture in picture). */
+  video: boolean
+  /** A video call (Meet, Zoom): no play/pause, just sound and "back to call". */
+  call: boolean
+  playing: boolean
 }
 
 export interface DownloadItem {
@@ -199,6 +221,7 @@ export interface AppState extends PersistedState {
   aiKeySet: boolean
   sitePermissions: SitePermissions
   extensions: ExtensionInfo[]
+  mini: MiniPlayer | null
 }
 
 export interface HistoryEntry {
@@ -268,3 +291,7 @@ export type UiCommand =
   | { type: 'toggle-sidebar' }
   | { type: 'boost' }
   | { type: 'zap-ended' }
+  /** Ctrl+Tab was pressed in a web page: open (or advance) the tab switcher. */
+  | { type: 'tab-switcher'; back: boolean }
+  /** Ctrl was let go in a web page: pick the highlighted tab. */
+  | { type: 'tab-switcher-commit' }

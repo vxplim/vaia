@@ -1,8 +1,10 @@
 import type { AppState, Space, TabItem } from '../../../shared/types'
+import { tabLabel, unreadCount } from '../../../shared/tree'
 import { useDragRow, useDropArea } from '../dnd'
 import { tabMenu } from '../menus'
 import { dispatch } from '../state'
 import { Favicon } from './Favicon'
+import { IconSpeaker, IconSpeakerOff } from './Icons'
 
 /** Icon-only tiles at the top of the sidebar, shared by every Space. */
 export function Favorites({ state, space }: { state: AppState; space: Space }) {
@@ -31,6 +33,7 @@ export function FavoritesDropZone({ state, space }: { state: AppState; space: Sp
 
 function FavoriteTile({ tab, index, state, space }: { tab: TabItem; index: number; state: AppState; space: Space }) {
   const rt = state.runtime[tab.id]
+  const unread = unreadCount(tab.title)
   const { draggable, dropClass, dragging, handlers } = useDragRow({
     id: tab.id,
     kind: 'tab',
@@ -44,7 +47,7 @@ function FavoriteTile({ tab, index, state, space }: { tab: TabItem; index: numbe
   return (
     <div
       className={`fav-tile${space.activeId === tab.id ? ' active' : ''}${rt ? ' loaded' : ''}${dragging ? ' dragging' : ''}${dropClass}`}
-      title={tab.title}
+      title={tabLabel(tab)}
       role="button"
       draggable={draggable}
       {...handlers}
@@ -57,6 +60,19 @@ function FavoriteTile({ tab, index, state, space }: { tab: TabItem; index: numbe
       <span className={rt?.loading ? 'loading' : ''}>
         <Favicon src={tab.favicon} url={tab.pinnedUrl ?? tab.url} size={20} />
       </span>
+      {unread > 0 && <span className="unread-badge fav">{unread > 99 ? '99+' : unread}</span>}
+      {(rt?.audible || rt?.muted) && (
+        <button
+          className="fav-sound"
+          title={rt.muted ? 'Unmute' : 'Mute'}
+          onClick={(e) => {
+            e.stopPropagation()
+            dispatch({ type: 'tab/mute', id: tab.id, muted: !rt.muted })
+          }}
+        >
+          {rt.muted ? <IconSpeakerOff width={11} height={11} /> : <IconSpeaker width={11} height={11} />}
+        </button>
+      )}
     </div>
   )
 }

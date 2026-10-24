@@ -55,6 +55,7 @@ vaia/
 │   │   ├── errorPage.ts        ← the friendly "can't load this page" page
 │   │   ├── passwords.ts        ← the encrypted password manager
 │   │   ├── media.ts            ← Library → Media: finding pictures/videos/PDFs, thumbnails, vaia-media://
+│   │   ├── miniPlayer.ts       ← the Mini Player's floating view (placing and dragging it)
 │   │   ├── store.ts            ← saving/loading your data (vaia-state.json)
 │   │   ├── history.ts          ← browsing history (history.json)
 │   │   ├── archive.ts          ← archived & recently closed tabs (archive.json)
@@ -63,6 +64,7 @@ vaia/
 │   │   └── menu.ts             ← Mac menu bar, keyboard shortcuts, right-click menus
 │   ├── preload/index.ts        ← the bridge: exposes window.vaia
 │   ├── preload/passwords.ts    ← runs in web pages: spots logins, fills saved ones
+│   ├── preload/links.ts        ← runs in web pages: Shift+hover a link → Peek
 │   └── renderer/               ← the UI (React)
 │       ├── index.html
 │       └── src/
@@ -71,6 +73,7 @@ vaia/
 │           ├── LittleApp.tsx   ← the Little window
 │           ├── SettingsApp.tsx ← the Settings window
 │           ├── TodoApp.tsx     ← the pop-out to-do window
+│           ├── MiniApp.tsx     ← the Mini Player's card
 │           ├── state.ts        ← keeps the UI's copy of the data up to date
 │           ├── commands.ts     ← Command Bar commands
 │           ├── menus.ts        ← what's in each right-click menu
@@ -97,6 +100,12 @@ vaia/
 ├── node_modules/               ← downloaded tools (not uploaded to GitHub)
 └── out/, dist/                 ← build output (not uploaded to GitHub)
 ```
+
+## Sound, the Mini Player and tab sleep
+
+Each page reports when it starts or stops making sound (`audio-state-changed`), which puts the speaker on its tab. After every change the brain compares the tabs on screen with the ones before; if one that was making sound (or a call) just left the screen, it becomes the Mini Player's tab. The Mini Player is VAIA's own interface (`?view=mini`) in a small view placed above the pages, and its buttons run tiny scripts in the page (pause the videos, picture in picture).
+
+Once a minute the brain also looks for background tabs you haven't viewed for a while and closes their page (the tab stays in the sidebar; clicking it loads the page again).
 
 ## The Library
 

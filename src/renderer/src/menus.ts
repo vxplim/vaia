@@ -45,7 +45,7 @@ function moveToSpaceItem(tabId: string): RunItem {
   }
 }
 
-export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = false): Promise<void> {
+export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = false, rename?: () => void): Promise<void> {
   const navigatedAway = !!tab.pinnedUrl && !sameUrl(tab.url, tab.pinnedUrl)
   const id = tab.id
   const items: RunItem[] = []
@@ -69,8 +69,12 @@ export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = fals
     const loc = getAppState()?.spaces.flatMap((s) => [...s.pinned, ...s.today]).find((i) => i.kind === 'split' && i.tabs.some((t) => t.id === id))
     items.push({ label: 'Split View Layout', submenu: layoutMenuItems(loc?.kind === 'split' ? loc : null) })
   }
+  const rt = getAppState()?.runtime[id]
+  items.push(sep)
+  if (rename) items.push({ label: 'Rename…', run: rename })
+  if (tab.customName) items.push({ label: 'Reset Name', run: () => dispatch({ type: 'tab/rename', id, name: null }) })
   items.push(
-    sep,
+    { label: rt?.muted ? 'Unmute Tab' : 'Mute Tab', enabled: loaded, run: () => dispatch({ type: 'tab/mute', id, muted: !rt?.muted }) },
     { label: 'Duplicate', enabled: !!tab.url, run: () => dispatch({ type: 'tab/duplicate', id }) },
     { label: 'Copy Link', enabled: !!tab.url, run: () => dispatch({ type: 'tab/copyUrl', id }) }
   )

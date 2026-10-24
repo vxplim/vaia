@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { allTabs } from '../../../shared/tree'
+import { allTabs, tabLabel } from '../../../shared/tree'
 import type { AppState, HistoryEntry } from '../../../shared/types'
 import { SEARCH_ENGINES, displayHost, inputToUrl, searchUrl } from '../../../shared/url'
 import { matchCommands, type CommandContext } from '../commands'
@@ -88,7 +88,7 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
           key: 'todo-add-link',
           icon: <IconCheckCircle />,
           title: `Add to-do and link this page: ${todoText}`,
-          subtitle: activeTab.name || activeTab.title,
+          subtitle: tabLabel(activeTab),
           label: 'To-do',
           run: add(true)
         })
@@ -125,14 +125,14 @@ export function CommandBar({ state, activeTabId, mode, closing, onClose, ui }: P
     // Open tabs anywhere in VAIA (most recently viewed first).
     const tabs = allTabs(state)
       .filter((t) => t.id !== activeTabId && t.url)
-      .filter((t) => words.every((w) => `${t.title} ${t.url}`.toLowerCase().includes(w)))
+      .filter((t) => words.every((w) => `${tabLabel(t)} ${t.title} ${t.url}`.toLowerCase().includes(w)))
       .sort((a, b) => b.lastViewedAt - a.lastViewedAt)
       .slice(0, q ? 4 : 5)
     for (const t of tabs) {
       out.push({
         key: `tab-${t.id}`,
         icon: <Favicon src={t.favicon} url={t.url} />,
-        title: t.title,
+        title: tabLabel(t),
         subtitle: displayHost(t.url),
         label: mode === 'split' ? 'Open in Split' : 'Switch to Tab',
         run: () => dispatch(mode === 'split' ? { type: 'split/add', tabId: t.id } : { type: 'tab/activate', id: t.id })

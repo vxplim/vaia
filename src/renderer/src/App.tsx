@@ -10,10 +10,11 @@ import { Library } from './components/Library'
 import { PeekLayer } from './components/PeekLayer'
 import { Sidebar } from './components/Sidebar'
 import { SpaceEditor } from './components/SpaceEditor'
+import { TabSwitcher, recentTabs } from './components/TabSwitcher'
 import { TodoPanel } from './components/TodoPanel'
 import { DndProvider } from './dnd'
 import type { SpaceEditorFocus } from './menus'
-import { dispatch, useAppState } from './state'
+import { dispatch, getAppState, useAppState } from './state'
 import { themeStyle, useSystemDark } from './theme'
 
 const CLOSE_ANIMATION_MS = 140
@@ -32,6 +33,7 @@ export type Overlay =
   | { kind: 'space-editor'; spaceId: string; setup?: boolean; focus?: SpaceEditorFocus }
   | { kind: 'library'; section: LibrarySection }
   | { kind: 'history' | 'todo' }
+  | { kind: 'switcher'; ids: string[]; index: number }
 
 export default function App() {
   const state = useAppState()
@@ -109,9 +111,58 @@ export default function App() {
     dispatch({ type: 'settings/update', patch: { sidebarVisible: !sidebarVisible } })
   }, [sidebarVisible])
 
+  // Ctrl+Tab: open the recent-tabs switcher, or move to the next/previous tab in it.
+  const activeTabRef = useRef<string | null>(null)
+  const stepSwitcher = useCallback(
+    (back: boolean) => {
+      setOverlay((o) => {
+        if (o?.kind === 'switcher' && !closing) {
+          const n = o.ids.length || 1
+          return { ...o, index: (o.index + (back ? -1 : 1) + n) % n }
+        }
+        const current = getAppState()
+        if (!current) return o
+        const ids = recentTabs(current, activeTabRef.current)
+        if (ids.length < 2) return o
+        if (closeTimer.current) clearTimeout(closeTimer.current)
+        setClosing(false)
+        setUrlEditing(false)
+        return { kind: 'switcher', ids, index: back ? ids.length - 1 : 1 }
+      })
+    },
+    [closing]
+  )
+  const overlayRef = useRef(overlay)
+  overlayRef.current = overlay
+  const commitSwitcher = useCallback(() => {
+    const o = overlayRef.current
+    if (o?.kind !== 'switcher') return
+    const id = o.ids[o.index]
+    if (id) dispatch({ type: 'tab/activate', id })
+    closeOverlay()
+  }, [closeOverlay])
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey && !e.metaKey && e.key === 'Tab') {
+        e.preventDefault()
+        stepSwitcher(e.shiftKey)
+      }
+      if (e.key === 'Escape' && overlayRef.current?.kind === 'switcher') closeOverlay()
+    }
+    const up = (e: KeyboardEvent) => e.key === 'Control' && overlay?.kind === 'switcher' && !closing && commitSwitcher()
+    window.addEventListener('keydown', down, true)
+    window.addEventListener('keyup', up, true)
+    return () => {
+      window.removeEventListener('keydown', down, true)
+      window.removeEventListener('keyup', up, true)
+    }
+  }, [stepSwitcher, commitSwitcher, closeOverlay, overlay?.kind, closing])
+
   useEffect(
     () =>
       window.vaia.onCommand((cmd) => {
+        if (cmd.type === 'tab-switcher') stepSwitcher(cmd.back)
+        if (cmd.type === 'tab-switcher-commit') commitSwitcher()
         if (cmd.type === 'focus-url') {
           // With the sidebar hidden, slide it out so the address can be edited.
           if (!sidebarVisible) setSidebarPeek(true)
@@ -125,7 +176,7 @@ export default function App() {
         if (cmd.type === 'find') openFind()
         if (cmd.type === 'boost') openBoost()
       }),
-    [openOverlay, editSpace, openPanel, openLibrary, toggleSidebar, openFind, openBoost, sidebarVisible]
+    [openOverlay, editSpace, openPanel, openLibrary, toggleSidebar, openFind, openBoost, sidebarVisible, stepSwitcher, commitSwitcher]
   )
 
   // Hide the window's red/yellow/green buttons along with the sidebar.
@@ -192,6 +243,7 @@ export default function App() {
       : loc?.item.kind === 'split'
         ? (loc.item.tabs.find((t) => t.id === (loc.item as SplitItem).focusedId) ?? loc.item.tabs[0] ?? null)
         : null
+  activeTabRef.current = activeTab?.id ?? null
   const theme = themeStyle(space.theme, systemDark)
   const editing = overlay?.kind === 'space-editor' ? state.spaces.find((s) => s.id === overlay.spaceId) : null
   const setup = overlay?.kind === 'space-editor' && !!overlay.setup
@@ -280,6 +332,19 @@ export default function App() {
               closeOverlay()
               dispatch({ type: 'tab/new', url: `https://${site}` }).then(openBoost)
             }}
+          />
+        )}
+        {overlay?.kind === 'switcher' && (
+          <TabSwitcher
+            state={state}
+            ids={overlay.ids}
+            index={overlay.index}
+            closing={closing}
+            onPick={(id) => {
+              dispatch({ type: 'tab/activate', id })
+              closeOverlay()
+            }}
+            onClose={closeOverlay}
           />
         )}
         {overlay?.kind === 'history' && <HistoryPanel closing={closing} onClose={closeOverlay} />}

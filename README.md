@@ -39,6 +39,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - Auto-archive of Today tabs you haven't viewed in a while, a searchable Archive, and ⇧⌘T to reopen closed tabs
 - **Library** (⇧⌘L): Archive, Downloads, Media, Spaces, Boosts and To-do in one panel that slides out over the page
 - Hideable sidebar (⌘S) that slides out smoothly when you rest at the left edge
+- **Rename any tab**, unread badges on pinned tabs and favorites, ⌃Tab to flip between recent tabs, and **tab sleep** to save memory
 
 **Spaces & look**
 - Spaces with their own emoji and pastel theme on a clean black-and-white design: 12 presets, a color wheel, intensity (Whisper → Soft), tone (warmer ↔ cooler), gradients, light/dark/auto
@@ -50,7 +51,8 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 **Browsing**
 - Command Bar (⌘T): open sites, search with suggestions, switch tabs, search history, run commands, add to-dos
 - **Split View**: 2–4 tabs side by side or in a 2×2 grid, with presets (50/50, 70/30, 30/70, three columns, grid) and a toolbar on each pane
-- Peek previews, Little windows (⌥⌘N), and **private windows** (⇧⌘N)
+- Peek previews (also: hold Shift over a link), Little windows (⌥⌘N), and **private windows** (⇧⌘N)
+- **Sound controls** on tabs and a **Mini Player** for the video, music or call you just left
 - Built-in **PDF viewer**, **printing** (⌘P), full-screen video, picture in picture, Find in page (⌘F), spelling suggestions
 - Friendly error pages, blocked certificate errors, and crash recovery
 
@@ -68,7 +70,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - **Boosts**: recolor any website, change its font, zap away elements, add your own CSS/JS
 - Google sign-in compatibility (on by default; Settings → General)
 
-Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌘P, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⇧⌘N, ⇧⌘K, ⌘Y, ⇧⌘L, ⇧⌘J, ⌘, (full list in Settings).
+Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌃Tab, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌘P, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⇧⌘N, ⇧⌘K, ⌘Y, ⇧⌘L, ⇧⌘J, ⌘, (full list in Settings).
 
 ## Screenshots
 

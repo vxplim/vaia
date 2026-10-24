@@ -74,3 +74,15 @@ export function visibleTabIds(state: PersistedState, space: Space): string[] {
   if (loc.item.kind === 'split') return loc.item.tabs.map((t) => t.id)
   return []
 }
+
+/** The name shown for a tab: your own name, then a Tidy short name, then the page title. */
+export function tabLabel(tab: TabItem): string {
+  return tab.customName || tab.name || tab.title || tab.url || 'New Tab'
+}
+
+/** "(3) Inbox" or "Inbox (12) - Mail" → 3 / 12: the unread count a page puts in its title. */
+export function unreadCount(title: string): number {
+  const m = /^\((\d{1,5})\+?\)|\((\d{1,5})\+?\)/.exec(title)
+  const n = m ? Number(m[1] ?? m[2]) : 0
+  return n > 0 ? n : 0
+}

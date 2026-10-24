@@ -204,25 +204,29 @@ export function Sidebar(props: Props) {
 
         <div className="today-divider">
           <span className="divider-line" />
-          {space.today.length > 1 && (
-            <button
-              className="clear-button tidy-button"
-              title={
-                state.settings.aiTidy && state.aiKeySet
+          <button
+            className="clear-button tidy-button"
+            aria-disabled={space.today.length < 2}
+            title={
+              space.today.length < 2
+                ? 'Nothing to tidy yet: open a few tabs first'
+                : state.settings.aiTidy && state.aiKeySet
                   ? 'Sort Today tabs into topic folders with Claude'
                   : 'Group tabs from the same site into folders and close duplicates'
-              }
-              onClick={() => dispatch({ type: 'today/tidy' })}
-            >
-              <IconBroom width={12} height={12} />
-              Tidy
-            </button>
-          )}
-          {space.today.length > 0 && (
-            <button className="clear-button" title="Close all Today tabs" onClick={() => dispatch({ type: 'today/clear' })}>
-              Clear
-            </button>
-          )}
+            }
+            onClick={() => space.today.length > 1 && dispatch({ type: 'today/tidy' })}
+          >
+            <IconBroom width={12} height={12} />
+            Tidy
+          </button>
+          <button
+            className="clear-button"
+            aria-disabled={space.today.length === 0}
+            title={space.today.length === 0 ? 'No Today tabs to clear' : 'Close all Today tabs'}
+            onClick={() => space.today.length > 0 && dispatch({ type: 'today/clear' })}
+          >
+            Clear
+          </button>
         </div>
 
         <section className={`today${todayArea.active ? ' drop-area' : ''}`} {...todayArea.handlers}>

@@ -1,6 +1,6 @@
 import { useState, type DragEvent } from 'react'
 import type { DropTarget } from '../../../shared/api'
-import type { Zone } from '../../../shared/tree'
+import { tabLabel, type Zone } from '../../../shared/tree'
 import type { AppState, SidebarItem, Space } from '../../../shared/types'
 import { confirmDeleteSpace } from '../menus'
 import { dispatch } from '../state'
@@ -83,7 +83,7 @@ function Rows({
             {tabs.map((t) => (
               <Favicon key={t.id} src={t.favicon} url={t.url} />
             ))}
-            <span className="lib-row-title">{tabs.map((t) => t.name || t.title || 'New Tab').join(' + ')}</span>
+            <span className="lib-row-title">{tabs.map((t) => tabLabel(t)).join(' + ')}</span>
           </div>
         )
       })}

@@ -17,7 +17,7 @@ import {
 } from 'electron'
 import { basename, extname, join } from 'node:path'
 import type { Action } from '../shared/api'
-import { activeSpace, allTabs, locate, tabsIn } from '../shared/tree'
+import { activeSpace, allTabs, locate, tabLabel, tabsIn, visibleTabIds } from '../shared/tree'
 import type {
   ArchivedTab,
   Boost,
@@ -26,6 +26,7 @@ import type {
   Pane,
   Rect,
   SidebarItem,
+  SleepAfter,
   Space,
   SplitPreset,
   TabItem,
@@ -40,6 +41,7 @@ import { AiTidyError, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './a
 import { ImportError, bookmarksHtml, countLinks, readChrome, readHtmlFile, readSafari, type BookmarkNode, type BookmarkTree } from './bookmarks'
 import { EXTENSIONS_PARTITION, Extensions } from './extensions'
 import { Media } from './media'
+import { MiniPlayerView } from './miniPlayer'
 import { Passwords } from './passwords'
 import { Permissions } from './permissions'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
@@ -102,11 +104,11 @@ function firefoxUserAgent(): string {
   return `Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:${version}.0) Gecko/20100101 Firefox/${version}.0`
 }
 
-export function loadUi(win: BrowserWindow, view = ''): void {
+export function loadUi(target: BrowserWindow | Electron.WebContents, view = ''): void {
   const query = view ? `?view=${view}` : ''
   const loading = process.env.ELECTRON_RENDERER_URL
-    ? win.loadURL(`${process.env.ELECTRON_RENDERER_URL}${query}`)
-    : win.loadFile(join(__dirname, '../renderer/index.html'), { search: query })
+    ? target.loadURL(`${process.env.ELECTRON_RENDERER_URL}${query}`)
+    : target.loadFile(join(__dirname, '../renderer/index.html'), { search: query })
   loading.catch((err) => console.error('[ui] failed to load', err))
 }
 
@@ -195,9 +197,33 @@ export class Browser {
   private focusOnAttach: string | null = null
   private configuredSessions = new Set<Session>()
   private layoutWatched = new WeakSet<BrowserWindow>()
+  /** The Mini Player's floating view (see miniPlayer.ts). */
+  readonly miniView = new MiniPlayerView(
+    PRELOAD,
+    (wc) => loadUi(wc, 'mini'),
+    () => this.state.settings.miniPlayerCorner,
+    (corner) => {
+      this.state.settings.miniPlayerCorner = corner
+      this.store.changed()
+    },
+    (wc) => this.store.subscribe(wc)
+  )
+  /** The tabs that were on screen last time we looked (to notice when you leave a playing one). */
+  private lastVisible = new Set<string>()
+  /** Ctrl+Tab was pressed in a page; letting go of Ctrl picks the tab. */
+  private switcherCtrl = false
 
   get state() {
     return this.store.state
+  }
+
+  constructor() {
+    this.store.onChange = () => this.updateMini()
+  }
+
+  /** VAIA's own interface shown inside a window (not a web page), e.g. the Mini Player. */
+  isUiView(wc: Electron.WebContents): boolean {
+    return wc === this.miniView.webContents
   }
 
   // ---------- Window ----------
@@ -232,6 +258,8 @@ export class Browser {
       for (const id of [...this.views.keys()]) if (!this.littles.has(id)) this.destroyView(id)
       this.attached.delete(win)
       this.closePeek()
+      this.miniView.destroy()
+      this.store.mini = null
       this.win = null
     })
     loadUi(win)
@@ -493,6 +521,7 @@ export class Browser {
     // The password helper runs in every page, except in private windows (nothing is saved there).
     if (!isPrivate) {
       ses.registerPreloadScript({ id: 'vaia-passwords', type: 'frame', filePath: join(__dirname, '../preload/passwords.js') })
+      ses.registerPreloadScript({ id: 'vaia-links', type: 'frame', filePath: join(__dirname, '../preload/links.js') })
     }
   }
 
@@ -662,6 +691,7 @@ export class Browser {
     const wc = view.webContents
     const runtime = () => {
       this.store.runtime[tabId] = {
+        ...this.store.runtime[tabId],
         loading: wc.isLoading(),
         canGoBack: wc.navigationHistory.canGoBack(),
         canGoForward: wc.navigationHistory.canGoForward()
@@ -698,6 +728,12 @@ export class Browser {
     })
     wc.on('did-start-loading', runtime)
     wc.on('did-stop-loading', runtime)
+    // Sound: a speaker on the tab while it plays; the Mini Player follows it too.
+    wc.on('audio-state-changed', (e) => {
+      this.store.runtime[tabId] = { ...this.store.runtime[tabId], loading: wc.isLoading(), canGoBack: wc.navigationHistory.canGoBack(), canGoForward: wc.navigationHistory.canGoForward(), audible: e.audible }
+      if (this.store.mini?.tabId === tabId && !this.store.mini.call && e.audible) this.store.mini = { ...this.store.mini, playing: true }
+      this.store.changed(false)
+    })
     wc.setWindowOpenHandler(({ url, disposition }) => {
       // Real popups (e.g. "Sign in with Google") need to stay popups.
       if (disposition === 'new-window') return { action: 'allow' }
@@ -725,6 +761,16 @@ export class Browser {
       if (input.type === 'keyDown' && input.key === 'Escape' && this.store.peek?.id === tabId) {
         e.preventDefault()
         this.closePeek()
+      }
+      // Ctrl+Tab / Ctrl+Shift+Tab: the recent-tabs switcher (it takes over the keyboard until Ctrl is let go).
+      if (input.type === 'keyDown' && input.control && !input.meta && input.key === 'Tab' && this.win && !this.littles.has(tabId)) {
+        e.preventDefault()
+        this.switcherCtrl = true
+        this.command({ type: 'tab-switcher', back: input.shift })
+      }
+      if (input.type === 'keyUp' && input.key === 'Control' && this.switcherCtrl) {
+        this.switcherCtrl = false
+        this.notify({ type: 'tab-switcher-commit' })
       }
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
@@ -830,6 +876,7 @@ export class Browser {
     if (this.selectedExtensionTab === view.webContents) this.selectedExtensionTab = null
     view.webContents.close()
     this.views.delete(tabId)
+    if (this.store.mini?.tabId === tabId) this.store.mini = null
     this.boostCssKeys.delete(tabId)
     this.boostQueue.delete(tabId)
     delete this.store.runtime[tabId]
@@ -856,6 +903,138 @@ export class Browser {
     const peek = this.store.peek
     const panes = peek && this.peekRect ? [...this.mainPanes, { tabId: peek.id, rect: this.peekRect }] : this.mainPanes
     this.applyLayout(this.win, panes)
+    this.placeMini()
+  }
+
+  /** Shift+hover on a link in a page: open it in Peek (main window tabs only). */
+  peekLink(e: Electron.IpcMainEvent, url: string): void {
+    const id = this.tabIdOf(e.sender)
+    if (!id || e.senderFrame !== e.sender.mainFrame || this.littles.has(id) || !this.win) return
+    if (!/^https?:/.test(url) || this.store.peek?.id === id) return
+    this.openPeek(url)
+  }
+
+  // ---------- Sound and the Mini Player ----------
+
+  /** Notice when you leave a tab that's playing (or in a call) and show the Mini Player for it. */
+  private updateMini(): void {
+    const visible = new Set(this.win ? visibleTabIds(this.state, activeSpace(this.state)) : [])
+    if (this.store.peek) visible.add(this.store.peek.id)
+    let mini = this.store.mini
+    if (mini && (visible.has(mini.tabId) || !this.views.has(mini.tabId))) mini = null
+    for (const id of this.lastVisible) {
+      if (visible.has(id) || !this.views.has(id) || this.littles.has(id)) continue
+      const call = isCallUrl(this.tab(id)?.url ?? '')
+      if (this.store.runtime[id]?.audible || call) mini = { tabId: id, video: false, call, playing: !call }
+    }
+    this.lastVisible = visible
+    if (mini !== this.store.mini) {
+      this.store.mini = mini
+      if (mini && !mini.call) this.detectVideo(mini.tabId)
+      this.store.changed(false)
+    }
+    this.placeMini()
+  }
+
+  private async detectVideo(tabId: string): Promise<void> {
+    const results = await this.inFrames(tabId, `!!document.querySelector('video')`)
+    if (this.store.mini?.tabId === tabId && results.some(Boolean)) {
+      this.store.mini = { ...this.store.mini, video: true }
+      this.store.changed(false)
+    }
+  }
+
+  /** Run a script in every frame of a page (videos are often in embedded frames). */
+  private async inFrames(tabId: string, script: string): Promise<unknown[]> {
+    const wc = this.views.get(tabId)?.webContents
+    if (!wc) return []
+    return Promise.all(wc.mainFrame.framesInSubtree.map((f) => f.executeJavaScript(script, true).catch(() => null)))
+  }
+
+  /** Put the Mini Player in a corner of the page area (hidden while a panel, Peek or full screen is showing). */
+  private placeMini(): void {
+    const win = this.win
+    if (!win || win.isDestroyed()) return
+    const show = !!this.store.mini && this.mainPanes.length > 0 && !this.store.peek && !this.fullscreen.has(win)
+    if (!show) return this.miniView.place(win, null)
+    const rects = this.mainPanes.map((p) => p.rect)
+    const x = Math.min(...rects.map((r) => r.x))
+    const y = Math.min(...rects.map((r) => r.y))
+    const right = Math.max(...rects.map((r) => r.x + r.width))
+    const bottom = Math.max(...rects.map((r) => r.y + r.height))
+    this.miniView.place(win, { x, y, width: right - x, height: bottom - y })
+  }
+
+  private async miniAction(what: 'playPause' | 'pip' | 'back' | 'close' | 'dragStart' | 'dragEnd'): Promise<void> {
+    const mini = this.store.mini
+    if (what === 'dragEnd') return this.miniView.dragEnd()
+    if (!mini) return
+    if (what === 'dragStart') return this.win ? this.miniView.dragStart(this.win) : undefined
+    if (what === 'back') {
+      const space = locate(this.state, mini.tabId)?.space
+      if (space && space.id !== this.state.activeSpaceId) this.switchSpace(space.id)
+      return this.activate(mini.tabId)
+    }
+    if (what === 'pip') {
+      await this.inFrames(
+        mini.tabId,
+        `(() => { const v = [...document.querySelectorAll('video')].find((v) => !v.paused) || document.querySelector('video'); if (v && document.pictureInPictureElement !== v) v.requestPictureInPicture(); return !!v })()`
+      )
+      return
+    }
+    if (what === 'close') {
+      // Closing the player of a video pauses it; a call keeps going.
+      if (!mini.call) await this.inFrames(mini.tabId, `document.querySelectorAll('video, audio').forEach((m) => m.pause())`)
+      this.store.mini = null
+      this.store.changed(false)
+      return this.placeMini()
+    }
+    // Play / pause: pause everything playing, or resume what was playing before.
+    const results = await this.inFrames(
+      mini.tabId,
+      `(() => {
+        const media = [...document.querySelectorAll('video, audio')]
+        const playing = media.filter((m) => !m.paused)
+        if (playing.length) { playing.forEach((m) => m.pause()); return 'paused' }
+        const resume = media.find((m) => m.currentTime > 0) || media[0]
+        if (resume) { resume.play(); return 'playing' }
+        return null
+      })()`
+    )
+    if (this.store.mini?.tabId !== mini.tabId) return
+    const playing = results.includes('playing') || (!results.includes('paused') && mini.playing)
+    this.store.mini = { ...this.store.mini, playing }
+    this.store.changed(false)
+  }
+
+  /** Mute or unmute a tab's sound. */
+  setMuted(tabId: string, muted?: boolean): void {
+    const wc = this.views.get(tabId)?.webContents
+    if (!wc) return
+    const next = muted ?? !wc.isAudioMuted()
+    wc.setAudioMuted(next)
+    this.store.runtime[tabId] = { ...this.store.runtime[tabId], muted: next }
+    this.store.changed(false)
+  }
+
+  /**
+   * Tab sleep: background tabs you haven't looked at for a while are unloaded to save memory.
+   * They stay in the sidebar and load again when you click them. Never: tabs on screen,
+   * tabs making sound, calls, the Mini Player's tab, Peek, Little windows.
+   */
+  sleepTabs(): void {
+    const limit = SLEEP_AFTER_MS[this.state.settings.sleepAfter]
+    if (!limit) return
+    const cutoff = Date.now() - limit
+    let slept = false
+    for (const tab of allTabs(this.state)) {
+      if (!this.views.has(tab.id) || this.isAttached(tab.id) || tab.lastViewedAt > cutoff) continue
+      if (this.store.runtime[tab.id]?.audible || isCallUrl(tab.url) || this.store.mini?.tabId === tab.id) continue
+      if (this.store.peek?.id === tab.id || this.littles.has(tab.id)) continue
+      this.destroyView(tab.id)
+      slept = true
+    }
+    if (slept) this.store.changed(false)
   }
 
   /** The window a tab's page is showing in right now. */
@@ -1209,7 +1388,7 @@ export class Browser {
         }
         if (item.id === space.activeId) return true
         const tabs = item.kind === 'tab' ? [item] : item.tabs
-        if (tabs.some((t) => t.lastViewedAt > cutoff || this.isAttached(t.id))) return true
+        if (tabs.some((t) => t.lastViewedAt > cutoff || this.isAttached(t.id) || this.store.runtime[t.id]?.audible)) return true
         for (const tab of tabs) {
           this.destroyView(tab.id)
           this.archive.add(tab, space.id, false)
@@ -1563,7 +1742,7 @@ export class Browser {
       text: clean,
       done: false,
       due: due || undefined,
-      link: tab?.url ? { url: tab.url, title: tab.name || tab.title } : undefined,
+      link: tab?.url ? { url: tab.url, title: tabLabel(tab) } : undefined,
       spaceId,
       createdAt: Date.now()
     }
@@ -1736,7 +1915,7 @@ export class Browser {
         const tabs = item.kind === 'split' ? item.tabs : [item]
         return tabs
           .filter((t) => /^https?:/.test(t.pinnedUrl ?? t.url))
-          .map((t) => ({ title: t.name || t.title, url: t.pinnedUrl ?? t.url }))
+          .map((t) => ({ title: tabLabel(t), url: t.pinnedUrl ?? t.url }))
       })
     const nodes: BookmarkNode[] = [
       { title: 'Pinned', children: toNodes(space.pinned) },
@@ -2106,7 +2285,7 @@ export class Browser {
         const id = this.activeTabId()
         const tab = id ? this.tab(id) : null
         if (todo && tab?.url) {
-          todo.link = { url: tab.url, title: tab.name || tab.title }
+          todo.link = { url: tab.url, title: tabLabel(tab) }
           this.store.changed()
         }
         return
@@ -2164,6 +2343,19 @@ export class Browser {
         return this.passwords.reveal(action.id)
       case 'passwords/importCsv':
         return this.importPasswordsCsv(action.profile)
+      case 'tab/mute':
+        return this.setMuted(action.id, action.muted)
+      case 'tab/rename': {
+        const name = action.name?.trim()
+        return this.updateTab(action.id, { customName: name || undefined })
+      }
+      case 'mini/playPause':
+      case 'mini/pip':
+      case 'mini/back':
+      case 'mini/close':
+      case 'mini/dragStart':
+      case 'mini/dragEnd':
+        return this.miniAction(action.type.split('/')[1] as 'playPause' | 'pip' | 'back' | 'close' | 'dragStart' | 'dragEnd')
       case 'space/exportBookmarks':
         return this.exportBookmarks(action.id)
       case 'media/open':
@@ -2195,6 +2387,21 @@ function siteOf(url: string): string {
     return ''
   }
 }
+
+/** A video call page (Google Meet, Zoom in the browser): gets the Mini Player and never sleeps. */
+function isCallUrl(url: string): boolean {
+  try {
+    const { hostname, pathname } = new URL(url)
+    return (
+      (hostname === 'meet.google.com' && /^\/[a-z]{3}-[a-z]{4}-[a-z]{3}/.test(pathname)) ||
+      (/(^|\.)zoom\.us$/.test(hostname) && /^\/wc\//.test(pathname))
+    )
+  } catch {
+    return false
+  }
+}
+
+const SLEEP_AFTER_MS: Record<SleepAfter, number> = { '30m': 30 * 60_000, '1h': 3_600_000, '4h': 4 * 3_600_000, never: 0 }
 
 /** Sign-in pages must open normally, never in Peek, or logging in breaks. */
 function isAuthUrl(url: string): boolean {

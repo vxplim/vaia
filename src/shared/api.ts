@@ -137,6 +137,16 @@ export type Action =
   /** Files listed in Library → Media (only paths VAIA just listed are accepted). */
   | { type: 'media/open' | 'media/show' | 'media/copy' | 'media/trash'; path: string }
   | { type: 'media/openPrivacySettings' }
+  /** Mute or unmute a tab (toggles when `muted` is left out). */
+  | { type: 'tab/mute'; id: string; muted?: boolean }
+  /** Your own name for a tab; null resets it to the page title. */
+  | { type: 'tab/rename'; id: string; name: string | null }
+  | { type: 'mini/playPause' }
+  | { type: 'mini/pip' }
+  | { type: 'mini/back' }
+  | { type: 'mini/close' }
+  | { type: 'mini/dragStart' }
+  | { type: 'mini/dragEnd' }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
 export interface VaiaApi {

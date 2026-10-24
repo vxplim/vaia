@@ -1,7 +1,7 @@
 // The Settings window (⌘,).
 import { useCallback, useEffect, useState } from 'react'
 import { Toggle } from './components/Toggle'
-import type { AppState, ArchiveAfter, PasswordInfo, PermissionKind, SearchEngineId } from '../../shared/types'
+import type { AppState, ArchiveAfter, PasswordInfo, PermissionKind, SearchEngineId, SleepAfter } from '../../shared/types'
 import { SEARCH_ENGINES } from '../../shared/url'
 import { dispatch, useAppState } from './state'
 import { ThemeControls, ThemePreview } from './components/ThemeControls'
@@ -22,6 +22,8 @@ const SHORTCUTS: [string, string][] = [
   ['⇧⌘T', 'Reopen closed tab'],
   ['⌘R', 'Reload page'],
   ['⌘[  /  ⌘]', 'Back / forward'],
+  ['⌃Tab  /  ⌃⇧Tab', 'Switch between recent tabs (hold ⌃)'],
+  ['⇧ + hover a link', 'Open the link in Peek'],
   ['⌘S', 'Show / hide the sidebar'],
   ['⇧⌘C', 'Copy the page address'],
   ['⌘F', 'Find in page (⌘G next, ⇧⌘G previous)'],
@@ -98,6 +100,21 @@ export function SettingsApp() {
                   {o.label}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Put background tabs to sleep</div>
+              <div className="setting-hint">
+                Tabs you haven't looked at for this long are unloaded to save memory, and load again when you click them. Tabs
+                playing sound and calls never sleep.
+              </div>
+            </div>
+            <select value={s.sleepAfter} onChange={(e) => set({ sleepAfter: e.target.value as SleepAfter })}>
+              <option value="30m">After 30 minutes</option>
+              <option value="1h">After 1 hour</option>
+              <option value="4h">After 4 hours</option>
+              <option value="never">Never</option>
             </select>
           </div>
           <div className="setting-row">

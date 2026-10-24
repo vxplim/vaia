@@ -25,7 +25,9 @@ protocol.registerSchemesAsPrivileged([
  * popups can never reach these, even if a page found a way to send messages.
  */
 function fromUi(e: IpcMainEvent | IpcMainInvokeEvent): boolean {
-  const ok = BrowserWindow.getAllWindows().some((w) => w.webContents === e.sender) && isUiUrl(e.sender.getURL())
+  const ok =
+    (BrowserWindow.getAllWindows().some((w) => w.webContents === e.sender) || browser.isUiView(e.sender)) &&
+    isUiUrl(e.sender.getURL())
   if (!ok) console.warn('[ipc] ignored a request from outside VAIA’s interface')
   return ok
 }
@@ -64,6 +66,7 @@ ipcMain.handle('media:thumbnail', ui((_e, path: string, size: number) => browser
 ipcMain.handle('passwords:list', ui(() => browser.passwords.list()))
 ipcMain.handle('pw:lookup', (e, origin: string) => browser.lookupLogins(e, origin))
 ipcMain.on('pw:submitted', (e, login: { origin: string; username: string; password: string }) => browser.loginSubmitted(e, login))
+ipcMain.on('peek:link', (e, url: string) => browser.peekLink(e, String(url)))
 ipcMain.on('pw:username', (e, info: { origin: string; username: string }) => browser.loginUsername(e, info))
 ipcMain.on(
   'panes:set',
@@ -110,6 +113,7 @@ app.whenReady().then(() => {
   browser.autoArchive()
   setInterval(() => {
     browser.autoArchive()
+    browser.sleepTabs()
     browser.purgeDoneTodos()
   }, 60_000)
 

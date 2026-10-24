@@ -233,3 +233,25 @@ export const IconColumns = (p: P) => (
     <path d="M6.2 3v10M9.8 3v10" />
   </Svg>
 )
+export const IconSpeaker = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 6.2h2.2L8.5 3.5v9L5.2 9.8H3Z" />
+    <path d="M10.6 5.8a3 3 0 0 1 0 4.4M12.2 4.3a5.2 5.2 0 0 1 0 7.4" />
+  </Svg>
+)
+export const IconSpeakerOff = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 6.2h2.2L8.5 3.5v9L5.2 9.8H3Z" />
+    <path d="m10.5 6.2 3.3 3.6M13.8 6.2l-3.3 3.6" />
+  </Svg>
+)
+export const IconPlay = (p: P) => (
+  <Svg {...p}>
+    <path d="M5 3.5v9l7.5-4.5Z" fill="currentColor" />
+  </Svg>
+)
+export const IconPause = (p: P) => (
+  <Svg {...p}>
+    <path d="M5.5 3.5v9M10.5 3.5v9" strokeWidth="2.2" />
+  </Svg>
+)

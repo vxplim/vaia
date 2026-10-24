@@ -265,6 +265,27 @@ export const COMMANDS: Command[] = [
     }
   },
   {
+    id: 'mute',
+    title: 'Mute Tab',
+    keywords: 'sound audio silence volume',
+    enabled: (ctx) => !!ctx.activeTabId && !!ctx.state.runtime[ctx.activeTabId] && !ctx.state.runtime[ctx.activeTabId].muted,
+    run: (ctx) => dispatch({ type: 'tab/mute', id: ctx.activeTabId!, muted: true })
+  },
+  {
+    id: 'unmute',
+    title: 'Unmute Tab',
+    keywords: 'sound audio volume',
+    enabled: (ctx) => !!ctx.activeTabId && !!ctx.state.runtime[ctx.activeTabId]?.muted,
+    run: (ctx) => dispatch({ type: 'tab/mute', id: ctx.activeTabId!, muted: false })
+  },
+  {
+    id: 'reset-name',
+    title: 'Reset Tab Name',
+    keywords: 'rename original title',
+    enabled: (ctx) => !!activeTab(ctx)?.customName,
+    run: (ctx) => dispatch({ type: 'tab/rename', id: ctx.activeTabId!, name: null })
+  },
+  {
     id: 'duplicate',
     title: 'Duplicate Tab',
     keywords: 'copy clone',

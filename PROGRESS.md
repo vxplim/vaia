@@ -179,6 +179,16 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
   - **Export Tabs as Bookmarks…** saves a standard bookmarks `.html` file (Pinned with its folders, and Today) that any browser can import
   - Command Bar: Open Library, Show Media, Manage Spaces…, Manage Boosts, Export Tabs as Bookmarks…
 
+- [x] **Phase 17: Tidy/Clear fix + tab essentials** (tag `v1.8.0`)
+  - **Tidy and Clear are always on the Today divider.** With nothing to do they stay in place, dimmed, and the tooltip says why ("Nothing to tidy yet…", "No Today tabs to clear")
+  - **Sound:** a speaker appears on tabs (and favorites) playing sound; click it to mute / unmute. Right-click → Mute Tab / Unmute Tab; Command Bar "Mute Tab" / "Unmute Tab"
+  - **Mini Player:** leave a tab that's playing (or a Google Meet / Zoom call) and a small player appears in a corner of the page area: title, play/pause, mute, picture in picture (videos), back to the tab, close. Drag it and it settles in the nearest corner (remembered). It hides while a panel, Peek or full screen is showing
+  - **⌃Tab / ⌃⇧Tab:** a switcher with this Space's tabs and favorites, most recently used first. Keep ⌃ held and press Tab to move, let go to switch, Esc to cancel. Works while a web page has the keyboard too
+  - **Rename tabs:** double-click a tab's title or right-click → Rename…. Your name stays when the page changes, after restarts, and when you pin the tab. Right-click → Reset Name (or Command Bar "Reset Tab Name") brings back the page title
+  - **Unread badges:** pinned tabs and favorites show the count a page puts in its title, e.g. "(3) Inbox" or "Inbox (12) – Mail"
+  - **Shift + hover a link** for half a second: it opens in Peek
+  - **Tab sleep** (Settings → General: 30 min / 1 hour (default) / 4 hours / never): background tabs you haven't viewed for that long are unloaded to save memory and load again when clicked. Never: tabs on screen, tabs making sound, calls, the Mini Player's tab, Peek, Little windows. Auto-archive also leaves tabs that are playing sound alone now
+
 ### Google sign-in: what the tests showed
 
 - With compatibility on, Google's sign-in page sees Firefox (checked) while other sites in the same Space see Chrome (checked).
@@ -265,6 +275,13 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - **New Folder on another Space's icon switches to that Space first**, so you can name the folder straight away.
 - **Switching a Space back to the shared account asks first**, because it deletes that Space's separate logins and saved passwords.
 - **Bookmark export uses a pinned tab's original page** (not wherever you browsed to), and skips empty or non-web tabs.
+- **The Mini Player is its own tiny view on top of the page** (like toasts), because web pages are always drawn above VAIA's interface. Dragging works by following the mouse until you let go, then snapping to the nearest corner.
+- **The Mini Player appears when you leave a tab that's making sound** (or a Meet/Zoom call page), not for every tab with a paused video. "Close" pauses a video; for a call it only hides the player (the call keeps going). Its mute button mutes the tab's sound, not your microphone.
+- **Calls are recognised by address**: `meet.google.com/abc-defg-hij` and Zoom's web client (`zoom.us/wc/…`).
+- **The ⌃Tab switcher covers the current Space's tabs and the favorites** (not other Spaces), most recently viewed first.
+- **Favorites can't be renamed** (they're icon-only); a name given while the tab was pinned stays and shows as the tile's tooltip.
+- **A sleeping tab loses its back/forward history and anything typed but not sent** (same as after a restart), so 1 hour is the default rather than 30 minutes.
+- **Unread counts are read from the page title**, the same thing the page shows in its own tab; the badge hides while you hover the row so the close button has room.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -277,6 +294,7 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 
 ## Needs Vanessa
 
+- **Try the Mini Player on a real video and a real call** (e.g. a YouTube video, then switch tabs; a Google Meet call). Picture in picture should pop the video out of VAIA.
 - **Test Phase 16 with `npm run dev`:** open the Library (bottom-left button or ⇧⌘L) and try each section, the Space menu (hover the Space name → ⋯), and "Export Tabs as Bookmarks…". No new release was built, as you asked.
 - **Screenshots in Media:** turn on Settings → "Include my Mac screenshots". macOS will ask whether VAIA (while developing it says "Electron" or your Terminal app) may access the Desktop/screenshots folder: click **Allow**. If you clicked "Don't Allow", Media shows an "Open Privacy Settings" button. (The automated tests used a test folder so no prompt appeared on your Mac.)
 

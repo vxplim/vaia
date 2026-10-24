@@ -8,6 +8,7 @@ import type {
   AppState,
   DownloadItem,
   ExtensionInfo,
+  MiniPlayer,
   PersistedState,
   Settings,
   SitePermissions,
@@ -54,7 +55,9 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledExtensions: [],
   googleSignInCompat: true,
   librarySection: 'archive',
-  mediaScreenshots: false
+  mediaScreenshots: false,
+  sleepAfter: '1h',
+  miniPlayerCorner: 'bottom-right'
 }
 
 export function newSpace(name: string, icon: string, colors: string[]): Space {
@@ -111,6 +114,9 @@ export class Store {
   aiKeySet = false
   sitePermissions: SitePermissions = {}
   extensions: ExtensionInfo[] = []
+  mini: MiniPlayer | null = null
+  /** Called (soon) after every change, e.g. to update the Mini Player. */
+  onChange: (() => void) | null = null
   private subscribers = new Set<WebContents>()
   private saveTimer: NodeJS.Timeout | null = null
   private broadcastTimer: NodeJS.Timeout | null = null
@@ -128,7 +134,8 @@ export class Store {
       littles: this.littles,
       aiKeySet: this.aiKeySet,
       sitePermissions: this.sitePermissions,
-      extensions: this.extensions
+      extensions: this.extensions,
+      mini: this.mini
     }
   }
 
@@ -145,6 +152,7 @@ export class Store {
     if (!this.broadcastTimer) {
       this.broadcastTimer = setTimeout(() => {
         this.broadcastTimer = null
+        this.onChange?.()
         const snap = this.snapshot()
         for (const wc of this.subscribers) if (!wc.isDestroyed()) wc.send('state:changed', snap)
       }, 8)
