@@ -131,6 +131,13 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - ❌ **Don't work:** extensions that talk to an app on your Mac ("native messaging", e.g. 1Password's desktop integration), DevTools panels, extensions that replace the new tab page, Chrome sign-in/sync features, and extensions needing `chrome.webRequest` while VAIA's own ad blocker is on (they conflict: turn VAIA's blocker off if you use one).
 - Extensions only run in your normal profile, not in Spaces with a separate profile or private windows (Electron doesn't support extensions in temporary sessions).
 
+- [x] **Phase 13: Look & feel** (tag `v1.3.0`)
+  - VAIA's own interface is clean black and white: white surfaces, black text and icons, dark-gray secondary text, thin light-gray borders and soft shadows. The Command Bar, panels, popovers, Settings and buttons all use the same shared colors (`--ui-*` in styles.css). Dark mode is the inverse (near-black, white text)
+  - Spaces keep a pastel color on top: 12 new presets (Lilac, Peach, Mint, Sky, Butter, Rose, Fog, Sage, Coral, Seafoam, and two gentle gradients, Haze and Sunrise) plus the color wheel
+  - Theme editor: **Intensity** (Whisper → Soft), **Tone** (Warmer ↔ Cooler, double-click to reset), **Gradient** on/off, Light / Auto / Dark, and a live mini-preview. Old Spaces keep working (missing settings use defaults)
+  - **Settings → Appearance**: pick a Space, same controls, live preview
+  - Hidden sidebar slide-out: rest ~150ms at the left edge, the page is frozen into a picture first, *then* the sidebar slides in (ease-out) with a soft shadow. It stays open through brief slips (~0.3s grace, ~0.6s if the pointer leaves the window), slides away smoothly, and brushing past the edge doesn't open it
+
 ## Next ideas (not started)
 
 - Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
@@ -186,6 +193,11 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **Error pages are written into Chromium's blank error page**, so the tab keeps the address it tried to open (Try again works, and the address bar shows what failed).
 - **Safari keeps its bookmarks file private** (macOS Full Disk Access). Instead of asking for that, VAIA explains how to export from Safari and import the file.
 - **Imported bookmarks become sleeping pinned tabs**: nothing loads until you click one.
+- **The window is opaque white/near-black tinted by the Space's pastel** (no more see-through frosted glass), for the clean black-and-white look. Intensity mixes the pastel into white: Whisper ≈ 12%, Soft = the full pastel. In dark mode the pastel is a subtle tint on near-black.
+- **Tone shifts the colors toward a warm peach or a cool blue** (up to 40%), rather than rotating the hue, so pastels stay pastel.
+- **A Space set to Dark looks dark even if the Mac is in light mode** (and vice versa); the Settings window follows the Mac's setting.
+- **Black is the accent color** (switches, selected buttons, checked to-dos); red stays for overdue/danger and the Private window stays purple.
+- **The slide-out sidebar waits for the page picture before sliding in.** Before, it animated *behind* the live page and then popped into view (the flicker).
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)

@@ -11,6 +11,8 @@ interface Props {
   frozen: boolean
   /** Find-in-page bar shown above the page (or null). */
   findBar: ReactNode
+  /** Told when the live pages have been swapped for pictures (true) or are back (false). */
+  onFrozen?: (frozen: boolean) => void
 }
 
 let lastSent = ''
@@ -30,7 +32,7 @@ const MIN_PANE = 0.15
  * View. The pages are drawn by the brain on top of these exact spots; we
  * measure each card and report where it is.
  */
-export function Content({ state, space, frozen, findBar }: Props) {
+export function Content({ state, space, frozen, findBar, onFrozen }: Props) {
   const { drag, setDrag, setIndicator } = useDnd()
   const loc = space.activeId ? locate(state, space.activeId) : null
   const split = loc?.item.kind === 'split' ? loc.item : null
@@ -49,6 +51,7 @@ export function Content({ state, space, frozen, findBar }: Props) {
   const freeze = frozen || canDropTab
 
   const container = useRef<HTMLDivElement>(null)
+  useEffect(() => onFrozen?.(hidden), [hidden, onFrozen])
   const paneEls = useRef(new Map<string, HTMLDivElement>())
 
   // Freezing: take pictures, wait until they're ready to draw, THEN hide the live pages.

@@ -17,6 +17,14 @@ import { dispatch, useAppState } from './state'
 import { themeStyle, useSystemDark } from './theme'
 
 const CLOSE_ANIMATION_MS = 140
+/** Hidden sidebar: how long to rest at the left edge before it slides out, and grace periods before it tucks away. */
+const PEEK_OPEN_DELAY_MS = 150
+const PEEK_AWAY_GRACE_MS = 320
+const PEEK_LEAVE_WINDOW_GRACE_MS = 600
+const PEEK_SLIDE_OUT_MS = 180
+
+/** closed → opening (freezing the page) → open (slid out) → closing (sliding away) → closed */
+type PeekPhase = 'closed' | 'opening' | 'open' | 'closing'
 
 /** Things that float over the page (the page is "frozen" into a picture while one is open). */
 export type Overlay =
@@ -33,7 +41,14 @@ export default function App() {
   const [findKey, setFindKey] = useState(0)
   const [findOpen, setFindOpen] = useState(false)
   // With the sidebar hidden, hovering the left edge slides it out over the page.
-  const [sidebarPeek, setSidebarPeek] = useState(false)
+  const [peekPhase, setPeekPhase] = useState<PeekPhase>('closed')
+  const sidebarPeek = peekPhase !== 'closed'
+  /** The page has been swapped for a picture, so the sliding sidebar can show above it. */
+  const [frozenReady, setFrozenReady] = useState(false)
+  const edgeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const setSidebarPeek = useCallback((on: boolean) => {
+    setPeekPhase((p) => (on ? (p === 'closed' || p === 'closing' ? 'opening' : p) : p === 'closed' ? p : 'closing'))
+  }, [])
   const [boostOpen, setBoostOpen] = useState(false)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -102,26 +117,48 @@ export default function App() {
     if (!urlEditing) setSidebarPeek(false)
   }, [urlEditing])
 
-  // Tuck the slid-out sidebar away once the pointer wanders off to the right of it.
+  // Slide in once the page is frozen into a picture (two frames later, so the move animates).
+  useEffect(() => {
+    if (peekPhase !== 'opening' || !frozenReady) return
+    let second = 0
+    const first = requestAnimationFrame(() => (second = requestAnimationFrame(() => setPeekPhase('open'))))
+    return () => {
+      cancelAnimationFrame(first)
+      cancelAnimationFrame(second)
+    }
+  }, [peekPhase, frozenReady])
+  // After sliding away, let the live page come back.
+  useEffect(() => {
+    if (peekPhase !== 'closing') return
+    const t = setTimeout(() => setPeekPhase('closed'), PEEK_SLIDE_OUT_MS)
+    return () => clearTimeout(t)
+  }, [peekPhase])
+
+  // Tuck the slid-out sidebar away once the pointer wanders off to the right of it (or out of
+  // the window), with a short grace period so a brief slip doesn't close it.
   const sidebarWidth = state?.settings.sidebarWidth ?? 248
   useEffect(() => {
-    if (!sidebarPeek) return
-    const onMove = (e: MouseEvent) => {
-      const away = e.clientX > sidebarWidth + 40
-      if (away && !urlEditing && !peekTimer.current) {
-        peekTimer.current = setTimeout(() => setSidebarPeek(false), 250)
-      } else if (!away && peekTimer.current) {
-        clearTimeout(peekTimer.current)
-        peekTimer.current = null
-      }
-    }
-    window.addEventListener('mousemove', onMove)
-    return () => {
-      window.removeEventListener('mousemove', onMove)
+    if (peekPhase !== 'open') return
+    const cancel = () => {
       if (peekTimer.current) clearTimeout(peekTimer.current)
       peekTimer.current = null
     }
-  }, [sidebarPeek, urlEditing, sidebarWidth])
+    const closeAfter = (ms: number) => {
+      if (!peekTimer.current) peekTimer.current = setTimeout(() => setSidebarPeek(false), ms)
+    }
+    const onMove = (e: MouseEvent) => {
+      if (e.clientX > sidebarWidth + 24 && !urlEditing) closeAfter(PEEK_AWAY_GRACE_MS)
+      else cancel()
+    }
+    const onLeave = () => !urlEditing && closeAfter(PEEK_LEAVE_WINDOW_GRACE_MS)
+    window.addEventListener('mousemove', onMove)
+    document.documentElement.addEventListener('mouseleave', onLeave)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      document.documentElement.removeEventListener('mouseleave', onLeave)
+      cancel()
+    }
+  }, [peekPhase, urlEditing, sidebarWidth, setSidebarPeek])
 
   if (!state) return null
 
@@ -165,11 +202,24 @@ export default function App() {
           state={state}
           space={space}
           frozen={overlay !== null || !!state.peek || sidebarPeek}
+          onFrozen={setFrozenReady}
           findBar={findOpen && activeTab?.url ? <FindBar focusKey={findKey} onClose={() => setFindOpen(false)} /> : null}
         />
-        {!sidebarVisible && !sidebarPeek && <div className="edge-hover" onMouseEnter={() => setSidebarPeek(true)} />}
-        {!sidebarVisible && sidebarPeek && (
-          <div className="sidebar-float">
+        {!sidebarVisible && !sidebarPeek && (
+          <div
+            className="edge-hover"
+            onMouseEnter={() => {
+              if (edgeTimer.current) clearTimeout(edgeTimer.current)
+              edgeTimer.current = setTimeout(() => setSidebarPeek(true), PEEK_OPEN_DELAY_MS)
+            }}
+            onMouseLeave={() => {
+              if (edgeTimer.current) clearTimeout(edgeTimer.current)
+              edgeTimer.current = null
+            }}
+          />
+        )}
+        {!sidebarVisible && sidebarPeek && frozenReady && (
+          <div className={`sidebar-float${peekPhase === 'open' ? ' open' : peekPhase === 'closing' ? ' closing' : ''}`}>
             <Backdrop background={theme.background} />
             {sidebar}
           </div>

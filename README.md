@@ -36,6 +36,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - ✅ Command Bar (⌘T): open sites, search with suggestions, switch tabs, search history, run commands
 - ✅ Favorites (icon tiles), Pinned tabs with folders, and Today tabs, all with drag and drop
 - ✅ Pinned tabs remember their home page, and closing them puts them to sleep instead of losing them
+- ✅ Clean black-and-white design with soft pastel Spaces (intensity, tone, gradients, light/dark)
 - ✅ Spaces with their own emoji, color/gradient theme, light/dark mode, and optional separate profile (separate logins); switch with ⌃1…⌃9 or a swipe
 - ✅ Auto-archive of Today tabs you haven't viewed in a while (12h / 24h / 7d / 30d / never), a searchable Archive, and ⇧⌘T to reopen closed tabs
 - ✅ Split View: 2–4 tabs side by side with resizable dividers (drag a tab onto the page, right-click, or ⌃⇧=)

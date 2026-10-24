@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import { SPACE_EMOJI, THEME_PRESETS } from '../../../shared/themes'
-import type { AppState, Space, ThemeMode } from '../../../shared/types'
+import { SPACE_EMOJI } from '../../../shared/themes'
+import type { AppState, Space, Theme } from '../../../shared/types'
 import { dispatch } from '../state'
-import { colorsToCss } from '../theme'
-import { ColorWheel } from './ColorWheel'
+import { ThemeControls, ThemePreview } from './ThemeControls'
 
 interface Props {
   state: AppState
@@ -12,20 +11,14 @@ interface Props {
   onClose: () => void
 }
 
-/** Name, emoji, colors, light/dark mode and profile for one Space. Changes apply live. */
+/** Name, emoji, look (colors, intensity, tone, light/dark) and profile for one Space. Changes apply live. */
 export function SpaceEditor({ state, space, closing, onClose }: Props) {
   const [name, setName] = useState(space.name)
-  const [stop, setStop] = useState(0)
   const [emojiOpen, setEmojiOpen] = useState(false)
-  const colors = space.theme.colors
-  const stopIndex = Math.min(stop, colors.length - 1)
 
   useEffect(() => setName(space.name), [space.id, space.name])
 
-  const setTheme = (patch: { colors?: string[]; mode?: ThemeMode }) =>
-    dispatch({ type: 'space/update', id: space.id, patch: { theme: patch } })
-
-  const setColor = (hex: string) => setTheme({ colors: colors.map((c, i) => (i === stopIndex ? hex : c)) })
+  const setTheme = (patch: Partial<Theme>) => dispatch({ type: 'space/update', id: space.id, patch: { theme: patch } })
 
   const commitName = () => {
     if (name.trim() && name !== space.name) dispatch({ type: 'space/update', id: space.id, patch: { name } })
@@ -80,71 +73,8 @@ export function SpaceEditor({ state, space, closing, onClose }: Props) {
           </div>
         )}
 
-        <div className="field-label">Presets</div>
-        <div className="presets">
-          {THEME_PRESETS.map((p) => (
-            <button
-              key={p.name}
-              className="swatch"
-              title={p.name}
-              style={{ background: colorsToCss(p.colors) }}
-              onClick={() => {
-                setStop(0)
-                setTheme({ colors: [...p.colors] })
-              }}
-            />
-          ))}
-        </div>
-
-        <div className="field-label">
-          Colors
-          <span className="field-hint">{colors.length === 1 ? 'Solid' : 'Gradient'}</span>
-        </div>
-        <div className="stops">
-          {colors.map((c, i) => (
-            <button
-              key={i}
-              className={`stop${i === stopIndex ? ' selected' : ''}`}
-              style={{ background: c }}
-              title="Edit this color"
-              onClick={() => setStop(i)}
-            />
-          ))}
-          {colors.length < 3 && (
-            <button
-              className="stop add"
-              title="Add a color (gradient)"
-              onClick={() => {
-                setTheme({ colors: [...colors, colors[colors.length - 1]] })
-                setStop(colors.length)
-              }}
-            >
-              +
-            </button>
-          )}
-          {colors.length > 1 && (
-            <button
-              className="stop add"
-              title="Remove the selected color"
-              onClick={() => {
-                setTheme({ colors: colors.filter((_, i) => i !== stopIndex) })
-                setStop(0)
-              }}
-            >
-              −
-            </button>
-          )}
-        </div>
-        <ColorWheel color={colors[stopIndex]} onChange={setColor} />
-
-        <div className="field-label">Appearance</div>
-        <div className="segmented">
-          {(['light', 'auto', 'dark'] as ThemeMode[]).map((m) => (
-            <button key={m} className={space.theme.mode === m ? 'selected' : ''} onClick={() => setTheme({ mode: m })}>
-              {m === 'auto' ? 'Auto' : m === 'light' ? 'Light' : 'Dark'}
-            </button>
-          ))}
-        </div>
+        <ThemePreview theme={space.theme} icon={space.icon} name={name || space.name} />
+        <ThemeControls theme={space.theme} onChange={setTheme} />
 
         <label className="check-row">
           <input

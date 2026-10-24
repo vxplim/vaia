@@ -1,9 +1,10 @@
 // The Settings window (⌘,).
 import { useState } from 'react'
-import type { ArchiveAfter, PermissionKind, SearchEngineId } from '../../shared/types'
+import type { AppState, ArchiveAfter, PermissionKind, SearchEngineId } from '../../shared/types'
 import { SEARCH_ENGINES } from '../../shared/url'
 import { dispatch, useAppState } from './state'
-import { colorsToCss } from './theme'
+import { ThemeControls, ThemePreview } from './components/ThemeControls'
+import { themeStyle, useSystemDark } from './theme'
 
 const ARCHIVE_OPTIONS: { value: ArchiveAfter; label: string }[] = [
   { value: '12h', label: 'After 12 hours' },
@@ -61,6 +62,8 @@ export function SettingsApp() {
   const [clear, setClear] = useState({ history: true, cookies: false, cache: true, archive: false })
   const [cleared, setCleared] = useState(false)
   const [apiKey, setApiKey] = useState('')
+  const [lookSpaceId, setLookSpaceId] = useState<string | null>(null)
+  const systemDark = useSystemDark()
   const [importTarget, setImportTarget] = useState<'pinned' | 'favorites'>('pinned')
   const [importResult, setImportResult] = useState('')
   const importFrom = async (source: 'chrome' | 'safari' | 'file') => {
@@ -128,6 +131,8 @@ export function SettingsApp() {
           </div>
         </section>
 
+        <AppearanceSection state={state} spaceId={lookSpaceId ?? state.activeSpaceId} onPick={setLookSpaceId} />
+
         <section>
           <h2>Tidy &amp; to-do</h2>
           <div className="setting-row">
@@ -191,7 +196,7 @@ export function SettingsApp() {
           {state.spaces.map((space) => (
             <div className="setting-row" key={space.id}>
               <div className="space-summary">
-                <span className="space-swatch" style={{ background: colorsToCss(space.theme.colors) }}>
+                <span className="space-swatch" style={{ background: themeStyle(space.theme, systemDark).background }}>
                   {space.icon}
                 </span>
                 <div>
@@ -373,5 +378,39 @@ export function SettingsApp() {
         </section>
       </div>
     </div>
+  )
+}
+
+/** Settings → Appearance: the same look controls as the Space editor, with a live preview. */
+function AppearanceSection({ state, spaceId, onPick }: { state: AppState; spaceId: string; onPick: (id: string) => void }) {
+  const space = state.spaces.find((s) => s.id === spaceId) ?? state.spaces[0]
+  return (
+    <section>
+      <h2>Appearance</h2>
+      <div className="setting-row">
+        <div>
+          <div className="setting-label">Space</div>
+          <div className="setting-hint">Each Space has its own pastel color on top of VAIA’s black-and-white look.</div>
+        </div>
+        <select value={space.id} onChange={(e) => onPick(e.target.value)}>
+          {state.spaces.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.icon} {s.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="setting-row appearance-row">
+        <div className="appearance-preview">
+          <ThemePreview theme={space.theme} icon={space.icon} name={space.name} />
+          <div className="setting-hint">Changes apply right away.</div>
+        </div>
+        <ThemeControls
+          key={space.id}
+          theme={space.theme}
+          onChange={(patch) => dispatch({ type: 'space/update', id: space.id, patch: { theme: patch } })}
+        />
+      </div>
+    </section>
   )
 }

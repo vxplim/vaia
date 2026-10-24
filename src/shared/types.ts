@@ -7,6 +7,12 @@ export interface Theme {
   /** One color = solid, two or three = gradient. Hex strings like "#aabbcc". */
   colors: string[]
   mode: ThemeMode
+  /** 0 = Whisper (barely-there tint) … 1 = Soft (gentle pastel). Missing = 0.6. */
+  intensity?: number
+  /** -1 = warmer … 0 = as picked … 1 = cooler. Missing = 0. */
+  tone?: number
+  /** false = use only the first color. Missing = on when there are 2+ colors. */
+  gradient?: boolean
 }
 
 export interface TabItem {
