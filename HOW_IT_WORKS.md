@@ -49,6 +49,10 @@ vaia/
 │   │   ├── organize.ts         ← drag & drop, pinning, folders, split views
 │   │   ├── tidy.ts             ← Tidy: group Today tabs, close duplicates
 │   │   ├── ai.ts               ← AI Tidy (Claude) and the encrypted API key
+│   │   ├── permissions.ts      ← camera/location/... prompts and remembered answers
+│   │   ├── extensions.ts       ← Chrome extensions and the Chrome Web Store
+│   │   ├── bookmarks.ts        ← importing bookmarks from Chrome, Safari or a file
+│   │   ├── errorPage.ts        ← the friendly "can't load this page" page
 │   │   ├── store.ts            ← saving/loading your data (vaia-state.json)
 │   │   ├── history.ts          ← browsing history (history.json)
 │   │   ├── archive.ts          ← archived & recently closed tabs (archive.json)
@@ -95,6 +99,14 @@ vaia/
 - **AI Tidy** (`src/main/ai.ts`) sends Claude a numbered list like `3. Flights to Lisbon — google.com` and asks for an answer in a fixed JSON shape: which numbers go in which folder, and shorter names. VAIA then rebuilds Today from that answer. Your API key is encrypted by macOS (the Keychain) before it's written to disk, and only the brain can read it; the interface only ever learns "a key is saved".
 - **To-dos** are one list in `vaia-state.json`. The panel, the sidebar section and the pop-out window are three views of that same list, so checking something off in one updates the others instantly.
 
+## Permissions, extensions, private windows
+
+- **Permissions** (`src/main/permissions.ts`): every cookie jar has a "permission handler". When a page asks for something (say, the camera), Electron asks the handler; VAIA shows an Allow / Block sheet, remembers the answer in `permissions.json` if you tick the box, and blocks anything it doesn't recognise.
+- **Extensions** (`src/main/extensions.ts`): two open-source libraries do the heavy lifting. One adds the `chrome.*` APIs extensions expect (tabs, popups, storage, …) and the other makes the Chrome Web Store's "Add to Chrome" button work. Installed extensions live in `Extensions/` in VAIA's data folder. The buttons in the sidebar are a ready-made `<browser-action-list>` element that the library provides.
+- **Private windows** use a cookie jar whose name doesn't start with `persist:`, which tells Electron to keep it in memory only. VAIA also wipes it when the window closes, and never records history for it.
+- **Error pages** (`src/main/errorPage.ts`): when a page can't load, Chromium shows a blank page; VAIA writes its own friendly page into it. Its buttons are special `vaia-page:` links that the brain catches.
+- **Bookmarks** (`src/main/bookmarks.ts`): Chrome's bookmarks are a JSON file, Safari's are an Apple "property list", and exported files are HTML. All three are turned into the same simple tree of folders and links first.
+
 ## How the Mac app is made
 
 `npm run build:mac` does three things:
@@ -108,7 +120,7 @@ The app gets an **ad-hoc signature**: a free self-signature that proves the file
 ## Where your data lives
 
 Everything is stored on your Mac in `~/Library/Application Support/VAIA/`:
-`vaia-state.json` (spaces, tabs, settings, boosts), `history.json`, `archive.json`, `downloads.json`, `adblock-engine.bin` (cached filter lists), plus each profile's cookies and site data. There are no accounts and no servers.
+`vaia-state.json` (spaces, tabs, settings, boosts, to-dos), `history.json`, `archive.json`, `downloads.json`, `permissions.json` (site permissions), `claude-key.bin` (your Claude API key, encrypted), `Extensions/` (installed extensions), `adblock-engine.bin` (cached filter lists), plus each profile's cookies and site data. There are no accounts and no servers.
 
 ## Words you'll see
 

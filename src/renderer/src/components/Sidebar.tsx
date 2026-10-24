@@ -6,7 +6,7 @@ import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
 import { siteKey } from '../../../shared/url'
 import { BoostPanel } from './BoostPanel'
-import { IconBack, IconBoost, IconBroom, IconForward, IconMore, IconPlus, IconReload, IconSidebar, IconStop } from './Icons'
+import { IconBack, IconBoost, IconBroom, IconForward, IconMore, IconPlus, IconPuzzle, IconReload, IconSidebar, IconStop } from './Icons'
 import { ItemList } from './PinnedList'
 import { SpaceBar } from './SpaceBar'
 import { TodoSection } from './TodoSection'
@@ -24,6 +24,40 @@ interface Props {
   onToggleSidebar: () => void
   boostOpen: boolean
   onBoost: (open: boolean) => void
+}
+
+/** Extension buttons (their popups open below them) and a menu to manage extensions. */
+function ExtensionsBar({ state }: { state: AppState }) {
+  const enabled = state.extensions.filter((e) => e.enabled).length
+  const manage = async () => {
+    const choice = await window.vaia.popupMenu([
+      ...state.extensions.map((e) => ({
+        label: `${e.name}${e.enabled ? '' : ' (off)'}`,
+        submenu: [
+          { id: `toggle-${e.id}`, label: e.enabled ? 'Turn Off' : 'Turn On' },
+          { id: `remove-${e.id}`, label: 'Remove…' }
+        ]
+      })),
+      ...(state.extensions.length ? [{ type: 'separator' as const }] : []),
+      { id: 'store', label: 'Get Extensions from the Chrome Web Store' },
+      { id: 'settings', label: 'Manage Extensions…' }
+    ])
+    if (!choice) return
+    if (choice === 'store') return dispatch({ type: 'extensions/openStore' })
+    if (choice === 'settings') return dispatch({ type: 'app/openSettings' })
+    const id = choice.replace(/^(toggle|remove)-/, '')
+    const ext = state.extensions.find((e) => e.id === id)
+    if (choice.startsWith('toggle-') && ext) dispatch({ type: 'extensions/setEnabled', id, enabled: !ext.enabled })
+    if (choice.startsWith('remove-') && ext && confirm(`Remove “${ext.name}” from VAIA?`)) dispatch({ type: 'extensions/remove', id })
+  }
+  return (
+    <div className="extensions-bar">
+      {enabled > 0 && <browser-action-list partition="persist:default" alignment="bottom right" />}
+      <button className="icon-button" title="Extensions" onClick={manage}>
+        <IconPuzzle />
+      </button>
+    </div>
+  )
 }
 
 /** Two-finger horizontal swipes on the sidebar switch Spaces. */
@@ -81,6 +115,7 @@ export function Sidebar(props: Props) {
             <IconSidebar />
           </button>
         </div>
+        <ExtensionsBar state={state} />
         <div className="nav-buttons">
           <button
             className="icon-button"

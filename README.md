@@ -47,6 +47,11 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - ✅ Boosts: recolor any website, change its font, zap away elements, and add your own CSS/JS
 - ✅ Tidy: group Today tabs by website and close duplicates in one click (with Undo), or let Claude sort them into topic folders with your own API key
 - ✅ To-do list per Space (or everywhere): slide-out panel (⇧⌘K), sidebar section, and a pop-out window that can stay on top; due dates, linked pages, and "todo …" in the Command Bar
+- ✅ Chrome extensions from the Chrome Web Store, with toolbar buttons and popups
+- ✅ Asks before sites use your camera, microphone, location or notifications (manage in Settings)
+- ✅ Private windows, built-in PDF viewer, printing, full-screen video, picture in picture, spelling suggestions
+- ✅ Friendly error pages, blocked certificate errors, and crash recovery
+- ✅ Import bookmarks from Chrome, Safari, or any exported bookmarks file
 - ✅ Keyboard-friendly: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⌘Y, ⌘, (full list in Settings)
 
 ## Screenshots
@@ -75,4 +80,4 @@ npm run dev
 
 ## License
 
-[MIT](LICENSE) © Vanessa Minerva Lim
+[MIT](LICENSE) © Vanessa Minerva Lim. Chrome extension support uses [electron-chrome-extensions](https://github.com/samuelmaddock/electron-browser-shell), which is licensed GPL-3.0.

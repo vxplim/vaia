@@ -19,6 +19,8 @@ export interface TabItem {
   pinnedUrl?: string
   /** A shorter name shown instead of the page title (set by AI Tidy). */
   name?: string
+  /** A page in a private window: nothing about it is saved. */
+  private?: boolean
   createdAt: number
   lastViewedAt: number
 }
@@ -74,6 +76,8 @@ export interface Settings {
   todoSectionCollapsed: boolean
   /** The popped-out to-do window floats above other apps. */
   todoWindowOnTop: boolean
+  /** Ids of installed extensions that are switched off. */
+  disabledExtensions: string[]
 }
 
 export interface Todo {
@@ -113,10 +117,35 @@ export interface PersistedState {
   todos: Todo[]
 }
 
+export type PermissionKind =
+  | 'camera'
+  | 'microphone'
+  | 'location'
+  | 'notifications'
+  | 'clipboard'
+  | 'midi'
+  | 'idle'
+  | 'windows'
+  | 'open-apps'
+export type PermissionDecision = 'allow' | 'block'
+/** Remembered permission answers, by site (e.g. "https://meet.google.com"). */
+export type SitePermissions = Record<string, Partial<Record<PermissionKind, PermissionDecision>>>
+
+export interface ExtensionInfo {
+  id: string
+  name: string
+  version: string
+  enabled: boolean
+  /** A data: URL of the extension's icon, if it has one. */
+  icon?: string
+}
+
 export interface TabRuntime {
   loading: boolean
   canGoBack: boolean
   canGoForward: boolean
+  /** The page's process crashed; the tab shows a "page crashed" card with Reload. */
+  crashed?: boolean
 }
 
 export interface DownloadItem {
@@ -139,6 +168,8 @@ export interface AppState extends PersistedState {
   littles: Record<string, TabItem>
   /** Whether a Claude API key is saved (the key itself never leaves the brain). */
   aiKeySet: boolean
+  sitePermissions: SitePermissions
+  extensions: ExtensionInfo[]
 }
 
 export interface HistoryEntry {

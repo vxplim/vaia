@@ -6,3 +6,15 @@ declare global {
     vaia: VaiaApi
   }
 }
+
+// The extensions toolbar is a custom element provided by electron-chrome-extensions.
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'browser-action-list': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        partition?: string
+        alignment?: string
+      }
+    }
+  }
+}

@@ -8,7 +8,10 @@ import react from '@vitejs/plugin-react'
 //   renderer -> the UI you see (React: sidebar, command bar, settings)
 export default defineConfig({
   main: {},
-  preload: {},
+  // The preload runs in a sandbox, so the extensions toolbar code must be bundled into it.
+  preload: {
+    build: { externalizeDeps: { exclude: ['electron-chrome-extensions'] } }
+  },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     build: {

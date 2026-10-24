@@ -1,6 +1,19 @@
 // The contract between the UI and the brain: every request the UI can make.
 import type { Zone } from './tree'
-import type { AppState, ArchivedTab, Boost, HistoryEntry, Pane, Rect, Settings, Theme, Todo, UiCommand } from './types'
+import type {
+  AppState,
+  ArchivedTab,
+  Boost,
+  HistoryEntry,
+  Pane,
+  PermissionDecision,
+  PermissionKind,
+  Rect,
+  Settings,
+  Theme,
+  Todo,
+  UiCommand
+} from './types'
 
 export interface DropTarget {
   zone: Zone
@@ -88,6 +101,16 @@ export type Action =
   | { type: 'todo/linkActive'; id: string }
   | { type: 'todo/clearDone' }
   | { type: 'todo/popout' }
+  | { type: 'permissions/set'; origin: string; kind: PermissionKind; decision: PermissionDecision | null }
+  | { type: 'permissions/resetSite'; origin: string }
+  | { type: 'permissions/resetAll' }
+  | { type: 'extensions/setEnabled'; id: string; enabled: boolean }
+  | { type: 'extensions/remove'; id: string }
+  | { type: 'extensions/installById'; id: string }
+  | { type: 'extensions/openStore' }
+  | { type: 'private/new'; url?: string }
+  | { type: 'tab/print'; id: string }
+  | { type: 'bookmarks/import'; source: 'chrome' | 'safari' | 'file'; target: 'pinned' | 'favorites' }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
 export interface VaiaApi {

@@ -3,11 +3,13 @@
 import {
   BrowserWindow,
   Menu,
+  MenuItem,
   app,
   net,
   shell,
   WebContentsView,
   clipboard,
+  dialog,
   session,
   type ContextMenuParams,
   type Session
@@ -15,11 +17,15 @@ import {
 import { basename, extname, join } from 'node:path'
 import type { Action } from '../shared/api'
 import { activeSpace, allTabs, locate, tabsIn } from '../shared/tree'
-import type { ArchivedTab, Boost, DownloadItem, Pane, Rect, SidebarItem, Space, TabItem, Todo, UiCommand } from '../shared/types'
-import { SEARCH_ENGINES, inputToUrl, sameUrl, siteKey } from '../shared/url'
+import type { ArchivedTab, Boost, DownloadItem, FolderItem, Pane, Rect, SidebarItem, Space, TabItem, Todo, UiCommand } from '../shared/types'
+import { SEARCH_ENGINES, displayHost, inputToUrl, sameUrl, siteKey } from '../shared/url'
+import { errorPageScript } from './errorPage'
 import { existsSync } from 'node:fs'
 import { AdBlock } from './adblock'
 import { AiTidyError, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './ai'
+import { ImportError, countLinks, readChrome, readHtmlFile, readSafari, type BookmarkNode, type BookmarkTree } from './bookmarks'
+import { EXTENSIONS_PARTITION, Extensions } from './extensions'
+import { Permissions } from './permissions'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { EMPTY_BOOST, ZAP_SCRIPT, boostCss } from './boosts'
 import { History } from './history'
@@ -78,6 +84,45 @@ export class Browser {
   private tidyUndo: { spaceId: string; today: SidebarItem[] } | null = null
   private tidying = false
   private todoWin: BrowserWindow | null = null
+  readonly permissions = new Permissions(
+    () => {
+      this.store.sitePermissions = { ...this.permissions.saved }
+      this.store.changed(false)
+    },
+    (message) => this.showToast(message)
+  )
+  readonly extensions = new Extensions({
+    createTab: async (url, active) => {
+      if (!this.win) this.createWindow()
+      const tab = this.newTab(url, active)
+      return [this.ensureView(tab).webContents, this.win!]
+    },
+    selectTab: (wc) => {
+      const id = this.tabIdOf(wc)
+      if (!id) return
+      const space = locate(this.state, id)?.space
+      if (space && space.id !== this.state.activeSpaceId) this.switchSpace(space.id)
+      this.activate(id)
+    },
+    removeTab: (wc) => {
+      const id = this.tabIdOf(wc)
+      if (id) this.closeTab(id)
+    },
+    createWindow: async (url) => this.openLittle(url),
+    disabled: () => this.state.settings.disabledExtensions,
+    onChange: (list) => {
+      this.store.extensions = list
+      this.store.changed(false)
+    }
+  })
+  /** Pages whose process crashed: they show a "page crashed" card until reloaded. */
+  private crashed = new Set<string>()
+  /** A page playing full screen (e.g. a video), per window. */
+  private fullscreen = new Map<BrowserWindow, { tabId: string; madeFullScreen: boolean }>()
+  /** The panes each window's UI asked for last (to lay out again after full screen or a crash). */
+  private lastPanes = new Map<BrowserWindow, Pane[]>()
+  private extensionTabs = new WeakSet<Electron.WebContents>()
+  private selectedExtensionTab: Electron.WebContents | null = null
   /** The Boost style sheet currently added to each tab's page (so it can be swapped). */
   private boostCssKeys = new Map<string, string>()
   private boostQueue = new Map<string, Promise<void>>()
@@ -92,6 +137,7 @@ export class Browser {
   private littles = new Map<string, { tab: TabItem; win: BrowserWindow }>()
   private focusOnAttach: string | null = null
   private configuredSessions = new Set<Session>()
+  private layoutWatched = new WeakSet<BrowserWindow>()
 
   get state() {
     return this.store.state
@@ -320,32 +366,46 @@ export class Browser {
 
   /** Each Space with its own profile gets a separate cookie jar; everything else shares one. */
   partitionFor(tabId: string): string {
+    // Private windows get a temporary cookie jar (no "persist:"), thrown away on close.
+    if (this.littles.get(tabId)?.tab.private) return `private-${tabId}`
     const profileId = locate(this.state, tabId)?.space?.profileId
-    return profileId ? `persist:profile-${profileId}` : 'persist:default'
+    return profileId ? `persist:profile-${profileId}` : EXTENSIONS_PARTITION
   }
 
   private sessionFor(tabId: string): Session {
-    const ses = session.fromPartition(this.partitionFor(tabId))
+    return this.configuredSession(this.partitionFor(tabId))
+  }
+
+  private configuredSession(partition: string): Session {
+    const ses = session.fromPartition(partition)
     if (!this.configuredSessions.has(ses)) {
       this.configuredSessions.add(ses)
-      this.configureSession(ses)
+      this.configureSession(ses, !partition.startsWith('persist:'))
     }
     return ses
   }
 
   /** One-time setup for each browsing session (cookie jar). */
-  private configureSession(ses: Session): void {
+  private configureSession(ses: Session, isPrivate: boolean): void {
     cleanUserAgent(ses)
     ses.on('will-download', (_e, item) => this.trackDownload(item))
     this.adblock.addSession(ses)
+    this.permissions.attach(ses, isPrivate)
   }
 
   /** Start-up work that needs the saved settings. */
   init(): void {
     this.loadDownloads()
     this.store.aiKeySet = hasApiKey()
+    this.store.sitePermissions = { ...this.permissions.saved }
     this.purgeDoneTodos()
     if (this.state.settings.adBlock) this.adblock.setEnabled(true)
+    this.extensions.init(this.configuredSession(EXTENSIONS_PARTITION)).catch((err) => console.error('[extensions]', err))
+  }
+
+  private tabIdOf(wc: Electron.WebContents): string | null {
+    for (const [id, view] of this.views) if (view.webContents === wc) return id
+    return null
   }
 
   private ensureView(tab: TabItem): WebContentsView {
@@ -356,13 +416,21 @@ export class Browser {
         session: this.sessionFor(tab.id),
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: true
+        sandbox: true,
+        // Turns on Chromium's built-in PDF viewer, so PDFs open instead of downloading.
+        plugins: true,
+        spellcheck: true
       }
     })
     view.setBorderRadius(10)
     view.setBackgroundColor('#ffffff')
     this.views.set(tab.id, view)
     this.wireView(tab.id, view)
+    if (this.partitionFor(tab.id) === EXTENSIONS_PARTITION && this.win) {
+      // Extensions can see (and act on) tabs in your normal profile.
+      this.extensions.addTab(view.webContents, this.win)
+      this.extensionTabs.add(view.webContents)
+    }
     if (tab.url) view.webContents.loadURL(tab.url).catch(() => {})
     return view
   }
@@ -388,14 +456,16 @@ export class Browser {
       }
       this.store.changed(false)
     }
+    // Private windows never touch your history.
+    const history = this.littles.get(tabId)?.tab.private ? null : this.history
     wc.on('page-title-updated', (_e, title) => {
       this.updateTab(tabId, { title })
-      this.history.update(wc.getURL(), { title })
+      history?.update(wc.getURL(), { title })
     })
     wc.on('page-favicon-updated', (_e, icons) => {
       if (!icons[0]) return
       this.updateTab(tabId, { favicon: icons[0] })
-      this.history.update(wc.getURL(), { favicon: icons[0] })
+      history?.update(wc.getURL(), { favicon: icons[0] })
     })
     wc.on('did-navigate', (_e, url) => {
       const tab = this.tab(tabId)
@@ -404,13 +474,13 @@ export class Browser {
       const favicon = sameSite ? tab.favicon : undefined
       // A short name from AI Tidy described the old page.
       this.updateTab(tabId, sameSite ? { url, favicon } : { url, favicon, name: undefined })
-      this.history.visit(url, wc.getTitle(), favicon)
+      history?.visit(url, wc.getTitle(), favicon)
       runtime()
     })
     wc.on('did-navigate-in-page', (_e, url, isMainFrame) => {
       if (isMainFrame) {
         this.updateTab(tabId, { url })
-        this.history.visit(url, wc.getTitle(), this.tab(tabId)?.favicon)
+        history?.visit(url, wc.getTitle(), this.tab(tabId)?.favicon)
       }
       runtime()
     })
@@ -419,6 +489,11 @@ export class Browser {
     wc.setWindowOpenHandler(({ url, disposition }) => {
       // Real popups (e.g. "Sign in with Google") need to stay popups.
       if (disposition === 'new-window') return { action: 'allow' }
+      if (this.littles.get(tabId)?.tab.private) {
+        // Links from a private window stay private: open them right there.
+        wc.loadURL(url).catch(() => {})
+        return { action: 'deny' }
+      }
       if (disposition === 'foreground-tab' && this.opensLinksInPeek(tabId) && !isAuthUrl(url)) this.openPeek(url)
       else this.newTab(url, disposition !== 'background-tab', tabId)
       return { action: 'deny' }
@@ -441,9 +516,65 @@ export class Browser {
       }
     })
     wc.on('context-menu', (_e, params) => this.pageMenu(tabId, params))
+
+    // Friendly error pages. Chromium shows a blank page when a site can't load;
+    // we fill it in with an explanation and buttons (links to vaia-page:, caught below).
+    let failed: { url: string; code: number; description: string } | null = null
+    wc.on('did-fail-load', (_e, code, description, url, isMainFrame) => {
+      // -3 = cancelled (e.g. the link turned into a download, or you clicked elsewhere).
+      if (!isMainFrame || code === -3) return
+      failed = { url, code, description }
+      this.updateTab(tabId, { url, title: displayHost(url) })
+    })
+    wc.on('did-start-navigation', (details) => {
+      if (details.isMainFrame && !details.isSameDocument && details.url !== failed?.url) failed = null
+    })
+    wc.on('will-navigate', (e) => {
+      if (!e.url.startsWith('vaia-page:')) return
+      e.preventDefault()
+      const action = e.url.slice('vaia-page:'.length)
+      if (action === 'reload' && failed) wc.loadURL(failed.url).catch(() => {})
+      else if (action === 'back') wc.navigationHistory.goBack()
+      else if (action === 'close') this.closeTab(tabId)
+    })
+    wc.on('render-process-gone', (_e, details) => {
+      if (details.reason === 'clean-exit') return
+      // The page crashed: drop it and show a "page crashed" card with a Reload button.
+      setImmediate(() => {
+        if (!this.views.has(tabId)) return
+        this.destroyView(tabId)
+        this.crashed.add(tabId)
+        this.store.runtime[tabId] = { loading: false, canGoBack: false, canGoForward: false, crashed: true }
+        this.store.changed(false)
+      })
+    })
+
+    // Full screen video: the page fills the whole screen (the window goes full screen too).
+    wc.on('enter-html-full-screen', () => {
+      const win = this.windowShowing(tabId)
+      if (!win) return
+      const madeFullScreen = !win.isFullScreen()
+      this.fullscreen.set(win, { tabId, madeFullScreen })
+      if (madeFullScreen) win.setFullScreen(true)
+      this.relayout(win)
+    })
+    wc.on('leave-html-full-screen', () => {
+      for (const [win, fs] of this.fullscreen) {
+        if (fs.tabId !== tabId) continue
+        this.fullscreen.delete(win)
+        if (fs.madeFullScreen && !win.isDestroyed()) win.setFullScreen(false)
+        this.relayout(win)
+      }
+    })
+
     // Boosts: re-apply the site's customizations every time a page loads.
     wc.on('did-navigate', () => this.boostCssKeys.delete(tabId))
     wc.on('dom-ready', () => {
+      if (failed && wc.getURL() === failed.url) {
+        const canGoBack = wc.navigationHistory.canGoBack()
+        wc.executeJavaScript(errorPageScript(failed.url, failed.code, failed.description, canGoBack)).catch(() => {})
+        return
+      }
       this.applyBoostCss(tabId)
       const boost = this.boostFor(wc.getURL())
       if (boost?.enabled && boost.js.trim()) wc.executeJavaScript(boost.js).catch(() => {})
@@ -471,6 +602,8 @@ export class Browser {
       if (!win.isDestroyed()) win.contentView.removeChildView(view)
       this.attached.set(win, ids.filter((id) => id !== tabId))
     }
+    for (const [win, fs] of this.fullscreen) if (fs.tabId === tabId) this.fullscreen.delete(win)
+    if (this.selectedExtensionTab === view.webContents) this.selectedExtensionTab = null
     view.webContents.close()
     this.views.delete(tabId)
     this.boostCssKeys.delete(tabId)
@@ -501,8 +634,35 @@ export class Browser {
     this.applyLayout(this.win, panes)
   }
 
-  private applyLayout(win: BrowserWindow, panes: Pane[]): void {
+  /** The window a tab's page is showing in right now. */
+  private windowShowing(tabId: string): BrowserWindow | null {
+    for (const [win, ids] of this.attached) if (ids.includes(tabId) && !win.isDestroyed()) return win
+    return null
+  }
+
+  /** Lay a window out again with the panes its UI last asked for. */
+  private relayout(win: BrowserWindow): void {
+    if (win === this.win) this.layoutMain()
+    else this.applyLayout(win, this.lastPanes.get(win) ?? [])
+  }
+
+  private applyLayout(win: BrowserWindow, requested: Pane[]): void {
     if (win.isDestroyed()) return
+    this.lastPanes.set(win, requested)
+    if (!this.layoutWatched.has(win)) {
+      // While a page is full screen, keep it filling the window as it grows.
+      this.layoutWatched.add(win)
+      win.on('resize', () => this.fullscreen.has(win) && this.relayout(win))
+      win.on('leave-full-screen', () => {
+        const fs = this.fullscreen.get(win)
+        if (fs) this.views.get(fs.tabId)?.webContents.executeJavaScript('document.exitFullscreen?.()', true).catch(() => {})
+      })
+    }
+    const fs = this.fullscreen.get(win)
+    const [w, h] = win.getContentSize()
+    const panes = (fs ? [{ tabId: fs.tabId, rect: { x: 0, y: 0, width: w, height: h } }] : requested).filter(
+      (p) => !this.crashed.has(p.tabId)
+    )
     const before = this.attached.get(win) ?? []
     const wanted = panes.map((p) => p.tabId)
     for (const id of before) {
@@ -513,6 +673,7 @@ export class Browser {
       const tab = this.tab(pane.tabId)
       if (!tab) continue
       const view = this.ensureView(tab)
+      view.setBorderRadius(fs ? 0 : 10)
       const r = pane.rect
       view.setBounds({
         x: Math.round(r.x),
@@ -531,6 +692,14 @@ export class Browser {
     }
     const now = wanted.filter((id) => this.views.has(id))
     this.attached.set(win, now)
+    // Tell extensions which tab you're looking at.
+    if (win === this.win) {
+      const active = this.activeWebContents()
+      if (active && active !== this.selectedExtensionTab && this.extensionTabs.has(active)) {
+        this.selectedExtensionTab = active
+        this.extensions.selectTab(active)
+      }
+    }
     if (this.focusOnAttach && now.includes(this.focusOnAttach)) {
       this.views.get(this.focusOnAttach)?.webContents.focus()
       this.focusOnAttach = null
@@ -574,6 +743,20 @@ export class Browser {
     const wc = this.views.get(tabId)?.webContents
     if (!wc) return
     const items: Electron.MenuItemConstructorOptions[] = []
+    // Spelling: suggestions for a misspelled word in a text field.
+    if (p.isEditable && p.misspelledWord) {
+      if (p.dictionarySuggestions.length) {
+        for (const word of p.dictionarySuggestions.slice(0, 5)) {
+          items.push({ label: word, click: () => wc.replaceMisspelling(word) })
+        }
+      } else {
+        items.push({ label: 'No Guesses Found', enabled: false })
+      }
+      items.push(
+        { label: 'Add to Dictionary', click: () => wc.session.addWordToSpellCheckerDictionary(p.misspelledWord) },
+        { type: 'separator' }
+      )
+    }
     if (p.linkURL) {
       items.push(
         { label: 'Open Link in New Tab', click: () => this.newTab(p.linkURL, false, tabId) },
@@ -588,6 +771,9 @@ export class Browser {
         { type: 'separator' }
       )
     }
+    if (p.mediaType === 'video') {
+      items.push({ label: 'Picture in Picture', click: () => this.pictureInPicture(wc, p.x, p.y) }, { type: 'separator' })
+    }
     if (p.isEditable) items.push({ role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { type: 'separator' })
     else if (p.selectionText) items.push({ role: 'copy' }, { type: 'separator' })
     items.push(
@@ -595,9 +781,37 @@ export class Browser {
       { label: 'Forward', enabled: wc.navigationHistory.canGoForward(), click: () => wc.navigationHistory.goForward() },
       { label: 'Reload', click: () => wc.reload() },
       { type: 'separator' },
-      { label: 'Inspect Element', click: () => wc.inspectElement(p.x, p.y) }
+      { label: 'Print…', click: () => this.print(tabId) }
     )
-    Menu.buildFromTemplate(items).popup()
+    const fromExtensions = this.extensionTabs.has(wc) ? this.extensions.contextMenuItems(wc, p) : []
+    const menu = Menu.buildFromTemplate([...items, { type: 'separator' }, { label: 'Inspect Element', click: () => wc.inspectElement(p.x, p.y) }])
+    if (fromExtensions.length) {
+      menu.insert(menu.items.length - 2, new MenuItem({ type: 'separator' }))
+      for (const item of fromExtensions) menu.insert(menu.items.length - 2, item)
+    }
+    menu.popup()
+  }
+
+  /** Pop the video under the mouse out into a floating picture-in-picture window. */
+  private pictureInPicture(wc: Electron.WebContents, x: number, y: number): void {
+    const script = `(() => {
+      const v = [...document.querySelectorAll('video')].find((v) => {
+        const r = v.getBoundingClientRect()
+        return ${x} >= r.left && ${x} <= r.right && ${y} >= r.top && ${y} <= r.bottom
+      }) || document.querySelector('video')
+      if (!v) return
+      return document.pictureInPictureElement === v ? document.exitPictureInPicture() : v.requestPictureInPicture()
+    })()`
+    wc.executeJavaScript(script, true).catch(() => this.showToast('This video can’t play in picture in picture'))
+  }
+
+  /** Print the page (the Mac print dialog lets you save as PDF too). */
+  print(tabId: string): void {
+    const wc = this.views.get(tabId)?.webContents
+    if (!wc) return
+    wc.print({}, (ok, reason) => {
+      if (!ok && reason && reason !== 'Print job canceled' && reason !== 'cancelled') console.error('[print]', reason)
+    })
   }
 
   // ---------- Helpers ----------
@@ -848,8 +1062,9 @@ export class Browser {
   // ---------- Little windows ----------
 
   /** A small, minimal window for a quick look at something. */
-  openLittle(url = ''): void {
+  openLittle(url = '', isPrivate = false): BrowserWindow {
     const tab = this.makeTab(url)
+    if (isPrivate) tab.private = true
     const win = new BrowserWindow({
       width: 960,
       height: 680,
@@ -878,16 +1093,24 @@ export class Browser {
         this.store.changed(false)
       }
       this.attached.delete(win)
+      // A private window's cookies and site data are wiped when it closes.
+      if (isPrivate) {
+        const ses = session.fromPartition(`private-${tab.id}`)
+        ses.clearStorageData().catch(() => {})
+        ses.clearCache().catch(() => {})
+      }
     })
     if (url) this.focusOnAttach = tab.id
     loadUi(win, `little&id=${tab.id}`)
     this.store.changed(false)
+    return win
   }
 
   /** Move a Little window's page into the main window as a Today tab. */
   littleToMain(tabId: string): void {
     const little = this.littles.get(tabId)
-    if (!little) return
+    // Private pages never move into the main window (it would keep them).
+    if (!little || little.tab.private) return
     this.littles.delete(tabId)
     delete this.store.littles[tabId]
     if (!this.win) this.createWindow()
@@ -902,6 +1125,58 @@ export class Browser {
   /** Links from other apps (when VAIA is the default browser) open in a Little window. */
   openExternalLink(url: string): void {
     this.openLittle(url)
+  }
+
+  // ---------- Bookmarks ----------
+
+  /** Bring in bookmarks from Chrome, Safari or a file, as a pinned folder or as Favorites. */
+  async importBookmarks(source: 'chrome' | 'safari' | 'file', target: 'pinned' | 'favorites'): Promise<string> {
+    let tree: BookmarkTree
+    try {
+      if (source === 'chrome') tree = readChrome()
+      else if (source === 'safari') tree = await readSafari()
+      else {
+        const win = BrowserWindow.getFocusedWindow()
+        const options = {
+          title: 'Import Bookmarks',
+          message: 'Choose a bookmarks file exported from Safari, Chrome, Firefox or another browser',
+          properties: ['openFile' as const],
+          filters: [{ name: 'Bookmarks', extensions: ['html', 'htm'] }]
+        }
+        const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+        if (picked.canceled || !picked.filePaths[0]) return ''
+        tree = readHtmlFile(picked.filePaths[0])
+      }
+    } catch (err) {
+      return err instanceof ImportError ? err.message : 'Those bookmarks couldn’t be read.'
+    }
+    const name = source === 'chrome' ? 'Chrome' : source === 'safari' ? 'Safari' : 'Imported'
+    if (target === 'favorites') {
+      const have = new Set(this.state.favorites.map((t) => t.pinnedUrl ?? t.url))
+      const links = tree.bar.filter((n): n is { title: string; url: string } => 'url' in n && !have.has(n.url)).slice(0, 24)
+      for (const link of links) {
+        const tab = this.makeTab(link.url, link.title)
+        tab.pinnedUrl = link.url
+        this.state.favorites.push(tab)
+      }
+      this.store.changed()
+      return links.length ? `Added ${links.length} favorite${links.length === 1 ? '' : 's'}` : 'No new bookmarks bar links to add'
+    }
+    const toItems = (nodes: BookmarkNode[]): SidebarItem[] =>
+      nodes.map((n): SidebarItem => {
+        if ('url' in n) {
+          const tab = this.makeTab(n.url, n.title)
+          tab.pinnedUrl = n.url
+          return tab
+        }
+        return { kind: 'folder', id: newId(), name: n.title, collapsed: true, children: toItems(n.children) }
+      })
+    const count = countLinks(tree.all)
+    if (!count) return 'No bookmarks found'
+    const folder: FolderItem = { kind: 'folder', id: newId(), name: `${name} Bookmarks`, collapsed: false, children: toItems(tree.all) }
+    activeSpace(this.state).pinned.push(folder)
+    this.store.changed()
+    return `Imported ${count} bookmark${count === 1 ? '' : 's'} into “${folder.name}”`
   }
 
   makeDefaultBrowser(): boolean {
@@ -1283,6 +1558,13 @@ export class Browser {
       case 'tab/forward':
         return wc(action.id)?.navigationHistory.goForward()
       case 'tab/reload':
+        if (this.crashed.delete(action.id)) {
+          // Bring a crashed page back: its view is created again on the next layout.
+          delete this.store.runtime[action.id]
+          this.store.changed(false)
+          for (const win of BrowserWindow.getAllWindows()) this.relayout(win)
+          return
+        }
         return wc(action.id)?.reload()
       case 'tab/stop':
         return wc(action.id)?.stop()
@@ -1398,7 +1680,8 @@ export class Browser {
       case 'peek/expand':
         return this.expandPeek()
       case 'little/new':
-        return this.openLittle(action.url)
+        this.openLittle(action.url)
+        return
       case 'little/toMain':
         return this.littleToMain(action.id)
       case 'app/makeDefaultBrowser': {
@@ -1525,6 +1808,37 @@ export class Browser {
         return this.store.changed()
       case 'todo/popout':
         return this.openTodoWindow()
+      case 'permissions/set':
+        return this.permissions.set(action.origin, action.kind, action.decision)
+      case 'permissions/resetSite':
+        return this.permissions.resetSite(action.origin)
+      case 'permissions/resetAll':
+        return this.permissions.resetAll()
+      case 'extensions/setEnabled': {
+        const disabled = new Set(this.state.settings.disabledExtensions)
+        if (action.enabled) disabled.delete(action.id)
+        else disabled.add(action.id)
+        this.state.settings.disabledExtensions = [...disabled]
+        this.store.changed()
+        return this.extensions.setEnabled(action.id, action.enabled)
+      }
+      case 'extensions/remove':
+        this.state.settings.disabledExtensions = this.state.settings.disabledExtensions.filter((id) => id !== action.id)
+        this.store.changed()
+        return this.extensions.remove(action.id)
+      case 'extensions/installById':
+        return this.extensions.installById(action.id)
+      case 'extensions/openStore':
+        if (!this.win) this.createWindow()
+        this.win?.focus()
+        this.newTab('https://chromewebstore.google.com/category/extensions')
+        return
+      case 'private/new':
+        return void this.openLittle(action.url, true)
+      case 'tab/print':
+        return this.print(action.id)
+      case 'bookmarks/import':
+        return this.importBookmarks(action.source, action.target)
     }
   }
 }

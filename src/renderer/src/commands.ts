@@ -158,6 +158,39 @@ export const COMMANDS: Command[] = [
     run: () => dispatch({ type: 'little/new' })
   },
   {
+    id: 'private-window',
+    title: 'New Private Window',
+    shortcut: '⇧⌘N',
+    keywords: 'incognito secret',
+    run: () => dispatch({ type: 'private/new' })
+  },
+  {
+    id: 'print',
+    title: 'Print Page…',
+    shortcut: '⌘P',
+    keywords: 'pdf save paper',
+    enabled: hasTab,
+    run: (ctx) => dispatch({ type: 'tab/print', id: ctx.activeTabId! })
+  },
+  {
+    id: 'extensions',
+    title: 'Manage Extensions',
+    keywords: 'add-ons plugins chrome web store',
+    run: () => dispatch({ type: 'app/openSettings' })
+  },
+  {
+    id: 'extensions-store',
+    title: 'Get Extensions from the Chrome Web Store',
+    keywords: 'add-ons plugins install',
+    run: () => dispatch({ type: 'extensions/openStore' })
+  },
+  {
+    id: 'import',
+    title: 'Import Bookmarks…',
+    keywords: 'chrome safari favorites migrate',
+    run: () => dispatch({ type: 'app/openSettings' })
+  },
+  {
     id: 'default-browser',
     title: 'Make VAIA Your Default Browser',
     keywords: 'default',

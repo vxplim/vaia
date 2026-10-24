@@ -170,6 +170,15 @@ export function Content({ state, space, frozen, findBar }: Props) {
               {tab.url && snapshots[tab.id] && hidden && (
                 <img className="page-snapshot" src={snapshots[tab.id]} alt="" />
               )}
+              {state.runtime[tab.id]?.crashed && (
+                <div className="empty-state crashed">
+                  <div className="empty-mark">Oops</div>
+                  <p>This page crashed. Your other tabs are fine.</p>
+                  <button className="primary-button" onClick={() => dispatch({ type: 'tab/reload', id: tab.id })}>
+                    Reload
+                  </button>
+                </div>
+              )}
               {!tab.url && <EmptyState />}
             </div>
           </div>

@@ -54,6 +54,12 @@ export function buildMenu(browser: Browser): void {
           click: () => browser.openLittle()
         },
         {
+          label: 'New Private Window',
+          id: 'private',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => browser.openLittle('', true)
+        },
+        {
           label: 'Open Location…',
           id: 'focus-url',
           accelerator: 'CmdOrCtrl+L',
@@ -81,7 +87,18 @@ export function buildMenu(browser: Browser): void {
             withTab((id) => browser.closeTab(id))()
           }
         },
-        { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' }
+        { label: 'Close Window', accelerator: 'CmdOrCtrl+Shift+W', role: 'close' },
+        { type: 'separator' },
+        {
+          label: 'Print…',
+          id: 'print',
+          accelerator: 'CmdOrCtrl+P',
+          click: () => {
+            const little = browser.focusedLittle()
+            const id = little ? little.tab.id : browser.activeTabId()
+            if (id) browser.print(id)
+          }
+        }
       ]
     },
     {
@@ -122,6 +139,7 @@ export function buildMenu(browser: Browser): void {
         { label: 'Downloads', id: 'downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => browser.command({ type: 'open-panel', panel: 'downloads' }) },
         { label: 'To-do List', id: 'todo', accelerator: 'CmdOrCtrl+Shift+K', click: () => browser.command({ type: 'open-panel', panel: 'todo' }) },
         { label: 'Tidy Today Tabs', id: 'tidy', click: () => browser.tidy() },
+        { label: 'Extensions…', id: 'extensions', click: () => browser.openSettings() },
         { type: 'separator' },
         { label: 'Reload Page', id: 'reload', accelerator: 'CmdOrCtrl+R', click: () => page()?.reload() },
         { label: 'Hard Reload Page', accelerator: 'CmdOrCtrl+Shift+R', click: () => page()?.reloadIgnoringCache() },

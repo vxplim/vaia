@@ -112,6 +112,25 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Due dates show "Today" / "Overdue" / "Tomorrow" / a date. The ✓ button shows how many are due today or overdue
   - Checked items fade into a collapsed "Done" section and are deleted 7 days later. Drag to reorder
 
+- [x] **Phase 12: Everyday browser essentials** (tag `v1.2.0`)
+  - **Site permissions**: sites no longer get anything automatically. Camera, microphone, location, notifications, clipboard reading, MIDI, idle detection, window management and opening other apps show a small Allow / Block sheet with "Remember for this site". Anything else is blocked. Settings → Site permissions lists remembered sites (change to Allow / Block / Ask, reset a site, or reset all). macOS's own camera/microphone/location explanations are in the app's Info.plist
+  - **Chrome extensions**: install from the Chrome Web Store ("Add to Chrome" works, with a VAIA confirmation). Extension buttons appear at the top of the sidebar, popups open below them, and the puzzle button turns extensions on/off, removes them, or opens the store. Also in Settings → Extensions. Tested with Dark Reader (installs, darkens pages, popup opens, on/off works), both in development and in the packaged app
+  - **PDFs** open in Chromium's built-in viewer instead of downloading
+  - **Print** with ⌘P (File menu, right-click menu, or Command Bar). The Mac print dialog can also save as PDF
+  - **Private window** (⇧⌘N): a dark purple window with a "Private" badge. No history, nothing saved, links stay inside it, its own temporary cookie jar wiped when it closes (checked: your normal profile never sees its cookies)
+  - **Full-screen video** fills the whole screen: VAIA makes the window full screen and the page covers the sidebar and margins, then puts everything back
+  - **Friendly error pages**: "can't find this site", "you're offline", "refused to connect", "took too long", "blocked", with Try again / Go back. **Certificate problems are blocked** with a warning and only "Go back" (or "Close tab"). **Crashed pages** show a card with Reload
+  - **Spelling**: right-click a misspelled word for suggestions and "Add to Dictionary"
+  - **Import bookmarks** (Settings → Import bookmarks): from Chrome, Safari, or an exported .html file, into a pinned folder (keeping folders) or into Favorites (bookmarks bar links, up to 24)
+  - **Picture in picture** already worked; added "Picture in Picture" to the right-click menu on videos
+
+### Which extensions work
+
+- ✅ **Work well:** extensions that change how pages look or add buttons/popups. Tested: Dark Reader. Expected to work: uBlock Origin Lite, Bitwarden (in-popup use), Grammarly-style page helpers, JSON viewers, Return YouTube Dislike, Tampermonkey-style script managers (mostly), translators.
+- ⚠️ **Partly work:** extensions using right-click menu items (contextMenus.update isn't supported), keyboard shortcuts (`chrome.commands` isn't supported), or many tab features (no tab groups, discarding).
+- ❌ **Don't work:** extensions that talk to an app on your Mac ("native messaging", e.g. 1Password's desktop integration), DevTools panels, extensions that replace the new tab page, Chrome sign-in/sync features, and extensions needing `chrome.webRequest` while VAIA's own ad blocker is on (they conflict: turn VAIA's blocker off if you use one).
+- Extensions only run in your normal profile, not in Spaces with a separate profile or private windows (Electron doesn't support extensions in temporary sessions).
+
 ## Next ideas (not started)
 
 - Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
@@ -158,6 +177,15 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **New to-dos go to the top of the list.** The ✓ badge counts due-today/overdue to-dos from every Space, so nothing slips through.
 - **Deleting a Space keeps its to-dos** by turning them into Everywhere to-dos.
 - **The to-do panel freezes the page into a picture** while it's open (like the other panels). For a list that stays visible while you browse, use the pop-out window.
+- **Permission prompts are native Mac sheets** (they appear over web pages and need no extra code). Without "Remember for this site", the answer lasts until VAIA quits. Private windows never remember answers.
+- **Always allowed without asking**, as in Chrome: full screen, pointer lock, writing to the clipboard, DRM video (Netflix etc.), storage access for embedded logins.
+- **Screen sharing (`getDisplayMedia`) isn't supported yet**, so sites asking for it are blocked (simpler version chosen).
+- **Extensions use the free GPL-3.0 licence option** of electron-chrome-extensions (see "Needs Vanessa").
+- **Extensions only in the normal profile**, so the Chrome Web Store support is set up once, for your main cookie jar.
+- **A private window is one page with its own address bar** (like a Little window), not a full sidebar window, the simplest version that's truly private. Each private window has its own temporary cookie jar.
+- **Error pages are written into Chromium's blank error page**, so the tab keeps the address it tried to open (Try again works, and the address bar shows what failed).
+- **Safari keeps its bookmarks file private** (macOS Full Disk Access). Instead of asking for that, VAIA explains how to export from Safari and import the file.
+- **Imported bookmarks become sleeping pinned tabs**: nothing loads until you click one.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -169,6 +197,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - Peek decides "another site" by comparing the last two parts of the domain (e.g. `news.example.com` and `example.com` count as the same site); unusual domains like `example.co.uk` may be treated as the same site as other `.co.uk` sites.
 
 ## Needs Vanessa
+
+- **Licence decision (important before sharing VAIA):** the Chrome-extension library (electron-chrome-extensions) is GPL-3.0 unless you buy its "Patron" licence. VAIA's own code is MIT, but the *app you'd distribute* now includes GPL code, so anyone you give it to must be able to get VAIA's source under GPL terms. Options: (a) change VAIA's LICENSE to GPL-3.0 and make the repo public (simplest, free), (b) sponsor the author on GitHub for the Patron licence, or (c) remove extension support. Nothing has been published since this was added, so there's no rush, but decide before the next release.
+- **Camera, microphone and location:** test them on a real site (e.g. a video call on meet.google.com, or "my location" on a map). macOS will ask once whether VAIA may use the camera/microphone/location; click Allow. (The automated tests skipped these so no real macOS prompts popped up on your Mac.)
+- **Safari bookmarks:** in Safari choose File → Export → Bookmarks…, then VAIA → Settings → Import bookmarks → From a File….
 
 - **Try AI Tidy with your own key:** create a key at console.anthropic.com (API Keys), then VAIA → Settings → paste it into "Claude API key" → Save, and switch on "Use AI to Tidy". It was tested with a fake key (it correctly fell back to Simple Tidy); a real key needs your account. Each Tidy is one small request (a few cents at most).
 - **Keychain prompt:** the first time the installed VAIA reads your saved key (or after an update), macOS may ask "VAIA wants to use … VAIA Safe Storage". Click **Always Allow** (it may ask for your Mac password). This happens because VAIA isn't signed with a paid Developer ID.

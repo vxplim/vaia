@@ -2474,3 +2474,92 @@ button.urlbar:hover {
   color: inherit;
   user-select: text;
 }
+
+/* ---------- Everyday essentials (Phase 12) ---------- */
+.extensions-bar {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+}
+browser-action-list {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+browser-action-list::part(action) {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background-color: transparent;
+}
+browser-action-list::part(action):hover {
+  background-color: var(--hover);
+}
+.extensions-bar .icon-button {
+  opacity: 0.7;
+}
+.extension-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex: none;
+  background: rgba(127, 127, 127, 0.15);
+}
+img.extension-icon {
+  background: none;
+}
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.permission-site {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.permission-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.permission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 10px;
+  font-size: 12.5px;
+}
+.import-result {
+  margin-right: auto;
+}
+.setting-row.end {
+  gap: 8px;
+}
+.empty-state.crashed .primary-button {
+  margin-top: 12px;
+}
+
+/* Private windows */
+.private-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e3d6ff;
+  background: rgba(160, 120, 255, 0.22);
+}
+.app.private .content-card {
+  box-shadow:
+    0 0 0 1.5px rgba(160, 120, 255, 0.55),
+    0 8px 30px rgba(0, 0, 0, 0.35);
+}

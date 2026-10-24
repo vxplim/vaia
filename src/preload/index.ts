@@ -1,6 +1,7 @@
 // The "preload" bridge: the ONLY way the UI can ask the main process to do
 // things. We expose a small, typed list of allowed functions as window.vaia.
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { injectBrowserAction } from 'electron-chrome-extensions/browser-action'
 import type { VaiaApi } from '../shared/api'
 import type { AppState, UiCommand } from '../shared/types'
 
@@ -28,3 +29,7 @@ const api: VaiaApi = {
 }
 
 contextBridge.exposeInMainWorld('vaia', api)
+
+// The main window shows extension buttons (<browser-action-list>) in the sidebar.
+const search = (globalThis as { location?: { search: string } }).location?.search ?? ''
+if (!new URLSearchParams(search).get('view')) injectBrowserAction()

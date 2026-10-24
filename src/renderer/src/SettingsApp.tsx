@@ -1,6 +1,6 @@
 // The Settings window (⌘,).
 import { useState } from 'react'
-import type { ArchiveAfter, SearchEngineId } from '../../shared/types'
+import type { ArchiveAfter, PermissionKind, SearchEngineId } from '../../shared/types'
 import { SEARCH_ENGINES } from '../../shared/url'
 import { dispatch, useAppState } from './state'
 import { colorsToCss } from './theme'
@@ -29,10 +29,24 @@ const SHORTCUTS: [string, string][] = [
   ['⇧⌘K', 'To-do list'],
   ['⌘Y', 'History'],
   ['⇧⌘J', 'Downloads'],
+  ['⇧⌘N', 'New private window'],
+  ['⌘P', 'Print'],
   ['⌘,', 'Settings'],
   ['⌘+  /  ⌘−  /  ⌘0', 'Zoom the page in / out / reset'],
   ['Esc', 'Close Peek, Command Bar or panels']
 ]
+
+const PERMISSION_NAMES: Record<PermissionKind, string> = {
+  camera: 'Camera',
+  microphone: 'Microphone',
+  location: 'Location',
+  notifications: 'Notifications',
+  clipboard: 'Clipboard',
+  midi: 'MIDI devices',
+  idle: 'Idle detection',
+  windows: 'Window management',
+  'open-apps': 'Open other apps'
+}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -47,6 +61,12 @@ export function SettingsApp() {
   const [clear, setClear] = useState({ history: true, cookies: false, cache: true, archive: false })
   const [cleared, setCleared] = useState(false)
   const [apiKey, setApiKey] = useState('')
+  const [importTarget, setImportTarget] = useState<'pinned' | 'favorites'>('pinned')
+  const [importResult, setImportResult] = useState('')
+  const importFrom = async (source: 'chrome' | 'safari' | 'file') => {
+    setImportResult('Importing…')
+    setImportResult(((await dispatch({ type: 'bookmarks/import', source, target: importTarget })) as string) || '')
+  }
   if (!state) return null
   const s = state.settings
   const set = (patch: Partial<typeof s>) => dispatch({ type: 'settings/update', patch })
@@ -187,6 +207,121 @@ export function SettingsApp() {
               </button>
             </div>
           ))}
+        </section>
+
+        <section>
+          <h2>Extensions</h2>
+          {state.extensions.map((ext) => (
+            <div className="setting-row" key={ext.id}>
+              <div className="space-summary">
+                {ext.icon ? <img className="extension-icon" src={ext.icon} alt="" /> : <span className="extension-icon" />}
+                <div>
+                  <div className="setting-label">{ext.name}</div>
+                  <div className="setting-hint">Version {ext.version}</div>
+                </div>
+              </div>
+              <div className="row-actions">
+                <button
+                  className="secondary-button danger"
+                  onClick={() => confirm(`Remove “${ext.name}” from VAIA?`) && dispatch({ type: 'extensions/remove', id: ext.id })}
+                >
+                  Remove
+                </button>
+                <Toggle checked={ext.enabled} onChange={(v) => dispatch({ type: 'extensions/setEnabled', id: ext.id, enabled: v })} />
+              </div>
+            </div>
+          ))}
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Chrome Web Store</div>
+              <div className="setting-hint">
+                Click “Add to Chrome” on an extension’s page to add it to VAIA. Extensions work in your normal profile (not
+                in Spaces with a separate profile or private windows).
+              </div>
+            </div>
+            <button className="secondary-button" onClick={() => dispatch({ type: 'extensions/openStore' })}>
+              Get Extensions
+            </button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Site permissions</h2>
+          {Object.keys(state.sitePermissions).length === 0 && (
+            <div className="setting-row">
+              <div className="setting-hint">
+                When a site asks for your camera, microphone, location or notifications, VAIA asks you first. Sites you
+                answered with “Remember for this site” appear here.
+              </div>
+            </div>
+          )}
+          {Object.entries(state.sitePermissions).map(([origin, perms]) => (
+            <div className="setting-row permission-site" key={origin}>
+              <div className="permission-head">
+                <div className="setting-label">{origin.replace(/^https?:\/\//, '')}</div>
+                <button className="text-button small" onClick={() => dispatch({ type: 'permissions/resetSite', origin })}>
+                  Reset
+                </button>
+              </div>
+              {Object.entries(perms).map(([kind, decision]) => (
+                <div className="permission-row" key={kind}>
+                  <span>{PERMISSION_NAMES[kind as PermissionKind] ?? kind}</span>
+                  <select
+                    value={decision}
+                    onChange={(e) =>
+                      dispatch({
+                        type: 'permissions/set',
+                        origin,
+                        kind: kind as PermissionKind,
+                        decision: e.target.value === 'ask' ? null : (e.target.value as 'allow' | 'block')
+                      })
+                    }
+                  >
+                    <option value="allow">Allow</option>
+                    <option value="block">Block</option>
+                    <option value="ask">Ask</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+          ))}
+          {Object.keys(state.sitePermissions).length > 0 && (
+            <div className="setting-row end">
+              <button className="secondary-button" onClick={() => dispatch({ type: 'permissions/resetAll' })}>
+                Reset All
+              </button>
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2>Import bookmarks</h2>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Put them in</div>
+              <div className="setting-hint">
+                {importTarget === 'pinned'
+                  ? 'A pinned folder in this Space, keeping your folders.'
+                  : 'Favorites: the links on your bookmarks bar (up to 24).'}
+              </div>
+            </div>
+            <select value={importTarget} onChange={(e) => setImportTarget(e.target.value as 'pinned' | 'favorites')}>
+              <option value="pinned">A pinned folder</option>
+              <option value="favorites">Favorites</option>
+            </select>
+          </div>
+          <div className="setting-row end">
+            {importResult && <span className="setting-hint import-result">{importResult}</span>}
+            <button className="secondary-button" onClick={() => importFrom('chrome')}>
+              From Chrome
+            </button>
+            <button className="secondary-button" onClick={() => importFrom('safari')}>
+              From Safari
+            </button>
+            <button className="secondary-button" onClick={() => importFrom('file')}>
+              From a File…
+            </button>
+          </div>
         </section>
 
         <section>

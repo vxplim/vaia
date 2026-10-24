@@ -15,6 +15,11 @@ mac:
   # Only needed for Apple notarization (which needs a paid Developer ID anyway).
   hardenedRuntime: false
   extendInfo:
+    # What macOS shows when a website in VAIA asks for these (macOS asks you once for VAIA itself).
+    NSCameraUsageDescription: Websites you allow can use your camera, for example for video calls.
+    NSMicrophoneUsageDescription: Websites you allow can use your microphone, for example for calls.
+    NSLocationUsageDescription: Websites you allow can see your location, for example for maps.
+    NSLocationWhenInUseUsageDescription: Websites you allow can see your location, for example for maps.
     CFBundleDocumentTypes:
       - CFBundleTypeName: Web Page
         CFBundleTypeRole: Viewer

@@ -1,7 +1,7 @@
 // The Little window: a small, minimal browser for quick lookups.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { displayHost } from '../../shared/url'
-import { IconBack, IconExpand, IconForward, IconLock, IconReload, IconSearch } from './components/Icons'
+import { IconBack, IconExpand, IconForward, IconLock, IconMask, IconReload, IconSearch } from './components/Icons'
 import { dispatch, useAppState } from './state'
 import { themeStyle, useSystemDark } from './theme'
 import { activeSpace } from '../../shared/tree'
@@ -47,7 +47,8 @@ export function LittleApp({ tabId }: { tabId: string }) {
   }, [tabId, hasPage])
 
   if (!state || !tab) return null
-  const theme = themeStyle(activeSpace(state).theme, systemDark)
+  // Private windows always look dark and purple, so you can tell them apart at a glance.
+  const theme = themeStyle(tab.private ? { colors: ['#2b2140', '#1c1730'], mode: 'dark' } : activeSpace(state).theme, systemDark)
 
   const submit = () => {
     setEditing(false)
@@ -55,7 +56,7 @@ export function LittleApp({ tabId }: { tabId: string }) {
   }
 
   return (
-    <div className={`app little${theme.isDark ? ' dark' : ''}`} style={theme.vars as React.CSSProperties}>
+    <div className={`app little${theme.isDark ? ' dark' : ''}${tab.private ? ' private' : ''}`} style={theme.vars as React.CSSProperties}>
       <div className="backdrop" style={{ background: theme.background }} />
       <div className="little-bar">
         <div className="nav-buttons">
@@ -96,21 +97,36 @@ export function LittleApp({ tabId }: { tabId: string }) {
             <span className="urlbar-host">{displayHost(tab.url)}</span>
           </button>
         )}
-        <button
-          className="peek-button little-move"
-          title="Move this page into the main VAIA window as a tab"
-          disabled={!hasPage}
-          onClick={() => dispatch({ type: 'little/toMain', id: tabId })}
-        >
-          <IconExpand />
-          <span>Open in VAIA</span>
-        </button>
+        {tab.private ? (
+          <span className="private-badge" title="Nothing from this window is saved. Its cookies are deleted when you close it.">
+            <IconMask />
+            Private
+          </span>
+        ) : (
+          <button
+            className="peek-button little-move"
+            title="Move this page into the main VAIA window as a tab"
+            disabled={!hasPage}
+            onClick={() => dispatch({ type: 'little/toMain', id: tabId })}
+          >
+            <IconExpand />
+            <span>Open in VAIA</span>
+          </button>
+        )}
       </div>
       <div className="little-content">
         <div className="content-card" ref={card}>
           {!hasPage && (
             <div className="empty-state">
-              <p>Type an address or search above.</p>
+              {tab.private ? (
+                <>
+                  <div className="empty-mark">Private</div>
+                  <p>Pages you visit here aren’t saved in your history.</p>
+                  <p className="hint">Cookies and site data are deleted when you close this window.</p>
+                </>
+              ) : (
+                <p>Type an address or search above.</p>
+              )}
             </div>
           )}
         </div>

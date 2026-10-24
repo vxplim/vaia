@@ -4,7 +4,17 @@ import { app, type WebContents } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { AppState, DownloadItem, PersistedState, Settings, Space, TabItem, TabRuntime } from '../shared/types'
+import type {
+  AppState,
+  DownloadItem,
+  ExtensionInfo,
+  PersistedState,
+  Settings,
+  SitePermissions,
+  Space,
+  TabItem,
+  TabRuntime
+} from '../shared/types'
 
 export const newId = (): string => randomUUID()
 
@@ -40,7 +50,8 @@ export const DEFAULT_SETTINGS: Settings = {
   aiTidy: false,
   todoInSidebar: true,
   todoSectionCollapsed: false,
-  todoWindowOnTop: false
+  todoWindowOnTop: false,
+  disabledExtensions: []
 }
 
 export function newSpace(name: string, icon: string, colors: string[]): Space {
@@ -95,6 +106,8 @@ export class Store {
   peek: TabItem | null = null
   littles: Record<string, TabItem> = {}
   aiKeySet = false
+  sitePermissions: SitePermissions = {}
+  extensions: ExtensionInfo[] = []
   private subscribers = new Set<WebContents>()
   private saveTimer: NodeJS.Timeout | null = null
   private broadcastTimer: NodeJS.Timeout | null = null
@@ -104,7 +117,16 @@ export class Store {
   }
 
   snapshot(): AppState {
-    return { ...this.state, runtime: this.runtime, downloads: this.downloads, peek: this.peek, littles: this.littles, aiKeySet: this.aiKeySet }
+    return {
+      ...this.state,
+      runtime: this.runtime,
+      downloads: this.downloads,
+      peek: this.peek,
+      littles: this.littles,
+      aiKeySet: this.aiKeySet,
+      sitePermissions: this.sitePermissions,
+      extensions: this.extensions
+    }
   }
 
   subscribe(wc: WebContents): void {
