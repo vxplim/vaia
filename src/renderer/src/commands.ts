@@ -10,7 +10,7 @@ export interface CommandContext {
   activeTabId: string | null
   /** Things only the UI can do, like opening a panel. */
   ui: {
-    editSpace: (spaceId: string) => void
+    editSpace: (spaceId: string, setup?: boolean) => void
     openPanel: (panel: Panel) => void
     /** Reopen the Command Bar to pick what goes in a new Split View pane. */
     openSplitPicker: () => void
@@ -292,7 +292,7 @@ const SPACE_COMMANDS: Command[] = [
     id: 'new-space',
     title: 'New Space',
     keywords: 'create workspace',
-    run: async (ctx) => ctx.ui.editSpace((await dispatch({ type: 'space/new' })) as string)
+    run: async (ctx) => ctx.ui.editSpace((await dispatch({ type: 'space/new' })) as string, true)
   },
   {
     id: 'edit-space',

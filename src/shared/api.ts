@@ -6,6 +6,7 @@ import type {
   Boost,
   HistoryEntry,
   Pane,
+  PasswordInfo,
   PermissionDecision,
   PermissionKind,
   Rect,
@@ -121,6 +122,14 @@ export type Action =
   | { type: 'private/new'; url?: string }
   | { type: 'tab/print'; id: string }
   | { type: 'bookmarks/import'; source: 'chrome' | 'safari' | 'file'; target: 'pinned' | 'favorites' }
+  /** Open Google's sign-in page in a Space (in its own profile when it has one). */
+  | { type: 'space/signInGoogle'; id: string }
+  | { type: 'passwords/update'; id: string; username?: string; password?: string }
+  | { type: 'passwords/delete'; id: string }
+  /** The password itself, after Touch ID / your Mac password (null if cancelled). */
+  | { type: 'passwords/reveal'; id: string }
+  | { type: 'passwords/importCsv'; profile: string }
+  | { type: 'passwords/trashCsv'; path: string }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
 export interface VaiaApi {
@@ -139,6 +148,8 @@ export interface VaiaApi {
   listHistory(query: string): Promise<HistoryEntry[]>
   /** Show or hide the window's red/yellow/green buttons (hidden along with the sidebar). */
   setTrafficLights(visible: boolean): void
+  /** Saved logins (no passwords). */
+  listPasswords(): Promise<PasswordInfo[]>
   /** A small picture of a downloaded file (a thumbnail, or its Finder icon), as a data: URL. */
   downloadThumbnail(id: string): Promise<string | null>
   /** Show a native right-click menu; resolves with the chosen item's id (or null). */

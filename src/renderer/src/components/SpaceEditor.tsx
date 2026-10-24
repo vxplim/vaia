@@ -7,13 +7,16 @@ import { ThemeControls, ThemePreview } from './ThemeControls'
 interface Props {
   state: AppState
   space: Space
+  /** A brand-new Space: start with the account setup step. */
+  setup?: boolean
   closing: boolean
   onClose: () => void
 }
 
 /** Name, emoji, look (colors, intensity, tone, light/dark) and profile for one Space. Changes apply live. */
-export function SpaceEditor({ state, space, closing, onClose }: Props) {
+export function SpaceEditor({ state, space, setup = false, closing, onClose }: Props) {
   const [name, setName] = useState(space.name)
+  const [setupDone, setSetupDone] = useState(!setup)
   const [emojiOpen, setEmojiOpen] = useState(false)
 
   useEffect(() => setName(space.name), [space.id, space.name])
@@ -73,6 +76,42 @@ export function SpaceEditor({ state, space, closing, onClose }: Props) {
           </div>
         )}
 
+        {!setupDone && (
+          <div className="space-setup">
+            <div className="space-setup-title">Set up this Space</div>
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={!!space.profileId}
+                onChange={(e) => dispatch({ type: 'space/setProfile', id: space.id, separate: e.target.checked })}
+              />
+              <span>
+                Use a separate account for this Space
+                <small>Its own cookies, logins and saved passwords, e.g. a work Google account.</small>
+              </span>
+            </label>
+            <div className="space-setup-actions">
+              <button
+                className="google-button"
+                onClick={() => {
+                  setSetupDone(true)
+                  onClose()
+                  dispatch({ type: 'space/signInGoogle', id: space.id })
+                }}
+              >
+                Sign in with Google
+              </button>
+              <button className="text-button" onClick={() => setSetupDone(true)}>
+                {space.profileId ? 'Continue' : 'Skip'}
+              </button>
+            </div>
+            <div className="field-hint">
+              You can change this later in the Space’s settings. Google currently refuses sign-in from some newer
+              browsers, VAIA included; if that happens, other sites still work normally in this Space.
+            </div>
+          </div>
+        )}
+
         <ThemePreview theme={space.theme} icon={space.icon} name={name || space.name} />
         <ThemeControls theme={space.theme} onChange={setTheme} />
 
@@ -84,9 +123,18 @@ export function SpaceEditor({ state, space, closing, onClose }: Props) {
           />
           <span>
             Separate profile
-            <small>This Space gets its own cookies and logins, e.g. a second Google account.</small>
+            <small>This Space gets its own cookies, logins and saved passwords, e.g. a second Google account.</small>
           </span>
         </label>
+        <button
+          className="google-button small"
+          onClick={() => {
+            onClose()
+            dispatch({ type: 'space/signInGoogle', id: space.id })
+          }}
+        >
+          Sign in with Google{space.profileId ? ' in this Space' : ''}
+        </button>
 
         <div className="panel-footer">
           {state.spaces.length > 1 && (

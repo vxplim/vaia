@@ -181,7 +181,7 @@ export function buildMenu(browser: Browser): void {
           id: 'new-space',
           click: () => {
             const id = browser.dispatch({ type: 'space/new' }) as string
-            browser.command({ type: 'edit-space', id })
+            browser.command({ type: 'edit-space', id, setup: true })
           }
         },
         {

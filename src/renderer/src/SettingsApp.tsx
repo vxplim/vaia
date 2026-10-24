@@ -1,6 +1,6 @@
 // The Settings window (⌘,).
-import { useState } from 'react'
-import type { AppState, ArchiveAfter, PermissionKind, SearchEngineId } from '../../shared/types'
+import { useCallback, useEffect, useState } from 'react'
+import type { AppState, ArchiveAfter, PasswordInfo, PermissionKind, SearchEngineId } from '../../shared/types'
 import { SEARCH_ENGINES } from '../../shared/url'
 import { dispatch, useAppState } from './state'
 import { ThemeControls, ThemePreview } from './components/ThemeControls'
@@ -214,6 +214,8 @@ export function SettingsApp() {
           ))}
         </section>
 
+        <PasswordsSection state={state} />
+
         <section>
           <h2>Extensions</h2>
           {state.extensions.map((ext) => (
@@ -411,6 +413,192 @@ function AppearanceSection({ state, spaceId, onPick }: { state: AppState; spaceI
           onChange={(patch) => dispatch({ type: 'space/update', id: space.id, patch: { theme: patch } })}
         />
       </div>
+    </section>
+  )
+}
+
+/** Which password "profile" a Space uses: the shared one, or its own separate profile. */
+function passwordProfiles(state: AppState): { key: string; label: string }[] {
+  const shared = state.spaces.filter((s) => !s.profileId)
+  const out = shared.length ? [{ key: 'default', label: `Shared: ${shared.map((s) => `${s.icon} ${s.name}`).join(', ')}` }] : []
+  for (const s of state.spaces) if (s.profileId) out.push({ key: s.profileId, label: `${s.icon} ${s.name} (separate account)` })
+  return out
+}
+
+function PasswordRow({ entry, onChanged }: { entry: PasswordInfo; onChanged: () => void }) {
+  const [shown, setShown] = useState<string | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [username, setUsername] = useState(entry.username)
+  const [password, setPassword] = useState('')
+  const [copied, setCopied] = useState(false)
+  // Viewing, copying and editing need Touch ID (or your Mac password) first.
+  const reveal = async () => (await dispatch({ type: 'passwords/reveal', id: entry.id })) as string | null
+  return (
+    <div className="setting-row password-row">
+      <div style={{ minWidth: 0 }}>
+        <div className="setting-label">{entry.origin.replace(/^https?:\/\//, '')}</div>
+        {editing ? (
+          <div className="password-edit">
+            <input value={username} placeholder="Username" onChange={(e) => setUsername(e.target.value)} />
+            <input value={password} type="text" placeholder="Password" onChange={(e) => setPassword(e.target.value)} />
+          </div>
+        ) : (
+          <div className="setting-hint">
+            {entry.username || '(no username)'} · <span className="password-value">{shown ?? '••••••••'}</span>
+          </div>
+        )}
+      </div>
+      <div className="row-actions">
+        {editing ? (
+          <>
+            <button className="text-button small" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+            <button
+              className="secondary-button"
+              disabled={!password}
+              onClick={async () => {
+                await dispatch({ type: 'passwords/update', id: entry.id, username, password })
+                setEditing(false)
+                setShown(null)
+                onChanged()
+              }}
+            >
+              Save
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="text-button small" onClick={async () => setShown(shown ? null : await reveal())}>
+              {shown ? 'Hide' : 'Show'}
+            </button>
+            <button
+              className="text-button small"
+              onClick={async () => {
+                const value = await reveal()
+                if (value === null) return
+                await navigator.clipboard.writeText(value)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1500)
+              }}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+            <button
+              className="text-button small"
+              onClick={async () => {
+                const value = await reveal()
+                if (value === null) return
+                setPassword(value)
+                setUsername(entry.username)
+                setEditing(true)
+              }}
+            >
+              Edit
+            </button>
+            <button
+              className="text-button small danger"
+              onClick={async () => {
+                if (!confirm(`Delete the saved password for ${entry.origin.replace(/^https?:\/\//, '')}?`)) return
+                await dispatch({ type: 'passwords/delete', id: entry.id })
+                onChanged()
+              }}
+            >
+              Delete
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Settings → Passwords: saved logins per profile, plus importing a Google/Chrome export. */
+function PasswordsSection({ state }: { state: AppState }) {
+  const profiles = passwordProfiles(state)
+  const [profile, setProfile] = useState(profiles[0]?.key ?? 'default')
+  const [query, setQuery] = useState('')
+  const [entries, setEntries] = useState<PasswordInfo[]>([])
+  const [importResult, setImportResult] = useState<{ message: string; file?: string } | null>(null)
+  const refresh = useCallback(() => {
+    window.vaia.listPasswords().then(setEntries, () => setEntries([]))
+  }, [])
+  useEffect(() => {
+    refresh()
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [refresh])
+  const q = query.trim().toLowerCase()
+  const shown = entries.filter((e) => e.profile === profile && (!q || `${e.origin} ${e.username}`.toLowerCase().includes(q)))
+
+  return (
+    <section>
+      <h2>Passwords</h2>
+      <div className="setting-row">
+        <div>
+          <div className="setting-label">Saved for</div>
+          <div className="setting-hint">Each separate account keeps its own passwords. They’re encrypted on this Mac and never sent anywhere.</div>
+        </div>
+        <select value={profile} onChange={(e) => setProfile(e.target.value)}>
+          {profiles.map((p) => (
+            <option key={p.key} value={p.key}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="setting-row">
+        <div className="password-search">
+          <input placeholder="Search passwords" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </div>
+      </div>
+      {shown.length === 0 && (
+        <div className="setting-row">
+          <div className="setting-hint">
+            {q ? 'No saved passwords match.' : 'When you log in to a site, VAIA offers to save the password here.'}
+          </div>
+        </div>
+      )}
+      {shown.map((entry) => (
+        <PasswordRow key={entry.id} entry={entry} onChanged={refresh} />
+      ))}
+      <div className="setting-row">
+        <div>
+          <div className="setting-label">Import from Google Password Manager or Chrome</div>
+          <ol className="csv-help">
+            <li>Go to passwords.google.com, open Settings (the gear), choose “Export passwords” and download the file.</li>
+            <li>Click “Import CSV…” and choose that file. Passwords go into the account picked above.</li>
+            <li className="csv-warning">Then delete the .csv file: it contains your passwords in plain text.</li>
+          </ol>
+          <div className="setting-hint">VAIA can’t stay in sync with Google Password Manager; importing is a one-time copy.</div>
+        </div>
+        <button
+          className="secondary-button"
+          onClick={async () => {
+            const result = (await dispatch({ type: 'passwords/importCsv', profile })) as { message: string; file?: string }
+            if (result.message) setImportResult(result)
+            refresh()
+          }}
+        >
+          Import CSV…
+        </button>
+      </div>
+      {importResult && (
+        <div className="setting-row end">
+          <span className="setting-hint import-result">{importResult.message}</span>
+          {importResult.file && (
+            <button
+              className="secondary-button danger"
+              onClick={async () => {
+                await dispatch({ type: 'passwords/trashCsv', path: importResult.file! })
+                setImportResult({ message: 'The .csv file was moved to the Trash. Empty the Trash to delete it for good.' })
+              }}
+            >
+              Move the CSV to the Trash
+            </button>
+          )}
+        </div>
+      )}
     </section>
   )
 }

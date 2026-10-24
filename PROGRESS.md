@@ -145,6 +145,22 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
   - Downloads: **hover** the downloads button for the latest few (a popover above the bottom bar); **click** (or ⇧⌘J) for the full Downloads page: search, grouped by day, real thumbnails (Quick Look) or file-type icons, open / Show in Finder / move to Trash
   - Fixes: overlays could fail to appear when a tab had never drawn a page (taking its picture waited forever); a new tab whose link turns into a download now closes itself
 
+- [x] **Phase 15: Accounts & passwords per Space** (tag `v1.5.0`)
+  - New Spaces start with a **"Set up this Space"** step: "Use a separate account for this Space" (separate profile) and a **Sign in with Google** button that opens Google's sign-in inside that Space's profile. Skip it and do it later from the Space's settings (the button is there too)
+  - **Built-in password manager**, separate for each profile (the shared one, and each Space with its own account): offers to save when you log in (also two-step logins like Google's), **fills in only on the exact same site** and only when you click into the login field, offers to update when a password changes, and "Never for This Site"
+  - Passwords are stored in `passwords.bin`, **encrypted as a whole with macOS's Keychain** (safeStorage). Never plain text, never sent anywhere. Private windows never save or fill passwords
+  - **Settings → Passwords**: choose the account, search, Show / Copy / Edit / Delete. Showing, copying or editing needs **Touch ID** (or, on Macs without Touch ID, your Mac password in macOS's own dialog); then it stays unlocked for one minute
+  - **Import from a CSV** (Google Password Manager / Chrome export) into the chosen account, with step-by-step instructions and a "Move the CSV to the Trash" button afterwards
+  - Security: VAIA's internal messages are now only accepted from VAIA's own windows (never from web pages or extensions)
+
+### Google sign-in (tested)
+
+Tested in a new Space with its own account: Google's sign-in page loads, but after entering an email Google answers **"Couldn't sign you in. This browser or app may not be secure."** (`accounts.google.com/v3/signin/rejected`). Google blocks sign-in from browsers built on Electron (and other embedded browser engines) as an anti-phishing measure, even though VAIA reports itself as Chrome. Other sites' logins work normally. See "Needs Vanessa" for the options.
+
+### Google Password Manager sync
+
+Live sync with Google Password Manager **isn't possible**: Google doesn't offer an API for other browsers to read or write your saved passwords. The CSV import is a one-time copy.
+
 ## Next ideas (not started)
 
 - Signing + notarization with an Apple Developer ID ($99/year) so there's no "Open Anyway" step
@@ -209,6 +225,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - **The grid is only for exactly four panes**; closing one switches back to columns.
 - **"Delete" on the Downloads page moves the file to the Trash** (you can still get it back); failed/cancelled items are just removed from the list. VAIA now remembers your last 200 downloads (was 30).
 - **The downloads popover lives inside the sidebar** (above the bottom bar), so it never covers or freezes the page.
+- **Passwords are filled in only after you click into the login field** (not as soon as the page loads), and only in the page's main frame on the exact same site (`https://example.com` ≠ `https://login.example.com`), so a hidden form can't quietly collect them.
+- **Saved passwords belong to a profile, not a Space**: Spaces that share the normal profile share passwords; a Space with its own account keeps its own (and they're deleted when that separate profile is turned off or the Space is deleted).
+- **The save/update prompt is a native Mac sheet** (Save Password / Not Now / Never for This Site).
+- **Unlocking passwords in Settings lasts one minute** so Show, Copy and Edit don't each ask for Touch ID.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -220,6 +240,10 @@ Your browsing data (tabs, settings) is saved in `~/Library/Application Support/V
 - Peek decides "another site" by comparing the last two parts of the domain (e.g. `news.example.com` and `example.com` count as the same site); unusual domains like `example.co.uk` may be treated as the same site as other `.co.uk` sites.
 
 ## Needs Vanessa
+
+- ⚠️ **Licence decision (still open, important before the next release):** VAIA now includes the GPL-3.0 extensions library (see the earlier item below). Choose: switch VAIA to GPL-3.0 and make the repo public, sponsor the author for the Patron licence, or remove extension support.
+- **Google sign-in is blocked by Google** ("This browser or app may not be secure"). Options: (a) leave it (other sites work; use Google in Safari/Chrome), (b) a workaround some open-source browsers use: showing Google's sign-in page a Firefox-style browser name. It works today but Google could stop it at any time, and it means VAIA pretends to be another browser on that one page, so it's your call. Nothing was changed.
+- **Try the password manager on a real site:** log in somewhere, click "Save Password", then open Settings → Passwords → Show (Touch ID). The first time, macOS may ask about "VAIA Safe Storage" in your Keychain: click **Always Allow**.
 
 - **Licence decision (important before sharing VAIA):** the Chrome-extension library (electron-chrome-extensions) is GPL-3.0 unless you buy its "Patron" licence. VAIA's own code is MIT, but the *app you'd distribute* now includes GPL code, so anyone you give it to must be able to get VAIA's source under GPL terms. Options: (a) change VAIA's LICENSE to GPL-3.0 and make the repo public (simplest, free), (b) sponsor the author on GitHub for the Patron licence, or (c) remove extension support. Nothing has been published since this was added, so there's no rush, but decide before the next release.
 - **Camera, microphone and location:** test them on a real site (e.g. a video call on meet.google.com, or "my location" on a map). macOS will ask once whether VAIA may use the camera/microphone/location; click Allow. (The automated tests skipped these so no real macOS prompts popped up on your Mac.)

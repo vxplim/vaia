@@ -144,6 +144,16 @@ export type PermissionDecision = 'allow' | 'block'
 /** Remembered permission answers, by site (e.g. "https://meet.google.com"). */
 export type SitePermissions = Record<string, Partial<Record<PermissionKind, PermissionDecision>>>
 
+/** A saved login as the interface sees it (the password itself stays in the brain). */
+export interface PasswordInfo {
+  id: string
+  /** "default" = the shared profile, otherwise a Space's profile id. */
+  profile: string
+  origin: string
+  username: string
+  updatedAt: number
+}
+
 export interface ExtensionInfo {
   id: string
   name: string
@@ -222,7 +232,7 @@ export type Panel = 'archive' | 'history' | 'downloads' | 'todo'
 export type UiCommand =
   | { type: 'focus-url' }
   | { type: 'command-bar'; mode?: 'new' | 'split' }
-  | { type: 'edit-space'; id: string }
+  | { type: 'edit-space'; id: string; setup?: boolean }
   | { type: 'open-panel'; panel: Panel }
   | { type: 'find' }
   | { type: 'find-next'; forward: boolean }

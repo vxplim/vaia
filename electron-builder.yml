@@ -20,6 +20,7 @@ mac:
     NSMicrophoneUsageDescription: Websites you allow can use your microphone, for example for calls.
     NSLocationUsageDescription: Websites you allow can see your location, for example for maps.
     NSLocationWhenInUseUsageDescription: Websites you allow can see your location, for example for maps.
+    NSBluetoothAlwaysUsageDescription: Websites can use security keys and passkeys from nearby devices when you sign in.
     CFBundleDocumentTypes:
       - CFBundleTypeName: Web Page
         CFBundleTypeRole: Viewer

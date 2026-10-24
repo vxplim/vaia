@@ -53,6 +53,7 @@ vaia/
 │   │   ├── extensions.ts       ← Chrome extensions and the Chrome Web Store
 │   │   ├── bookmarks.ts        ← importing bookmarks from Chrome, Safari or a file
 │   │   ├── errorPage.ts        ← the friendly "can't load this page" page
+│   │   ├── passwords.ts        ← the encrypted password manager
 │   │   ├── store.ts            ← saving/loading your data (vaia-state.json)
 │   │   ├── history.ts          ← browsing history (history.json)
 │   │   ├── archive.ts          ← archived & recently closed tabs (archive.json)
@@ -60,6 +61,7 @@ vaia/
 │   │   ├── adblock.ts          ← the ad & tracker blocker
 │   │   └── menu.ts             ← Mac menu bar, keyboard shortcuts, right-click menus
 │   ├── preload/index.ts        ← the bridge: exposes window.vaia
+│   ├── preload/passwords.ts    ← runs in web pages: spots logins, fills saved ones
 │   └── renderer/               ← the UI (React)
 │       ├── index.html
 │       └── src/
@@ -107,6 +109,11 @@ vaia/
 - **Error pages** (`src/main/errorPage.ts`): when a page can't load, Chromium shows a blank page; VAIA writes its own friendly page into it. Its buttons are special `vaia-page:` links that the brain catches.
 - **Bookmarks** (`src/main/bookmarks.ts`): Chrome's bookmarks are a JSON file, Safari's are an Apple "property list", and exported files are HTML. All three are turned into the same simple tree of folders and links first.
 
+## Passwords
+
+- `src/preload/passwords.ts` runs inside every web page (except in private windows), in a separate "isolated world" the page's own code can't see. It notices when you submit a login form and tells the brain; when you click into a login field it asks the brain for a saved login for exactly that site.
+- The brain (`src/main/passwords.ts`) double-checks every request (is it the page's main frame? is the page really on that site?), asks you before saving, and keeps everything in `passwords.bin`, encrypted by macOS's Keychain. Showing a password in Settings needs Touch ID first.
+
 ## How the Mac app is made
 
 `npm run build:mac` does three things:
@@ -120,7 +127,7 @@ The app gets an **ad-hoc signature**: a free self-signature that proves the file
 ## Where your data lives
 
 Everything is stored on your Mac in `~/Library/Application Support/VAIA/`:
-`vaia-state.json` (spaces, tabs, settings, boosts, to-dos), `history.json`, `archive.json`, `downloads.json`, `permissions.json` (site permissions), `claude-key.bin` (your Claude API key, encrypted), `Extensions/` (installed extensions), `adblock-engine.bin` (cached filter lists), plus each profile's cookies and site data. There are no accounts and no servers.
+`vaia-state.json` (spaces, tabs, settings, boosts, to-dos), `history.json`, `archive.json`, `downloads.json`, `permissions.json` (site permissions), `claude-key.bin` (your Claude API key, encrypted), `passwords.bin` (saved passwords, encrypted), `Extensions/` (installed extensions), `adblock-engine.bin` (cached filter lists), plus each profile's cookies and site data. There are no accounts and no servers.
 
 ## Words you'll see
 

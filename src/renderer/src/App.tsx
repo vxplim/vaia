@@ -29,7 +29,7 @@ type PeekPhase = 'closed' | 'opening' | 'open' | 'closing'
 /** Things that float over the page (the page is "frozen" into a picture while one is open). */
 export type Overlay =
   | { kind: 'command'; mode: 'new' | 'split' }
-  | { kind: 'space-editor'; spaceId: string }
+  | { kind: 'space-editor'; spaceId: string; setup?: boolean }
   | { kind: Panel }
 
 export default function App() {
@@ -70,7 +70,10 @@ export default function App() {
     }, CLOSE_ANIMATION_MS)
   }, [])
 
-  const editSpace = useCallback((spaceId: string) => openOverlay({ kind: 'space-editor', spaceId }), [openOverlay])
+  const editSpace = useCallback(
+    (spaceId: string, setup = false) => openOverlay({ kind: 'space-editor', spaceId, setup }),
+    [openOverlay]
+  )
   const openPanel = useCallback((panel: Panel) => openOverlay({ kind: panel }), [openOverlay])
   const openFind = useCallback(() => {
     setFindOpen(true)
@@ -98,7 +101,7 @@ export default function App() {
           setUrlEditing(true)
         }
         if (cmd.type === 'command-bar') openOverlay({ kind: 'command', mode: cmd.mode ?? 'new' })
-        if (cmd.type === 'edit-space') editSpace(cmd.id)
+        if (cmd.type === 'edit-space') editSpace(cmd.id, cmd.setup)
         if (cmd.type === 'open-panel') openPanel(cmd.panel)
         if (cmd.type === 'toggle-sidebar') toggleSidebar()
         if (cmd.type === 'find') openFind()
@@ -173,6 +176,7 @@ export default function App() {
         : null
   const theme = themeStyle(space.theme, systemDark)
   const editing = overlay?.kind === 'space-editor' ? state.spaces.find((s) => s.id === overlay.spaceId) : null
+  const setup = overlay?.kind === 'space-editor' && !!overlay.setup
 
   const sidebar = (
     <Sidebar
@@ -248,7 +252,7 @@ export default function App() {
         {overlay?.kind === 'todo' && (
           <TodoPanel state={state} closing={closing} onClose={closeOverlay} left={sidebarVisible ? sidebarWidth + 4 : 10} />
         )}
-        {editing && <SpaceEditor state={state} space={editing} closing={closing} onClose={closeOverlay} />}
+        {editing && <SpaceEditor state={state} space={editing} setup={setup} closing={closing} onClose={closeOverlay} />}
       </div>
     </DndProvider>
   )

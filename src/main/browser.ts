@@ -39,6 +39,7 @@ import { AdBlock } from './adblock'
 import { AiTidyError, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './ai'
 import { ImportError, countLinks, readChrome, readHtmlFile, readSafari, type BookmarkNode, type BookmarkTree } from './bookmarks'
 import { EXTENSIONS_PARTITION, Extensions } from './extensions'
+import { Passwords } from './passwords'
 import { Permissions } from './permissions'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
 import { EMPTY_BOOST, ZAP_SCRIPT, boostCss } from './boosts'
@@ -131,6 +132,12 @@ export class Browser {
       this.store.changed(false)
     }
   })
+  readonly passwords = new Passwords()
+  /** Which password profile each cookie jar belongs to ("default" or a Space's profile id). */
+  private sessionProfiles = new Map<Session, string>()
+  /** The username typed on the first step of a two-step login, per page. */
+  private pendingUsernames = new Map<number, { origin: string; username: string }>()
+  private passwordPromptOpen = new Set<string>()
   /** Pages whose process crashed: they show a "page crashed" card until reloaded. */
   private crashed = new Set<string>()
   /** A page playing full screen (e.g. a video), per window. */
@@ -417,7 +424,9 @@ export class Browser {
     const ses = session.fromPartition(partition)
     if (!this.configuredSessions.has(ses)) {
       this.configuredSessions.add(ses)
-      this.configureSession(ses, !partition.startsWith('persist:'))
+      const isPrivate = !partition.startsWith('persist:')
+      if (!isPrivate) this.sessionProfiles.set(ses, partition.replace(/^persist:(profile-)?/, ''))
+      this.configureSession(ses, isPrivate)
     }
     return ses
   }
@@ -433,6 +442,101 @@ export class Browser {
     })
     this.adblock.addSession(ses)
     this.permissions.attach(ses, isPrivate)
+    // The password helper runs in every page, except in private windows (nothing is saved there).
+    if (!isPrivate) {
+      ses.registerPreloadScript({ id: 'vaia-passwords', type: 'frame', filePath: join(__dirname, '../preload/passwords.js') })
+    }
+  }
+
+  // ---------- Passwords ----------
+
+  /** Only trust the page's main frame, on the site it says it's on, in a profile we know. */
+  private loginContext(e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent, origin: string): { profile: string; wc: Electron.WebContents } | null {
+    const wc = e.sender
+    if (e.senderFrame !== wc.mainFrame || originOf(wc.getURL()) !== origin) return null
+    const profile = this.sessionProfiles.get(wc.session)
+    return profile ? { profile, wc } : null
+  }
+
+  async lookupLogins(e: Electron.IpcMainInvokeEvent, origin: string): Promise<{ username: string; password: string }[]> {
+    const ctx = this.loginContext(e, origin)
+    if (!ctx) return []
+    try {
+      return await this.passwords.lookup(ctx.profile, origin)
+    } catch (err) {
+      console.error('[passwords] lookup failed', err)
+      return []
+    }
+  }
+
+  loginUsername(e: Electron.IpcMainEvent, info: { origin: string; username: string }): void {
+    if (this.loginContext(e, info.origin)) this.pendingUsernames.set(e.sender.id, info)
+  }
+
+  /** You logged in somewhere: offer to save (or update) the password. */
+  async loginSubmitted(e: Electron.IpcMainEvent, login: { origin: string; username: string; password: string }): Promise<void> {
+    const ctx = this.loginContext(e, login.origin)
+    if (!ctx || !login.password) return
+    const earlier = this.pendingUsernames.get(ctx.wc.id)
+    const username = login.username || (earlier && siteOf(earlier.origin) === siteOf(login.origin) ? earlier.username : '')
+    const key = `${ctx.profile} ${login.origin}`
+    if (this.passwordPromptOpen.has(key)) return
+    let answer
+    try {
+      answer = await this.passwords.check(ctx.profile, login.origin, username, login.password)
+    } catch (err) {
+      console.error('[passwords] could not open the password store', err)
+      return
+    }
+    if (!answer) return
+    this.passwordPromptOpen.add(key)
+    try {
+      const tabId = this.tabIdOf(ctx.wc)
+      const win = (tabId && this.windowShowing(tabId)) || BrowserWindow.getFocusedWindow() || this.win
+      const host = new URL(login.origin).host
+      const options = {
+        type: 'question' as const,
+        message: answer === 'save' ? `Save your password for ${host}?` : `Update your saved password for ${host}?`,
+        detail: `${username ? `Username: ${username}
+` : ''}It’s stored encrypted on this Mac and only filled in on ${host}.`,
+        buttons: answer === 'save' ? ['Save Password', 'Not Now', 'Never for This Site'] : ['Update Password', 'Not Now'],
+        defaultId: 0,
+        cancelId: 1
+      }
+      const { response } = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options)
+      if (response === 0) {
+        await this.passwords.store(ctx.profile, login.origin, username, login.password)
+        this.showToast(answer === 'save' ? 'Password saved' : 'Password updated')
+      } else if (response === 2) {
+        await this.passwords.never(ctx.profile, login.origin)
+      }
+    } catch (err) {
+      console.error('[passwords] save failed', err)
+      this.showToast('Couldn’t save the password securely')
+    } finally {
+      this.passwordPromptOpen.delete(key)
+    }
+  }
+
+  /** Import a passwords .csv (Google Password Manager / Chrome export) into a profile. */
+  async importPasswordsCsv(profile: string): Promise<{ message: string; file?: string }> {
+    const win = BrowserWindow.getFocusedWindow()
+    const options = {
+      title: 'Import Passwords',
+      message: 'Choose the passwords .csv file you exported from Google Password Manager or Chrome',
+      properties: ['openFile' as const],
+      filters: [{ name: 'Passwords', extensions: ['csv'] }]
+    }
+    const picked = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+    const file = picked.filePaths[0]
+    if (picked.canceled || !file) return { message: '' }
+    try {
+      const { added, updated, skipped } = await this.passwords.importCsv(profile, file)
+      const parts = [`${added} added`, updated ? `${updated} updated` : '', skipped ? `${skipped} skipped` : ''].filter(Boolean)
+      return { message: `Imported passwords: ${parts.join(', ')}.`, file }
+    } catch (err) {
+      return { message: err instanceof Error ? err.message : 'That file couldn’t be read.' }
+    }
   }
 
   /** Start-up work that needs the saved settings. */
@@ -1572,6 +1676,7 @@ export class Browser {
   }
 
   private forgetProfile(profileId: string): void {
+    this.passwords.forgetProfile(profileId).catch((err) => console.error('[passwords]', err))
     session
       .fromPartition(`persist:profile-${profileId}`)
       .clearStorageData()
@@ -1929,6 +2034,28 @@ export class Browser {
         return this.print(action.id)
       case 'bookmarks/import':
         return this.importBookmarks(action.source, action.target)
+      case 'space/signInGoogle': {
+        const space = this.state.spaces.find((s) => s.id === action.id)
+        if (!space) return
+        if (!this.win) this.createWindow()
+        this.win?.focus()
+        this.switchSpace(space.id)
+        this.newTab('https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmyaccount.google.com%2F')
+        return
+      }
+      case 'passwords/update':
+        return this.passwords.update(action.id, { username: action.username, password: action.password })
+      case 'passwords/delete':
+        return this.passwords.remove(action.id)
+      case 'passwords/reveal':
+        return this.passwords.reveal(action.id)
+      case 'passwords/importCsv':
+        return this.importPasswordsCsv(action.profile)
+      case 'passwords/trashCsv':
+        if (action.path.toLowerCase().endsWith('.csv') && existsSync(action.path)) {
+          return shell.trashItem(action.path).then(() => this.showToast('The passwords file is in the Trash. Empty the Trash to remove it for good.'))
+        }
+        return
     }
   }
 }

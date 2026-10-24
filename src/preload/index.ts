@@ -26,11 +26,11 @@ const api: VaiaApi = {
   setTrafficLights: (visible) => ipcRenderer.send('window:traffic-lights', visible),
   popupMenu: (items) => ipcRenderer.invoke('menu:popup', items),
   downloadThumbnail: (id) => ipcRenderer.invoke('download:thumbnail', id),
+  listPasswords: () => ipcRenderer.invoke('passwords:list'),
   onCommand: (listener) => listen<UiCommand>('ui:command', listener)
 }
 
 contextBridge.exposeInMainWorld('vaia', api)
 
 // The main window shows extension buttons (<browser-action-list>) in the sidebar.
-const search = (globalThis as { location?: { search: string } }).location?.search ?? ''
-if (!new URLSearchParams(search).get('view')) injectBrowserAction()
+if (!new URLSearchParams(location.search).get('view')) injectBrowserAction()

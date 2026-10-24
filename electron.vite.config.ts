@@ -9,8 +9,17 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   main: {},
   // The preload runs in a sandbox, so the extensions toolbar code must be bundled into it.
+  // Two preloads: index (VAIA's own windows) and passwords (runs in web pages to spot logins).
   preload: {
-    build: { externalizeDeps: { exclude: ['electron-chrome-extensions'] } }
+    build: {
+      externalizeDeps: { exclude: ['electron-chrome-extensions'] },
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          passwords: resolve(__dirname, 'src/preload/passwords.ts')
+        }
+      }
+    }
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),

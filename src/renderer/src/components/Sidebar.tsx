@@ -19,7 +19,7 @@ interface Props {
   urlEditing: boolean
   setUrlEditing: (editing: boolean) => void
   onNewTab: () => void
-  onEditSpace: (spaceId: string) => void
+  onEditSpace: (spaceId: string, setup?: boolean) => void
   onOpenPanel: (panel: Panel) => void
   onToggleSidebar: () => void
   boostOpen: boolean

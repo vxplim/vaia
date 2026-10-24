@@ -8,7 +8,7 @@ import { IconArchive, IconCheckCircle, IconDownload, IconPlus } from './Icons'
 
 interface Props {
   state: AppState
-  onEdit: (spaceId: string) => void
+  onEdit: (spaceId: string, setup?: boolean) => void
   onOpenPanel: (panel: Panel) => void
 }
 
@@ -38,7 +38,7 @@ export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
         title="New Space"
         onClick={async () => {
           const id = (await dispatch({ type: 'space/new' })) as string
-          onEdit(id)
+          onEdit(id, true)
         }}
       >
         <IconPlus />

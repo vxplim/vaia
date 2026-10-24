@@ -53,6 +53,8 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - ✅ Private windows, built-in PDF viewer, printing, full-screen video, picture in picture, spelling suggestions
 - ✅ Friendly error pages, blocked certificate errors, and crash recovery
 - ✅ Import bookmarks from Chrome, Safari, or any exported bookmarks file
+- ✅ Built-in password manager per account (encrypted with your Mac's Keychain, Touch ID to view), with CSV import from Google Password Manager / Chrome
+- ✅ Spaces with separate accounts, set up when you create the Space
 - ✅ Keyboard-friendly: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⌘Y, ⌘, (full list in Settings)
 
 ## Screenshots
