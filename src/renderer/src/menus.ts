@@ -2,23 +2,29 @@
 // (drawn by the brain); here we decide what's in it and what each choice does.
 import type { MenuItem } from '../../shared/api'
 import type { Zone } from '../../shared/tree'
-import type { FolderItem, SplitItem, TabItem } from '../../shared/types'
+import { tabsIn } from '../../shared/tree'
+import type { AppState, FolderItem, LibrarySection, Space, SplitItem, TabItem } from '../../shared/types'
 import { sameUrl } from '../../shared/url'
 import { applyLayoutChoice, layoutMenuItems } from './splitLayouts'
 import { dispatch, getAppState } from './state'
 
 type Handlers = Record<string, () => void>
 
-async function show(items: (MenuItem & { run?: () => void })[], moveTabId?: string): Promise<void> {
+type RunItem = Omit<MenuItem, 'submenu'> & { run?: () => void; submenu?: RunItem[] }
+
+async function show(items: RunItem[], moveTabId?: string): Promise<void> {
   const handlers: Handlers = {}
-  const plain: MenuItem[] = items.map(({ run, ...item }, i) => {
-    if (run) {
-      const id = item.id ?? `item-${i}`
+  let n = 0
+  // Items with a run() get an id; the chosen id runs its handler (also inside submenus).
+  const strip = (list: RunItem[]): MenuItem[] =>
+    list.map(({ run, submenu, ...item }) => {
+      const plain: MenuItem = submenu ? { ...item, submenu: strip(submenu) } : item
+      if (!run) return plain
+      const id = item.id ?? `item-${n++}`
       handlers[id] = run
-      return { ...item, id }
-    }
-    return item
-  })
+      return { ...plain, id }
+    })
+  const plain = strip(items)
   const chosen = await window.vaia.popupMenu(plain)
   if (moveTabId && applyLayoutChoice(chosen, moveTabId)) return
   if (chosen?.startsWith('move-') && moveTabId) {
@@ -29,7 +35,7 @@ async function show(items: (MenuItem & { run?: () => void })[], moveTabId?: stri
 const sep = { type: 'separator' as const }
 
 /** "Move to Space ▸" with every other Space. */
-function moveToSpaceItem(tabId: string): MenuItem & { run?: () => void } {
+function moveToSpaceItem(tabId: string): RunItem {
   const state = getAppState()
   const others = state ? state.spaces.filter((s) => s.id !== state.activeSpaceId) : []
   return {
@@ -42,7 +48,7 @@ function moveToSpaceItem(tabId: string): MenuItem & { run?: () => void } {
 export function tabMenu(tab: TabItem, zone: Zone, loaded: boolean, active = false): Promise<void> {
   const navigatedAway = !!tab.pinnedUrl && !sameUrl(tab.url, tab.pinnedUrl)
   const id = tab.id
-  const items: (MenuItem & { run?: () => void })[] = []
+  const items: RunItem[] = []
   if (zone === 'today') {
     items.push(
       { label: 'Pin Tab', run: () => dispatch({ type: 'tab/pin', id }) },
@@ -104,4 +110,58 @@ export function splitMenu(split: SplitItem, tab: TabItem): Promise<void> {
     { label: 'Copy Link', run: () => dispatch({ type: 'tab/copyUrl', id: tab.id }) },
     { label: 'Close Tab', run: () => dispatch({ type: 'tab/close', id: tab.id }) }
   ], tab.id)
+}
+
+/** Which part of the Space editor to start in. */
+export type SpaceEditorFocus = 'icon' | 'name' | 'theme'
+
+export interface SpaceMenuUi {
+  editSpace: (spaceId: string, setup?: boolean, focus?: SpaceEditorFocus) => void
+  openLibrary: (section?: LibrarySection) => void
+  newFolder: (spaceId: string) => void
+}
+
+/** Ask first, then delete a Space (its tabs close; a separate account's logins are removed). */
+export function confirmDeleteSpace(state: AppState, space: Space): void {
+  if (state.spaces.length < 2) return
+  const tabs = tabsIn(space.pinned).length + tabsIn(space.today).length
+  const lines = [`Delete the Space “${space.name}”?`, '']
+  lines.push(tabs ? `Its ${tabs} tab${tabs === 1 ? '' : 's'} will be closed.` : 'It has no tabs.')
+  if (space.profileId) lines.push('Its separate account (logins, cookies and saved passwords) will be removed too.')
+  lines.push('Its to-dos move to “Everywhere”.')
+  if (confirm(lines.join('\n'))) dispatch({ type: 'space/delete', id: space.id })
+}
+
+/** Switch a Space between the shared account and its own (asks before deleting its own logins). */
+function setProfile(space: Space, separate: boolean): void {
+  if (separate === !!space.profileId) return
+  if (!separate && !confirm(`Switch “${space.name}” to the shared account?\n\nIts separate logins, cookies and saved passwords will be removed, and its tabs will reload.`)) return
+  dispatch({ type: 'space/setProfile', id: space.id, separate })
+}
+
+/** The Space menu: the ⋯ next to the Space name, and right-clicking a Space icon. */
+export function spaceMenu(space: Space, ui: SpaceMenuUi, extra: RunItem[] = []): Promise<void> {
+  const state = getAppState()
+  const id = space.id
+  return show([
+    { label: 'Change Icon…', run: () => ui.editSpace(id, false, 'icon') },
+    { label: 'Rename…', run: () => ui.editSpace(id, false, 'name') },
+    { label: 'Edit Theme…', run: () => ui.editSpace(id, false, 'theme') },
+    {
+      label: 'Set Profile',
+      submenu: [
+        { label: 'Shared Default Account', checked: !space.profileId, run: () => setProfile(space, false) },
+        { label: 'Separate Account for This Space', checked: !!space.profileId, run: () => setProfile(space, true) },
+        sep,
+        { label: 'Sign in with Google…', run: () => dispatch({ type: 'space/signInGoogle', id }) }
+      ]
+    },
+    sep,
+    { label: 'New Folder', run: () => ui.newFolder(id) },
+    { label: 'Export Tabs as Bookmarks…', run: () => dispatch({ type: 'space/exportBookmarks', id }) },
+    { label: 'Manage Spaces…', run: () => ui.openLibrary('spaces') },
+    ...(extra.length ? [sep, ...extra] : []),
+    sep,
+    { label: 'Delete Space…', enabled: (state?.spaces.length ?? 0) > 1, run: () => state && confirmDeleteSpace(state, space) }
+  ]).then(() => undefined)
 }

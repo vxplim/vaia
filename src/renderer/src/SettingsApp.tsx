@@ -1,5 +1,6 @@
 // The Settings window (⌘,).
 import { useCallback, useEffect, useState } from 'react'
+import { Toggle } from './components/Toggle'
 import type { AppState, ArchiveAfter, PasswordInfo, PermissionKind, SearchEngineId } from '../../shared/types'
 import { SEARCH_ENGINES } from '../../shared/url'
 import { dispatch, useAppState } from './state'
@@ -29,7 +30,8 @@ const SHORTCUTS: [string, string][] = [
   ['⌥⌘N', 'New Little window'],
   ['⇧⌘K', 'To-do list'],
   ['⌘Y', 'History'],
-  ['⇧⌘J', 'Downloads'],
+  ['⇧⌘L', 'Library (Archive, Downloads, Media, Spaces, Boosts, To-do)'],
+  ['⇧⌘J', 'Library → Downloads'],
   ['⇧⌘N', 'New private window'],
   ['⌘P', 'Print'],
   ['⌘,', 'Settings'],
@@ -47,14 +49,6 @@ const PERMISSION_NAMES: Record<PermissionKind, string> = {
   idle: 'Idle detection',
   windows: 'Window management',
   'open-apps': 'Open other apps'
-}
-
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button className={`toggle${checked ? ' on' : ''}`} role="switch" aria-checked={checked} onClick={() => onChange(!checked)}>
-      <span />
-    </button>
-  )
 }
 
 export function SettingsApp() {
@@ -129,6 +123,16 @@ export function SettingsApp() {
               </div>
             </div>
             <Toggle checked={s.googleSignInCompat} onChange={(v) => set({ googleSignInCompat: v })} />
+          </div>
+          <div className="setting-row">
+            <div>
+              <div className="setting-label">Include my Mac screenshots</div>
+              <div className="setting-hint">
+                Library → Media also shows the screenshots and screen recordings from your Mac’s screenshots folder. The
+                first time, macOS asks whether VAIA may see that folder.
+              </div>
+            </div>
+            <Toggle checked={s.mediaScreenshots} onChange={(v) => set({ mediaScreenshots: v })} />
           </div>
           <div className="setting-row">
             <div>

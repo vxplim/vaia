@@ -93,6 +93,10 @@ export interface Settings {
   disabledExtensions: string[]
   /** Show Google's sign-in pages a Firefox browser name, so Google allows signing in. */
   googleSignInCompat: boolean
+  /** The Library section you looked at last. */
+  librarySection: LibrarySection
+  /** Library → Media also shows pictures from the Mac's screenshots folder. */
+  mediaScreenshots: boolean
 }
 
 export interface Todo {
@@ -230,11 +234,33 @@ export interface Pane {
 /** Floating panels in the main window. */
 export type Panel = 'archive' | 'history' | 'downloads' | 'todo'
 
+/** The sections of the Library (the bottom-left button, ⇧⌘L). */
+export type LibrarySection = 'archive' | 'downloads' | 'media' | 'spaces' | 'boosts' | 'todo'
+
+/** A picture, video or PDF shown in Library → Media. */
+export interface MediaItem {
+  path: string
+  name: string
+  kind: 'image' | 'video' | 'pdf'
+  size: number
+  /** When it was downloaded (or, for screenshots, taken). */
+  time: number
+  source: 'download' | 'screenshot'
+}
+
+export interface MediaList {
+  items: MediaItem[]
+  /** Screenshots were asked for but macOS didn't let VAIA see that folder. */
+  screenshotsBlocked?: boolean
+  screenshotsFolder?: string
+}
+
 /** Commands the brain asks the UI to perform (usually from keyboard shortcuts). */
 export type UiCommand =
   | { type: 'focus-url' }
   | { type: 'command-bar'; mode?: 'new' | 'split' }
   | { type: 'edit-space'; id: string; setup?: boolean }
+  | { type: 'open-library'; section?: LibrarySection }
   | { type: 'open-panel'; panel: Panel }
   | { type: 'find' }
   | { type: 'find-next'; forward: boolean }

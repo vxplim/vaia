@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type WheelEvent } from 'react'
-import type { AppState, Panel, Space, TabItem } from '../../../shared/types'
+import type { AppState, LibrarySection, Panel, Space, TabItem } from '../../../shared/types'
 import { useDropArea } from '../dnd'
-import { pinnedAreaMenu } from '../menus'
+import { pinnedAreaMenu, spaceMenu, type SpaceEditorFocus, type SpaceMenuUi } from '../menus'
 import { dispatch } from '../state'
 import { Favorites, FavoritesDropZone } from './Favorites'
 import { siteKey } from '../../../shared/url'
@@ -19,8 +19,9 @@ interface Props {
   urlEditing: boolean
   setUrlEditing: (editing: boolean) => void
   onNewTab: () => void
-  onEditSpace: (spaceId: string, setup?: boolean) => void
+  onEditSpace: (spaceId: string, setup?: boolean, focus?: SpaceEditorFocus) => void
   onOpenPanel: (panel: Panel) => void
+  onOpenLibrary: (section?: LibrarySection) => void
   onToggleSidebar: () => void
   boostOpen: boolean
   onBoost: (open: boolean) => void
@@ -83,7 +84,7 @@ function useSwipe(onSwipe: (delta: 1 | -1) => void) {
 }
 
 export function Sidebar(props: Props) {
-  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onToggleSidebar, boostOpen, onBoost } =
+  const { state, space, activeTab, urlEditing, setUrlEditing, onNewTab, onEditSpace, onOpenPanel, onOpenLibrary, onToggleSidebar, boostOpen, onBoost } =
     props
   const site = activeTab ? siteKey(activeTab.url) : null
   const boosted = !!(site && state.boosts[site]?.enabled)
@@ -101,10 +102,13 @@ export function Sidebar(props: Props) {
   const pinnedArea = useDropArea('pinned-end', 'pinned', space.id, space.pinned.length)
   const todayArea = useDropArea('today-end', 'today', space.id, space.today.length)
 
-  const newFolder = async () => {
-    const folderId = (await dispatch({ type: 'folder/new' })) as string
+  /** A new folder in a Space's pinned tabs (switching to that Space), named right away. */
+  const newFolder = async (spaceId = space.id) => {
+    if (spaceId !== state.activeSpaceId) await dispatch({ type: 'space/switch', id: spaceId })
+    const folderId = (await dispatch({ type: 'folder/new', spaceId })) as string
     setRenamingId(folderId)
   }
+  const menuUi: SpaceMenuUi = { editSpace: onEditSpace, openLibrary: onOpenLibrary, newFolder }
   const listProps = { state, space, renamingId, setRenamingId, depth: 0, parentId: null }
 
   return (
@@ -166,9 +170,16 @@ export function Sidebar(props: Props) {
       <Favorites state={state} space={space} />
 
       <div className={`sidebar-scroll slide-${direction}`} key={space.id}>
-        <div className="space-header" onDoubleClick={() => onEditSpace(space.id)}>
+        <div
+          className="space-header"
+          onDoubleClick={() => onEditSpace(space.id, false, 'name')}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            spaceMenu(space, menuUi)
+          }}
+        >
           <span className="space-header-name">{space.name}</span>
-          <button className="icon-button small" title="Edit Space" onClick={() => onEditSpace(space.id)}>
+          <button className="icon-button small" title="Space menu" onClick={() => spaceMenu(space, menuUi)}>
             <IconMore />
           </button>
         </div>
@@ -179,7 +190,7 @@ export function Sidebar(props: Props) {
           onContextMenu={(e) => {
             if (e.target === e.currentTarget) {
               e.preventDefault()
-              pinnedAreaMenu(newFolder)
+              pinnedAreaMenu(() => newFolder())
             }
           }}
         >
@@ -225,7 +236,7 @@ export function Sidebar(props: Props) {
         </section>
       </div>
 
-      <SpaceBar state={state} onEdit={onEditSpace} onOpenPanel={onOpenPanel} />
+      <SpaceBar state={state} menuUi={menuUi} onOpenPanel={onOpenPanel} />
         </>
       )}
     </aside>

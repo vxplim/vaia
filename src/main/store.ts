@@ -52,7 +52,9 @@ export const DEFAULT_SETTINGS: Settings = {
   todoSectionCollapsed: false,
   todoWindowOnTop: false,
   disabledExtensions: [],
-  googleSignInCompat: true
+  googleSignInCompat: true,
+  librarySection: 'archive',
+  mediaScreenshots: false
 }
 
 export function newSpace(name: string, icon: string, colors: string[]): Space {

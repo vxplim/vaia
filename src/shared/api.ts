@@ -5,6 +5,7 @@ import type {
   ArchivedTab,
   Boost,
   HistoryEntry,
+  MediaList,
   Pane,
   PasswordInfo,
   PermissionDecision,
@@ -51,7 +52,8 @@ export type Action =
   | { type: 'tab/favorite'; id: string }
   | { type: 'item/move'; id: string; to: DropTarget }
   | { type: 'item/delete'; id: string }
-  | { type: 'folder/new'; name?: string }
+  /** A new folder at the end of a Space's pinned tabs (the current Space if none is given). */
+  | { type: 'folder/new'; name?: string; spaceId?: string }
   | { type: 'folder/rename'; id: string; name: string }
   | { type: 'folder/toggle'; id: string }
   | { type: 'today/clear' }
@@ -130,6 +132,11 @@ export type Action =
   | { type: 'passwords/reveal'; id: string }
   | { type: 'passwords/importCsv'; profile: string }
   | { type: 'passwords/trashCsv'; path: string }
+  /** Save a Space's pinned and Today tabs as a bookmarks .html file (asks where). */
+  | { type: 'space/exportBookmarks'; id: string }
+  /** Files listed in Library → Media (only paths VAIA just listed are accepted). */
+  | { type: 'media/open' | 'media/show' | 'media/copy' | 'media/trash'; path: string }
+  | { type: 'media/openPrivacySettings' }
 
 /** What the UI sees as window.vaia (provided by the preload bridge). */
 export interface VaiaApi {
@@ -152,6 +159,10 @@ export interface VaiaApi {
   listPasswords(): Promise<PasswordInfo[]>
   /** A small picture of a downloaded file (a thumbnail, or its Finder icon), as a data: URL. */
   downloadThumbnail(id: string): Promise<string | null>
+  /** Downloaded pictures, videos and PDFs (and screenshots, if that setting is on), newest first. */
+  listMedia(): Promise<MediaList>
+  /** A Quick Look picture of a Media file, about `size` pixels wide, as a data: URL. */
+  mediaThumbnail(path: string, size: number): Promise<string | null>
   /** Show a native right-click menu; resolves with the chosen item's id (or null). */
   popupMenu(items: MenuItem[]): Promise<string | null>
   onCommand(listener: (command: UiCommand) => void): () => void

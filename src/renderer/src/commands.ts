@@ -1,6 +1,6 @@
 // App commands you can run from the Command Bar (⌘T), e.g. "Toggle Sidebar".
 import { locate } from '../../shared/tree'
-import type { AppState, Panel } from '../../shared/types'
+import type { AppState, LibrarySection, Panel } from '../../shared/types'
 import { sameUrl } from '../../shared/url'
 import { SPLIT_LAYOUTS } from './splitLayouts'
 import { dispatch } from './state'
@@ -12,6 +12,8 @@ export interface CommandContext {
   ui: {
     editSpace: (spaceId: string, setup?: boolean) => void
     openPanel: (panel: Panel) => void
+    /** The Library, at a section (or the one you looked at last). */
+    openLibrary: (section?: LibrarySection) => void
     /** Reopen the Command Bar to pick what goes in a new Split View pane. */
     openSplitPicker: () => void
     toggleSidebar: () => void
@@ -212,11 +214,30 @@ export const COMMANDS: Command[] = [
     run: (ctx) => ctx.ui.openPanel('history')
   },
   {
+    id: 'library',
+    title: 'Open Library',
+    shortcut: '⇧⌘L',
+    keywords: 'archive downloads media spaces boosts to-do collection',
+    run: (ctx) => ctx.ui.openLibrary()
+  },
+  {
     id: 'downloads',
     title: 'Show Downloads',
     shortcut: '⇧⌘J',
-    keywords: 'files',
-    run: (ctx) => ctx.ui.openPanel('downloads')
+    keywords: 'files library',
+    run: (ctx) => ctx.ui.openLibrary('downloads')
+  },
+  {
+    id: 'media',
+    title: 'Show Media',
+    keywords: 'pictures photos images videos pdf screenshots library',
+    run: (ctx) => ctx.ui.openLibrary('media')
+  },
+  {
+    id: 'manage-boosts',
+    title: 'Manage Boosts',
+    keywords: 'customized sites library',
+    run: (ctx) => ctx.ui.openLibrary('boosts')
   },
   {
     id: 'find',
@@ -267,7 +288,7 @@ export const COMMANDS: Command[] = [
     id: 'open-archive',
     title: 'Open Archive',
     keywords: 'archived closed old tabs',
-    run: (ctx) => ctx.ui.openPanel('archive')
+    run: (ctx) => ctx.ui.openLibrary('archive')
   },
   {
     id: 'close-tab',
@@ -299,6 +320,18 @@ const SPACE_COMMANDS: Command[] = [
     title: 'Edit Space Theme…',
     keywords: 'color colour rename emoji icon appearance dark light profile',
     run: (ctx) => ctx.ui.editSpace(ctx.state.activeSpaceId)
+  },
+  {
+    id: 'manage-spaces',
+    title: 'Manage Spaces…',
+    keywords: 'library columns move tabs organize',
+    run: (ctx) => ctx.ui.openLibrary('spaces')
+  },
+  {
+    id: 'export-bookmarks',
+    title: 'Export Tabs as Bookmarks…',
+    keywords: 'save html backup space',
+    run: (ctx) => dispatch({ type: 'space/exportBookmarks', id: ctx.state.activeSpaceId })
   }
 ]
 

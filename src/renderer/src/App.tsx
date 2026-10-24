@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { activeSpace, locate } from '../../shared/tree'
-import type { Panel, SplitItem, TabItem } from '../../shared/types'
-import { ArchivePanel } from './components/ArchivePanel'
+import type { LibrarySection, Panel, SplitItem, TabItem } from '../../shared/types'
 import { Backdrop } from './components/Backdrop'
 import { CommandBar } from './components/CommandBar'
 import { Content } from './components/Content'
-import { DownloadsPanel } from './components/DownloadsPanel'
 import { FindBar } from './components/FindBar'
 import { HistoryPanel } from './components/HistoryPanel'
+import { Library } from './components/Library'
 import { PeekLayer } from './components/PeekLayer'
 import { Sidebar } from './components/Sidebar'
 import { SpaceEditor } from './components/SpaceEditor'
 import { TodoPanel } from './components/TodoPanel'
 import { DndProvider } from './dnd'
+import type { SpaceEditorFocus } from './menus'
 import { dispatch, useAppState } from './state'
 import { themeStyle, useSystemDark } from './theme'
 
@@ -29,8 +29,9 @@ type PeekPhase = 'closed' | 'opening' | 'open' | 'closing'
 /** Things that float over the page (the page is "frozen" into a picture while one is open). */
 export type Overlay =
   | { kind: 'command'; mode: 'new' | 'split' }
-  | { kind: 'space-editor'; spaceId: string; setup?: boolean }
-  | { kind: Panel }
+  | { kind: 'space-editor'; spaceId: string; setup?: boolean; focus?: SpaceEditorFocus }
+  | { kind: 'library'; section: LibrarySection }
+  | { kind: 'history' | 'todo' }
 
 export default function App() {
   const state = useAppState()
@@ -71,10 +72,26 @@ export default function App() {
   }, [])
 
   const editSpace = useCallback(
-    (spaceId: string, setup = false) => openOverlay({ kind: 'space-editor', spaceId, setup }),
+    (spaceId: string, setup = false, focus?: SpaceEditorFocus) => openOverlay({ kind: 'space-editor', spaceId, setup, focus }),
     [openOverlay]
   )
-  const openPanel = useCallback((panel: Panel) => openOverlay({ kind: panel }), [openOverlay])
+  const lastSection = state?.settings.librarySection ?? 'archive'
+  const showSection = useCallback((section: LibrarySection) => {
+    setOverlay((o) => (o?.kind === 'library' ? { kind: 'library', section } : o))
+    dispatch({ type: 'settings/update', patch: { librarySection: section } })
+  }, [])
+  const openLibrary = useCallback(
+    (section?: LibrarySection) => {
+      openOverlay({ kind: 'library', section: section ?? lastSection })
+      if (section && section !== lastSection) dispatch({ type: 'settings/update', patch: { librarySection: section } })
+    },
+    [openOverlay, lastSection]
+  )
+  // The Archive and Downloads pages live in the Library.
+  const openPanel = useCallback(
+    (panel: Panel) => (panel === 'archive' || panel === 'downloads' ? openLibrary(panel) : openOverlay({ kind: panel })),
+    [openOverlay, openLibrary]
+  )
   const openFind = useCallback(() => {
     setFindOpen(true)
     setFindKey((k) => k + 1)
@@ -103,11 +120,12 @@ export default function App() {
         if (cmd.type === 'command-bar') openOverlay({ kind: 'command', mode: cmd.mode ?? 'new' })
         if (cmd.type === 'edit-space') editSpace(cmd.id, cmd.setup)
         if (cmd.type === 'open-panel') openPanel(cmd.panel)
+        if (cmd.type === 'open-library') openLibrary(cmd.section)
         if (cmd.type === 'toggle-sidebar') toggleSidebar()
         if (cmd.type === 'find') openFind()
         if (cmd.type === 'boost') openBoost()
       }),
-    [openOverlay, editSpace, openPanel, toggleSidebar, openFind, openBoost, sidebarVisible]
+    [openOverlay, editSpace, openPanel, openLibrary, toggleSidebar, openFind, openBoost, sidebarVisible]
   )
 
   // Hide the window's red/yellow/green buttons along with the sidebar.
@@ -177,6 +195,7 @@ export default function App() {
   const theme = themeStyle(space.theme, systemDark)
   const editing = overlay?.kind === 'space-editor' ? state.spaces.find((s) => s.id === overlay.spaceId) : null
   const setup = overlay?.kind === 'space-editor' && !!overlay.setup
+  const editorFocus = overlay?.kind === 'space-editor' ? overlay.focus : undefined
 
   const sidebar = (
     <Sidebar
@@ -188,6 +207,7 @@ export default function App() {
       onNewTab={() => openOverlay({ kind: 'command', mode: 'new' })}
       onEditSpace={editSpace}
       onOpenPanel={openPanel}
+      onOpenLibrary={openLibrary}
       onToggleSidebar={toggleSidebar}
       boostOpen={boostOpen && sidebarVisible}
       onBoost={(open) => (open ? openBoost() : setBoostOpen(false))}
@@ -239,6 +259,7 @@ export default function App() {
             ui={{
               editSpace,
               openPanel,
+              openLibrary,
               openSplitPicker: () => openOverlay({ kind: 'command', mode: 'split' }),
               toggleSidebar,
               find: openFind,
@@ -246,13 +267,26 @@ export default function App() {
             }}
           />
         )}
-        {overlay?.kind === 'archive' && <ArchivePanel state={state} closing={closing} onClose={closeOverlay} />}
+        {overlay?.kind === 'library' && (
+          <Library
+            state={state}
+            section={overlay.section}
+            onSection={showSection}
+            closing={closing}
+            onClose={closeOverlay}
+            left={sidebarVisible ? sidebarWidth + 4 : 8}
+            editSpace={editSpace}
+            editBoost={(site) => {
+              closeOverlay()
+              dispatch({ type: 'tab/new', url: `https://${site}` }).then(openBoost)
+            }}
+          />
+        )}
         {overlay?.kind === 'history' && <HistoryPanel closing={closing} onClose={closeOverlay} />}
-        {overlay?.kind === 'downloads' && <DownloadsPanel state={state} closing={closing} onClose={closeOverlay} />}
         {overlay?.kind === 'todo' && (
           <TodoPanel state={state} closing={closing} onClose={closeOverlay} left={sidebarVisible ? sidebarWidth + 4 : 10} />
         )}
-        {editing && <SpaceEditor state={state} space={editing} setup={setup} closing={closing} onClose={closeOverlay} />}
+        {editing && <SpaceEditor key={`${editing.id}-${editorFocus ?? ''}`} state={state} space={editing} setup={setup} focus={editorFocus} closing={closing} onClose={closeOverlay} />}
       </div>
     </DndProvider>
   )

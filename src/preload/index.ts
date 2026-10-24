@@ -26,6 +26,8 @@ const api: VaiaApi = {
   setTrafficLights: (visible) => ipcRenderer.send('window:traffic-lights', visible),
   popupMenu: (items) => ipcRenderer.invoke('menu:popup', items),
   downloadThumbnail: (id) => ipcRenderer.invoke('download:thumbnail', id),
+  listMedia: () => ipcRenderer.invoke('media:list'),
+  mediaThumbnail: (path, size) => ipcRenderer.invoke('media:thumbnail', path, size),
   listPasswords: () => ipcRenderer.invoke('passwords:list'),
   onCommand: (listener) => listen<UiCommand>('ui:command', listener)
 }

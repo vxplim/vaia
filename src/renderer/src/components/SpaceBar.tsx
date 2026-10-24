@@ -1,36 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState, Panel, Space } from '../../../shared/types'
 import { useDnd } from '../dnd'
+import { spaceMenu, type SpaceMenuUi } from '../menus'
 import { dispatch } from '../state'
 import { dueCount } from '../todos'
-import { DownloadsPopover } from './DownloadsPanel'
-import { IconArchive, IconCheckCircle, IconDownload, IconPlus } from './Icons'
+import { DownloadsPopover } from './DownloadsView'
+import { IconCheckCircle, IconDownload, IconLibrary, IconPlus } from './Icons'
 
 interface Props {
   state: AppState
-  onEdit: (spaceId: string, setup?: boolean) => void
+  menuUi: SpaceMenuUi
   onOpenPanel: (panel: Panel) => void
 }
 
 /** The row of Space icons at the bottom of the sidebar. */
-export function SpaceBar({ state, onEdit, onOpenPanel }: Props) {
+export function SpaceBar({ state, menuUi, onOpenPanel }: Props) {
+  const onEdit = menuUi.editSpace
   const active = state.downloads.filter((d) => d.state === 'progressing')
   const progress = active.reduce((sum, d) => sum + (d.total ? d.received / d.total : 0), 0) / (active.length || 1)
   return (
     <div className="space-bar">
-      <button className="icon-button" title="Archive" onClick={() => onOpenPanel('archive')}>
-        <IconArchive />
+      <button className="icon-button" title="Library (⇧⌘L)" onClick={() => menuUi.openLibrary()}>
+        <IconLibrary />
       </button>
       <DownloadsButton
         state={state}
         busy={active.length > 0}
         progress={progress}
-        onOpen={() => onOpenPanel('downloads')}
+        onOpen={() => menuUi.openLibrary('downloads')}
       />
       <TodoButton state={state} onOpen={() => onOpenPanel('todo')} />
       <div className="space-icons">
         {state.spaces.map((space, i) => (
-          <SpaceIcon key={space.id} space={space} index={i} active={space.id === state.activeSpaceId} onEdit={onEdit} />
+          <SpaceIcon
+            key={space.id}
+            space={space}
+            index={i}
+            count={state.spaces.length}
+            active={space.id === state.activeSpaceId}
+            menuUi={menuUi}
+          />
         ))}
       </div>
       <button
@@ -106,13 +115,15 @@ function TodoButton({ state, onOpen }: { state: AppState; onOpen: () => void }) 
 function SpaceIcon({
   space,
   index,
+  count,
   active,
-  onEdit
+  menuUi
 }: {
   space: Space
   index: number
+  count: number
   active: boolean
-  onEdit: (id: string) => void
+  menuUi: SpaceMenuUi
 }) {
   const { drag, setDrag, setIndicator } = useDnd()
   const [over, setOver] = useState(false)
@@ -130,18 +141,13 @@ function SpaceIcon({
       className={`space-icon${active ? ' active' : ''}${over ? ' drop-into' : ''}`}
       title={`${space.name} (⌃${index + 1})`}
       onClick={() => dispatch({ type: 'space/switch', id: space.id })}
-      onDoubleClick={() => onEdit(space.id)}
-      onContextMenu={async (e) => {
+      onDoubleClick={() => menuUi.editSpace(space.id)}
+      onContextMenu={(e) => {
         e.preventDefault()
-        const choice = await window.vaia.popupMenu([
-          { id: 'edit', label: 'Edit Space…' },
-          { type: 'separator' },
-          { id: 'left', label: 'Move Left', enabled: index > 0 },
-          { id: 'right', label: 'Move Right' }
+        spaceMenu(space, menuUi, [
+          { label: 'Move Left', enabled: index > 0, run: () => dispatch({ type: 'space/reorder', id: space.id, index: index - 1 }) },
+          { label: 'Move Right', enabled: index < count - 1, run: () => dispatch({ type: 'space/reorder', id: space.id, index: index + 1 }) }
         ])
-        if (choice === 'edit') onEdit(space.id)
-        if (choice === 'left') dispatch({ type: 'space/reorder', id: space.id, index: index - 1 })
-        if (choice === 'right') dispatch({ type: 'space/reorder', id: space.id, index: index + 1 })
       }}
       // Drop a tab on a Space icon to move it there; hover a moment to switch to that Space.
       onDragOver={(e) => {

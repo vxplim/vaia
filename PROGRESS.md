@@ -166,6 +166,19 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
   - **Licence: VAIA is now GPL-3.0** (`LICENSE` has the official GPL-3.0 text with Vanessa's copyright notice; `package.json` says `GPL-3.0-only`; README and About panel updated). The repository is public
   - README: full feature list, download link to the latest release, how to update, new screenshots in the black-and-white look
 
+- [x] **Phase 16: Library + Space menu** (tag `v1.7.0`, not released as a download yet: test with `npm run dev` first)
+  - **Library** (bottom-left button, ⇧⌘L, View menu, or Command Bar "Open Library"): a panel that slides out from the sidebar over the page, with a slim section list on the left. It remembers the last section; Esc or a click outside closes it
+  - **Archive**: the Archive (search, grouped by day, click to reopen, × to remove) now lives here. History → Archive… opens this section
+  - **Downloads**: the full Downloads page (⇧⌘J and the downloads popover's "Show All" open it here)
+  - **Media**: thumbnails of downloaded pictures, videos and PDFs, newest first, searchable. Click one for a large preview (← → to step through) with Open, Show in Finder, Copy (pictures copy as pictures, other files as files) and Delete (moves to the Trash)
+  - **Include my Mac screenshots** (Settings → General, and a checkbox in Media; off by default): also shows screenshots and screen recordings from the Mac's screenshots folder (the one chosen in the Screenshot app, or the Desktop). If macOS hasn't allowed VAIA to see that folder, Media explains how and has an "Open Privacy Settings" button
+  - **Spaces**: every Space as a column with its Pinned (and folders) and Today tabs, side by side and scrolling sideways. Drag tabs between columns (drop on a tab to put it just before, or on the empty part of a list to add it at the end). Each column has Rename, Theme (the full theme controls, right there) and Delete; click a tab to open it; "New Space" at the end
+  - **Boosts**: every Boosted site with an on/off switch, Edit (opens the site with the Boost editor) and Delete
+  - **To-do**: the full to-do list (the same list as the ⇧⌘K panel)
+  - **Space menu**: a "⋯" next to the Space name (shows on hover) and right-clicking a Space icon or the Space name: Change Icon…, Rename…, Edit Theme…, Set Profile ▸ (Shared Default Account / Separate Account for This Space / Sign in with Google…), New Folder, Export Tabs as Bookmarks…, Manage Spaces… (Library → Spaces), Delete Space… (asks first). Right-clicking a Space icon also has Move Left / Move Right
+  - **Export Tabs as Bookmarks…** saves a standard bookmarks `.html` file (Pinned with its folders, and Today) that any browser can import
+  - Command Bar: Open Library, Show Media, Manage Spaces…, Manage Boosts, Export Tabs as Bookmarks…
+
 ### Google sign-in: what the tests showed
 
 - With compatibility on, Google's sign-in page sees Firefox (checked) while other sites in the same Space see Chrome (checked).
@@ -243,6 +256,15 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - **Unlocking passwords in Settings lasts one minute** so Show, Copy and Edit don't each ask for Touch ID.
 - **Decision (Vanessa): Google sign-in workaround.** Firefox's browser name on Google's sign-in pages only, with a switch to turn it off. The Firefox version number is worked out from the date (Firefox ships every 4 weeks), so it stays current without updates.
 - **Decision (Vanessa): GPL-3.0 licence**, because VAIA includes electron-chrome-extensions (GPL-3.0). "GPL-3.0-only" (version 3, as with the library).
+- **The Library replaces the separate Archive and Downloads windows**: the bottom-left button is now the Library (a books icon), the downloads arrow still shows the hover popover, and the ✓ still opens the quick to-do panel (⇧⌘K). History (⌘Y) stays its own panel.
+- **The Library covers the page area only**: the sidebar stays visible next to it, and a click on the sidebar closes the Library (like other panels). While it's open, the page is frozen into a picture.
+- **Media shows only files VAIA can still find**: downloads that were moved or deleted drop out. The interface sees the files through a private `vaia-media://` address that only serves files Media just listed, so a web page can't use it to read your files.
+- **Screenshots are recognised by name on the Desktop** ("Screenshot …", "Screen Recording …" and a few other languages); if you chose a separate screenshots folder in the Screenshot app, everything in it counts. PDFs in that folder are left out.
+- **Media's Delete moves files to the Trash** (no extra question, as on the Downloads page), and a deleted download also leaves the Downloads list.
+- **Renaming in the Space menu opens the Space editor with the name selected** (the same for Change Icon… and Edit Theme…), so there's one place to edit a Space.
+- **New Folder on another Space's icon switches to that Space first**, so you can name the folder straight away.
+- **Switching a Space back to the shared account asks first**, because it deletes that Space's separate logins and saved passwords.
+- **Bookmark export uses a pinned tab's original page** (not wherever you browsed to), and skips empty or non-web tabs.
 - **Keyboard shortcuts live in the Mac menu bar**, because menu shortcuts work even while a web page has keyboard focus.
 
 ## Known limitations (simpler versions chosen)
@@ -254,6 +276,9 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
 - Peek decides "another site" by comparing the last two parts of the domain (e.g. `news.example.com` and `example.com` count as the same site); unusual domains like `example.co.uk` may be treated as the same site as other `.co.uk` sites.
 
 ## Needs Vanessa
+
+- **Test Phase 16 with `npm run dev`:** open the Library (bottom-left button or ⇧⌘L) and try each section, the Space menu (hover the Space name → ⋯), and "Export Tabs as Bookmarks…". No new release was built, as you asked.
+- **Screenshots in Media:** turn on Settings → "Include my Mac screenshots". macOS will ask whether VAIA (while developing it says "Electron" or your Terminal app) may access the Desktop/screenshots folder: click **Allow**. If you clicked "Don't Allow", Media shows an "Open Privacy Settings" button. (The automated tests used a test folder so no prompt appeared on your Mac.)
 
 - **Sign in to Google once for real:** make a Space with "Use a separate account", click "Sign in with Google", sign in with your account, then quit and reopen VAIA and check you're still signed in (myaccount.google.com). If Google still says "may not be secure", try again later from your usual network (the test attempts may have made Google cautious for a while).
 - **Try the password manager on a real site:** log in somewhere, click "Save Password", then open Settings → Passwords → Show (Touch ID). The first time, macOS may ask about "VAIA Safe Storage" in your Keychain: click **Always Allow**.

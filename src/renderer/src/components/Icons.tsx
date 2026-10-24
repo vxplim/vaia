@@ -213,3 +213,23 @@ export const IconLayout = (p: P) => (
     <path d="M8 3v10" />
   </Svg>
 )
+export const IconLibrary = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="2.5" width="3" height="11" rx="0.8" />
+    <rect x="6.5" y="2.5" width="3" height="11" rx="0.8" />
+    <path d="m11 3.4 2.4-.6 1.1 10.3-2.4.5Z" />
+  </Svg>
+)
+export const IconImage = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="3" width="11" height="10" rx="2" />
+    <circle cx="6" cy="6.5" r="1" />
+    <path d="m3 12 3.5-3.5 2.5 2.5 1.5-1.5L13 12" />
+  </Svg>
+)
+export const IconColumns = (p: P) => (
+  <Svg {...p}>
+    <rect x="2.5" y="3" width="11" height="10" rx="2" />
+    <path d="M6.2 3v10M9.8 3v10" />
+  </Svg>
+)

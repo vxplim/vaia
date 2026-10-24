@@ -34,11 +34,12 @@ import type {
 } from '../shared/types'
 import { SEARCH_ENGINES, displayHost, inputToUrl, sameUrl, siteKey } from '../shared/url'
 import { errorPageScript } from './errorPage'
-import { existsSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { AdBlock } from './adblock'
 import { AiTidyError, aiTidyPlan, clearApiKey, hasApiKey, saveApiKey } from './ai'
-import { ImportError, countLinks, readChrome, readHtmlFile, readSafari, type BookmarkNode, type BookmarkTree } from './bookmarks'
+import { ImportError, bookmarksHtml, countLinks, readChrome, readHtmlFile, readSafari, type BookmarkNode, type BookmarkTree } from './bookmarks'
 import { EXTENSIONS_PARTITION, Extensions } from './extensions'
+import { Media } from './media'
 import { Passwords } from './passwords'
 import { Permissions } from './permissions'
 import { ARCHIVE_AFTER_MS, Archive } from './archive'
@@ -156,6 +157,16 @@ export class Browser {
     }
   })
   readonly passwords = new Passwords()
+  readonly media = new Media(
+    () => this.store.downloads,
+    () => this.state.settings.mediaScreenshots,
+    (message) => this.showToast(message),
+    (path) => {
+      this.store.downloads = this.store.downloads.filter((d) => d.path !== path)
+      this.saveDownloads()
+      this.store.changed(false)
+    }
+  )
   /** Which password profile each cookie jar belongs to ("default" or a Space's profile id). */
   private sessionProfiles = new Map<Session, string>()
   /** The username typed on the first step of a two-step login, per page. */
@@ -1715,6 +1726,39 @@ export class Browser {
     return space.id
   }
 
+  /** Save a Space's pinned tabs (with their folders) and Today tabs as a bookmarks file. */
+  async exportBookmarks(id: string): Promise<void> {
+    const space = this.state.spaces.find((s) => s.id === id)
+    if (!space) return
+    const toNodes = (items: SidebarItem[]): BookmarkNode[] =>
+      items.flatMap((item): BookmarkNode[] => {
+        if (item.kind === 'folder') return [{ title: item.name, children: toNodes(item.children) }]
+        const tabs = item.kind === 'split' ? item.tabs : [item]
+        return tabs
+          .filter((t) => /^https?:/.test(t.pinnedUrl ?? t.url))
+          .map((t) => ({ title: t.name || t.title, url: t.pinnedUrl ?? t.url }))
+      })
+    const nodes: BookmarkNode[] = [
+      { title: 'Pinned', children: toNodes(space.pinned) },
+      { title: 'Today', children: toNodes(space.today) }
+    ].filter((n) => n.children.length)
+    if (!countLinks(nodes)) return this.showToast('This Space has no web pages to export yet')
+    const safeName = space.name.replace(/[/:\\]/g, '-').trim() || 'Space'
+    const options = {
+      title: 'Export Tabs as Bookmarks',
+      defaultPath: join(app.getPath('downloads'), `${safeName} bookmarks.html`),
+      filters: [{ name: 'Bookmarks file', extensions: ['html'] }]
+    }
+    const { canceled, filePath } = this.win ? await dialog.showSaveDialog(this.win, options) : await dialog.showSaveDialog(options)
+    if (canceled || !filePath) return
+    try {
+      writeFileSync(filePath, bookmarksHtml(`${space.name} (VAIA)`, nodes))
+      this.showToast(`Exported ${countLinks(nodes)} tabs`, { action: { label: 'Show', run: () => shell.showItemInFolder(filePath) } })
+    } catch {
+      this.showToast('Couldn’t save the bookmarks file')
+    }
+  }
+
   deleteSpace(id: string): void {
     if (this.state.spaces.length <= 1) return
     const index = this.state.spaces.findIndex((s) => s.id === id)
@@ -1838,7 +1882,8 @@ export class Browser {
       case 'item/delete':
         return this.deleteItem(action.id)
       case 'folder/new': {
-        const folder = newFolder(activeSpace(this.state), action.name)
+        const space = this.state.spaces.find((sp) => sp.id === action.spaceId) ?? activeSpace(this.state)
+        const folder = newFolder(space, action.name)
         this.store.changed()
         return folder.id
       }
@@ -2119,6 +2164,15 @@ export class Browser {
         return this.passwords.reveal(action.id)
       case 'passwords/importCsv':
         return this.importPasswordsCsv(action.profile)
+      case 'space/exportBookmarks':
+        return this.exportBookmarks(action.id)
+      case 'media/open':
+      case 'media/show':
+      case 'media/copy':
+      case 'media/trash':
+        return this.media.act(action.type.split('/')[1] as 'open' | 'show' | 'copy' | 'trash', action.path)
+      case 'media/openPrivacySettings':
+        return shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders')
       case 'passwords/trashCsv':
         if (action.path.toLowerCase().endsWith('.csv') && existsSync(action.path)) {
           return shell.trashItem(action.path).then(() => this.showToast('The passwords file is in the Trash. Empty the Trash to remove it for good.'))

@@ -37,12 +37,15 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - Favorites (icon tiles), Pinned tabs with folders, and Today tabs, all with drag and drop
 - **Tidy**: group Today tabs by website and close duplicates in one click (with Undo), or let Claude sort them into topic folders with your own API key
 - Auto-archive of Today tabs you haven't viewed in a while, a searchable Archive, and ⇧⌘T to reopen closed tabs
+- **Library** (⇧⌘L): Archive, Downloads, Media, Spaces, Boosts and To-do in one panel that slides out over the page
 - Hideable sidebar (⌘S) that slides out smoothly when you rest at the left edge
 
 **Spaces & look**
 - Spaces with their own emoji and pastel theme on a clean black-and-white design: 12 presets, a color wheel, intensity (Whisper → Soft), tone (warmer ↔ cooler), gradients, light/dark/auto
 - Optional **separate account per Space** (its own cookies, logins and passwords), set up when you create the Space, with **Sign in with Google**
 - Switch Spaces with ⌃1…⌃9 or a two-finger swipe
+- **Space menu** (⋯ next to the Space name, or right-click a Space icon): icon, name, theme, account, new folder, **export tabs as bookmarks**, delete
+- **Library → Spaces**: all Spaces side by side; drag tabs between them
 
 **Browsing**
 - Command Bar (⌘T): open sites, search with suggestions, switch tabs, search history, run commands, add to-dos
@@ -55,6 +58,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - **To-do list** per Space or everywhere: slide-out panel (⇧⌘K), sidebar section, and a pop-out window that can stay on top
 - **Password manager** per account: saves and fills logins on the exact same site, encrypted with your Mac's Keychain, Touch ID to view, CSV import from Google Password Manager / Chrome
 - **Downloads**: hover for recent files, click for a searchable page with thumbnails
+- **Media**: your downloaded pictures, videos and PDFs (and, if you like, your Mac screenshots) as a grid with a large preview
 - History, and bookmark import from Chrome, Safari or any exported bookmarks file
 
 **Customizing & privacy**
@@ -64,7 +68,7 @@ Optional: make VAIA your default browser from the VAIA menu → **Make VAIA Your
 - **Boosts**: recolor any website, change its font, zap away elements, add your own CSS/JS
 - Google sign-in compatibility (on by default; Settings → General)
 
-Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌘P, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⇧⌘N, ⇧⌘K, ⌘Y, ⇧⌘J, ⌘, (full list in Settings).
+Keyboard shortcuts: ⌘T, ⌘W, ⌘L, ⌘R, ⌘[ / ⌘], ⇧⌘T, ⇧⌘C, ⌘S, ⌘F, ⌘P, ⌃1…⌃9, ⌃⇧=, ⌥⌘N, ⇧⌘N, ⇧⌘K, ⌘Y, ⇧⌘L, ⇧⌘J, ⌘, (full list in Settings).
 
 ## Screenshots
 

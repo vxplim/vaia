@@ -1,4 +1,5 @@
-// Importing bookmarks from Chrome, Safari, or an exported bookmarks .html file.
+// Importing bookmarks from Chrome, Safari, or an exported bookmarks .html file,
+// and exporting a Space's tabs as one.
 // Everything is turned into one simple tree of folders and links first.
 import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -189,4 +190,29 @@ export function readHtmlFile(file: string): BookmarkTree {
 
 export function countLinks(nodes: BookmarkNode[]): number {
   return nodes.reduce((sum, n) => sum + (isLink(n) ? 1 : countLinks(n.children)), 0)
+}
+
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/** Write folders and links as a "Netscape bookmark file" that any browser can import. */
+export function bookmarksHtml(title: string, nodes: BookmarkNode[]): string {
+  const now = Math.floor(Date.now() / 1000)
+  const lines = (list: BookmarkNode[], indent: string): string[] =>
+    list.flatMap((n) =>
+      isLink(n)
+        ? [`${indent}<DT><A HREF="${escapeHtml(n.url)}" ADD_DATE="${now}">${escapeHtml(n.title || n.url)}</A>`]
+        : [`${indent}<DT><H3 ADD_DATE="${now}">${escapeHtml(n.title)}</H3>`, `${indent}<DL><p>`, ...lines(n.children, indent + '    '), `${indent}</DL><p>`]
+    )
+  return [
+    '<!DOCTYPE NETSCAPE-Bookmark-file-1>',
+    '<!-- This is an automatically generated file. It will be read and overwritten. DO NOT EDIT! -->',
+    '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
+    `<TITLE>${escapeHtml(title)}</TITLE>`,
+    `<H1>${escapeHtml(title)}</H1>`,
+    '<DL><p>',
+    ...lines(nodes, '    '),
+    '</DL><p>',
+    ''
+  ].join('\n')
 }

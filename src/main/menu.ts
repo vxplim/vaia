@@ -136,7 +136,8 @@ export function buildMenu(browser: Browser): void {
           click: () => browser.notify({ type: 'toggle-sidebar' })
         },
         { label: 'Boost This Site…', id: 'boost', click: () => browser.command({ type: 'boost' }) },
-        { label: 'Downloads', id: 'downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => browser.command({ type: 'open-panel', panel: 'downloads' }) },
+        { label: 'Library', id: 'library', accelerator: 'CmdOrCtrl+Shift+L', click: () => browser.command({ type: 'open-library' }) },
+        { label: 'Downloads', id: 'downloads', accelerator: 'CmdOrCtrl+Shift+J', click: () => browser.command({ type: 'open-library', section: 'downloads' }) },
         { label: 'To-do List', id: 'todo', accelerator: 'CmdOrCtrl+Shift+K', click: () => browser.command({ type: 'open-panel', panel: 'todo' }) },
         { label: 'Tidy Today Tabs', id: 'tidy', click: () => browser.tidy() },
         { label: 'Extensions…', id: 'extensions', click: () => browser.openSettings() },
@@ -170,7 +171,7 @@ export function buildMenu(browser: Browser): void {
           click: () => browser.reopenClosed()
         },
         { label: 'Show All History', id: 'history', accelerator: 'CmdOrCtrl+Y', click: () => browser.command({ type: 'open-panel', panel: 'history' }) },
-        { label: 'Archive…', id: 'archive', click: () => browser.command({ type: 'open-panel', panel: 'archive' }) }
+        { label: 'Archive…', id: 'archive', click: () => browser.command({ type: 'open-library', section: 'archive' }) }
       ]
     },
     {

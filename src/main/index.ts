@@ -1,11 +1,12 @@
 // The "main process": the brain of the app. It starts VAIA, creates the
 // window, and answers requests coming from the UI.
-import { BrowserWindow, app, ipcMain, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
+import { BrowserWindow, app, ipcMain, protocol, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Action, MenuItem } from '../shared/api'
 import type { Pane, Rect } from '../shared/types'
 import { Browser } from './browser'
+import { MEDIA_SCHEME } from './media'
 import { buildMenu, popupMenu } from './menu'
 
 app.setName('VAIA')
@@ -13,6 +14,11 @@ app.setName('VAIA')
 app.setPath('userData', process.env.VAIA_USER_DATA || join(app.getPath('appData'), 'VAIA'))
 
 const browser = new Browser()
+
+// Library → Media shows your files through vaia-media:// (only files it just listed).
+protocol.registerSchemesAsPrivileged([
+  { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }
+])
 
 /**
  * Requests from VAIA's own windows (sidebar, Settings, …) only. Web pages and extension
@@ -52,6 +58,8 @@ ipcMain.on(
 ipcMain.handle('archive:list', ui((_e, query: string) => browser.archive.list(query)))
 ipcMain.handle('menu:popup', ui((e, items: MenuItem[]) => popupMenu(e.sender, items)))
 ipcMain.handle('download:thumbnail', ui((_e, id: string) => browser.downloadThumbnail(id)))
+ipcMain.handle('media:list', ui(() => browser.media.list()))
+ipcMain.handle('media:thumbnail', ui((_e, path: string, size: number) => browser.media.thumbnail(path, size)))
 // Passwords: the list for Settings, and the login helper running inside web pages.
 ipcMain.handle('passwords:list', ui(() => browser.passwords.list()))
 ipcMain.handle('pw:lookup', (e, origin: string) => browser.lookupLogins(e, origin))
@@ -94,6 +102,7 @@ app.whenReady().then(() => {
   if (!app.isPackaged) app.dock?.setIcon(join(app.getAppPath(), 'build/icon.png'))
   buildMenu(browser)
   browser.init()
+  browser.media.registerProtocol()
   browser.createWindow()
   for (const url of pendingLinks.splice(0)) browser.openExternalLink(url)
 

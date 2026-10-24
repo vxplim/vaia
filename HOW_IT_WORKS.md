@@ -30,7 +30,7 @@ Web pages themselves (Phase 1 onward) run in separate, locked-down views called 
 
 ## Things that float over web pages
 
-A web page view is always drawn on top of VAIA's own interface. So whenever something must float over a page (the Command Bar, the Space editor, the Archive, Peek, the slid-out sidebar), the UI first asks the brain for a **picture** of the page (`capture`), shows that picture in the page's place (blurred), and only then hides the live page. Closing the panel brings the live page back. Toasts are different: the brain draws them in a tiny see-through view placed above everything.
+A web page view is always drawn on top of VAIA's own interface. So whenever something must float over a page (the Command Bar, the Space editor, the Library, Peek, the slid-out sidebar), the UI first asks the brain for a **picture** of the page (`capture`), shows that picture in the page's place (blurred), and only then hides the live page. Closing the panel brings the live page back. Toasts are different: the brain draws them in a tiny see-through view placed above everything.
 
 ## Folder map
 
@@ -54,6 +54,7 @@ vaia/
 │   │   ├── bookmarks.ts        ← importing bookmarks from Chrome, Safari or a file
 │   │   ├── errorPage.ts        ← the friendly "can't load this page" page
 │   │   ├── passwords.ts        ← the encrypted password manager
+│   │   ├── media.ts            ← Library → Media: finding pictures/videos/PDFs, thumbnails, vaia-media://
 │   │   ├── store.ts            ← saving/loading your data (vaia-state.json)
 │   │   ├── history.ts          ← browsing history (history.json)
 │   │   ├── archive.ts          ← archived & recently closed tabs (archive.json)
@@ -81,7 +82,9 @@ vaia/
 │               ├── Content.tsx       ← the page card(s), split dividers, drop zones
 │               ├── CommandBar.tsx    ← ⌘T
 │               ├── SpaceEditor.tsx, ColorWheel.tsx, Backdrop.tsx
-│               ├── ArchivePanel.tsx, HistoryPanel.tsx, DownloadsPanel.tsx
+│               ├── Library.tsx       ← the Library (⇧⌘L) and its section list
+│               ├── ArchiveView.tsx, DownloadsView.tsx, MediaView.tsx, SpacesView.tsx, BoostsView.tsx  ← its sections
+│               ├── HistoryPanel.tsx, Toggle.tsx
 │               ├── PeekLayer.tsx, FindBar.tsx, BoostPanel.tsx
 │               ├── TodoList.tsx, TodoPanel.tsx, TodoSection.tsx  ← the to-do list's pieces
 │               └── Icons.tsx, Favicon.tsx
@@ -94,6 +97,14 @@ vaia/
 ├── node_modules/               ← downloaded tools (not uploaded to GitHub)
 └── out/, dist/                 ← build output (not uploaded to GitHub)
 ```
+
+## The Library
+
+`Library.tsx` is one floating panel with a section list; each section is its own component (`ArchiveView`, `DownloadsView`, `MediaView`, `SpacesView`, `BoostsView`, and the shared `TodoView`). The section you looked at last is saved as a setting (`librarySection`).
+
+Media asks the brain for a list (`media.ts`): finished downloads that are pictures, videos or PDFs and still exist, plus (if the setting is on) screenshots from the folder macOS saves them to. Thumbnails come from macOS's Quick Look. To show a file large, the UI uses a `vaia-media://file/…` address; the brain answers it only for files that were in the last list, so nothing else on your Mac can be read through it.
+
+The Spaces section reuses the same "move" action as dragging in the sidebar (`item/move`), with the target Space in it, so moving a tab into a Space with its own account reloads it in that account's cookie jar.
 
 ## Tidy and the to-do list
 

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SPACE_EMOJI } from '../../../shared/themes'
 import type { AppState, Space, Theme } from '../../../shared/types'
+import type { SpaceEditorFocus } from '../menus'
 import { dispatch } from '../state'
 import { ThemeControls, ThemePreview } from './ThemeControls'
 
@@ -9,15 +10,27 @@ interface Props {
   space: Space
   /** A brand-new Space: start with the account setup step. */
   setup?: boolean
+  /** Start with the icon picker open, the name selected, or the theme in view. */
+  focus?: SpaceEditorFocus
   closing: boolean
   onClose: () => void
 }
 
 /** Name, emoji, look (colors, intensity, tone, light/dark) and profile for one Space. Changes apply live. */
-export function SpaceEditor({ state, space, setup = false, closing, onClose }: Props) {
+export function SpaceEditor({ state, space, setup = false, focus, closing, onClose }: Props) {
   const [name, setName] = useState(space.name)
   const [setupDone, setSetupDone] = useState(!setup)
-  const [emojiOpen, setEmojiOpen] = useState(false)
+  const [emojiOpen, setEmojiOpen] = useState(focus === 'icon')
+  const nameRef = useRef<HTMLInputElement>(null)
+  const themeRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // Keep the keyboard in the editor so Esc closes it.
+    panelRef.current?.focus()
+    if (focus === 'name') nameRef.current?.select()
+    if (focus === 'theme') themeRef.current?.scrollIntoView({ block: 'start' })
+  }, [focus, space.id])
 
   useEffect(() => setName(space.name), [space.id, space.name])
 
@@ -30,6 +43,8 @@ export function SpaceEditor({ state, space, setup = false, closing, onClose }: P
   return (
     <div className={`overlay-layer light${closing ? ' closing' : ''}`} onMouseDown={onClose}>
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className="panel space-editor"
         style={{ left: state.settings.sidebarVisible ? state.settings.sidebarWidth + 16 : 24 }}
         onMouseDown={(e) => e.stopPropagation()}
@@ -40,6 +55,7 @@ export function SpaceEditor({ state, space, setup = false, closing, onClose }: P
             {space.icon}
           </button>
           <input
+            ref={nameRef}
             className="text-field"
             value={name}
             placeholder="Space name"
@@ -109,6 +125,7 @@ export function SpaceEditor({ state, space, setup = false, closing, onClose }: P
           </div>
         )}
 
+        <div ref={themeRef} />
         <ThemePreview theme={space.theme} icon={space.icon} name={name || space.name} />
         <ThemeControls theme={space.theme} onChange={setTheme} />
 

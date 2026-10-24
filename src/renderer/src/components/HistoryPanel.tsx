@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { HistoryEntry } from '../../../shared/types'
 import { displayHost } from '../../../shared/url'
 import { dispatch } from '../state'
-import { groupByDay, timeLabel } from './ArchivePanel'
+import { groupByDay, timeLabel } from './ArchiveView'
 import { Favicon } from './Favicon'
 import { IconClose, IconSearch } from './Icons'
 

@@ -20,6 +20,9 @@ mac:
     NSMicrophoneUsageDescription: Websites you allow can use your microphone, for example for calls.
     NSLocationUsageDescription: Websites you allow can see your location, for example for maps.
     NSLocationWhenInUseUsageDescription: Websites you allow can see your location, for example for maps.
+    NSDesktopFolderUsageDescription: Library → Media can show the screenshots on your Desktop (only if you turn that on).
+    NSDocumentsFolderUsageDescription: Library → Media can show the screenshots in your screenshots folder (only if you turn that on).
+    NSDownloadsFolderUsageDescription: VAIA saves your downloads here and shows them in the Library.
     NSBluetoothAlwaysUsageDescription: Websites can use security keys and passkeys from nearby devices when you sign in.
     CFBundleDocumentTypes:
       - CFBundleTypeName: Web Page
