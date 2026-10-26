@@ -166,7 +166,7 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
   - **Licence: VAIA is now GPL-3.0** (`LICENSE` has the official GPL-3.0 text with Vanessa's copyright notice; `package.json` says `GPL-3.0-only`; README and About panel updated). The repository is public
   - README: full feature list, download link to the latest release, how to update, new screenshots in the black-and-white look
 
-- [x] **Phase 16: Library + Space menu** (tag `v1.7.0`, not released as a download yet: test with `npm run dev` first)
+- [x] **Phase 16: Library + Space menu** (tag `v1.7.0`; first released as a download in 1.10.0)
   - **Library** (bottom-left button, ⇧⌘L, View menu, or Command Bar "Open Library"): a panel that slides out from the sidebar over the page, with a slim section list on the left. It remembers the last section; Esc or a click outside closes it
   - **Archive**: the Archive (search, grouped by day, click to reopen, × to remove) now lives here. History → Archive… opens this section
   - **Downloads**: the full Downloads page (⇧⌘J and the downloads popover's "Show All" open it here)
@@ -206,6 +206,8 @@ Live sync with Google Password Manager **isn't possible**: Google doesn't offer 
   - **Tested in `npm run dev` and in a packaged app:** the browser reports Widevine support, and a Widevine-protected test video (Google's Shaka "Angel One" demo with its test license server) plays. Everything else still works on the new Electron: extensions from the Chrome Web Store, split views, the Mini Player, notes, captures, the Library… (all earlier test suites pass)
   - `npm install` now also fetches castlabs' Electron app (a `postinstall` step), and `npm run build:mac` downloads castlabs' Electron for both Apple Silicon and Intel
   - Packaging has a **VMP signing step** (`build/vmp-sign.cjs`) that runs automatically once castlabs' free EVS service is set up; until then it's skipped and says so
+
+- [x] **Release v1.10.0** (GitHub Release with both `.dmg` files; covers Phases 16–19). Built without the EVS VMP signature (EVS isn't set up yet), so Netflix-style services may refuse it until a signed rebuild
 
 ### Protected video: what works now, and what needs EVS
 
