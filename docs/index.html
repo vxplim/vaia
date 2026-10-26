@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VAIA · A calm browser for Mac</title>
+  <meta name="description" content="VAIA is a free, open-source, sidebar-first web browser for Mac with Spaces, a Command Bar, Split View, and a sidebar that tidies itself." />
+  <meta property="og:title" content="VAIA · A calm browser for Mac" />
+  <meta property="og:description" content="A free, open-source, sidebar-first browser for Mac." />
+  <meta property="og:image" content="https://vxplim.github.io/vaia/assets/main.webp" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="VAIA home">
+        <img src="assets/icon.svg" alt="" width="30" height="30" />
+        <span>VAIA</span>
+      </a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="#tour">Tour</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="#ideas">Ideas</a></li>
+        </ul>
+      </nav>
+      <a class="btn btn-small" href="#download">Download</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero" id="top">
+      <div class="wrap hero-inner">
+        <p class="pill"><span class="dot" aria-hidden="true"></span> Free &amp; open source · for Mac</p>
+        <h1>A calm, sidebar&#8209;first<br />browser for Mac.</h1>
+        <p class="lede">
+          VAIA keeps your tabs in a tidy sidebar, gives every part of your life its own
+          Space, and gets out of the way so the web can breathe.
+        </p>
+        <div class="cta" id="download">
+          <a class="btn btn-big" id="dl-arm" href="https://github.com/vxplim/vaia/releases/latest">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8-.7 0-1.9-.8-3-.8-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.6zM14.2 5.6c.6-.8 1.1-1.8 1-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1 .1 2-.5 2.7-1.3z"/></svg>
+            Download for Mac
+          </a>
+          <p class="cta-note">
+            <span id="dl-version">Latest release</span> · Apple silicon (M1–M4) ·
+            <a id="dl-intel" href="https://github.com/vxplim/vaia/releases/latest">Intel Mac?</a>
+          </p>
+        </div>
+      </div>
+      <div class="wrap">
+        <figure class="window hero-shot">
+          <img src="assets/main.webp" width="1400" height="885"
+               alt="The VAIA window: a light sidebar on the left with favorites, pinned tabs and Today tabs, and a web page floating in a rounded card on the right." />
+        </figure>
+      </div>
+    </section>
+
+    <!-- Tour -->
+    <section class="section" id="tour">
+      <div class="wrap">
+        <p class="eyebrow">Take a tour</p>
+        <h2>Click around.</h2>
+        <div class="tour">
+          <div class="tour-tabs" role="tablist" aria-label="VAIA features">
+            <button role="tab" id="t-sidebar" aria-controls="p-sidebar" aria-selected="true" class="tint-lilac">
+              <strong>The sidebar</strong><span>Favorites, Pinned, Today</span>
+            </button>
+            <button role="tab" id="t-command" aria-controls="p-command" aria-selected="false" tabindex="-1" class="tint-peach">
+              <strong>Command Bar</strong><span>⌘T for everything</span>
+            </button>
+            <button role="tab" id="t-split" aria-controls="p-split" aria-selected="false" tabindex="-1" class="tint-mint">
+              <strong>Split View</strong><span>Up to 4 tabs side by side</span>
+            </button>
+            <button role="tab" id="t-spaces" aria-controls="p-spaces" aria-selected="false" tabindex="-1" class="tint-sky">
+              <strong>Spaces &amp; themes</strong><span>A color for every mood</span>
+            </button>
+          </div>
+
+          <div class="tour-panels">
+            <div role="tabpanel" id="p-sidebar" aria-labelledby="t-sidebar">
+              <figure class="window"><img src="assets/main.webp" width="1400" height="885" loading="lazy"
+                alt="VAIA's sidebar with three favorite tiles, a pinned tab, Tidy and Clear buttons, and two Today tabs." /></figure>
+              <p>Tabs live in a vertical list, not a crowded strip. <b>Favorites</b> sit on top as icons, <b>Pinned</b> tabs stay forever, and <b>Today</b> tabs quietly archive themselves when you stop using them. Hit <b>Tidy</b> to group them, or <b>Clear</b> to start fresh.</p>
+            </div>
+            <div role="tabpanel" id="p-command" aria-labelledby="t-command" hidden>
+              <figure class="window"><img src="assets/command-bar.webp" width="1400" height="885" loading="lazy"
+                alt="VAIA's Command Bar floating over a blurred page, showing search suggestions for 'green tea'." /></figure>
+              <p>Press <kbd>⌘</kbd><kbd>T</kbd> and just type. Search the web, jump to an open tab, find something from your history, or run a command like <i>New Space</i> or <i>Copy URL</i>, without touching the mouse.</p>
+            </div>
+            <div role="tabpanel" id="p-split" aria-labelledby="t-split" hidden>
+              <figure class="window"><img src="assets/split-view.webp" width="1400" height="885" loading="lazy"
+                alt="Two web pages shown side by side in VAIA's Split View, each with its own small toolbar." /></figure>
+              <p>Drag a tab onto the page to put two, three or four tabs side by side. Pick a layout (50/50, 70/30, columns or a grid) or drag the dividers yourself. The whole group shows up as one item in the sidebar.</p>
+            </div>
+            <div role="tabpanel" id="p-spaces" aria-labelledby="t-spaces" hidden>
+              <figure class="window"><img src="assets/spaces.webp" width="1400" height="885" loading="lazy"
+                alt="VAIA's Space editor with pastel color presets, a color wheel, and Intensity and Tone sliders." /></figure>
+              <p>Make a Space for school, work, or just you. Each one has its own tabs, an emoji, and a soft pastel theme you can tune from a <i>whisper</i> to a <i>soft</i> wash. Spaces can even keep separate logins.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature grid -->
+    <section class="section section-soft" id="features">
+      <div class="wrap">
+        <p class="eyebrow">Everything inside</p>
+        <h2>Small details, everywhere.</h2>
+        <div class="groups">
+          <div class="group">
+            <h3><span class="chip tint-lilac" aria-hidden="true">🗂</span> Stay organized</h3>
+            <ul>
+              <li><b>Spaces</b> with their own tabs, colors and logins</li>
+              <li><b>Tidy</b> groups tabs into folders, optionally with AI</li>
+              <li><b>Auto-archive</b> for tabs you've stopped using</li>
+              <li><b>Library</b> with your archive, downloads, media and boosts</li>
+              <li><b>To-do list</b> for each Space, or one for everything</li>
+              <li><b>Live Folders</b> that fill themselves from a feed</li>
+            </ul>
+          </div>
+          <div class="group">
+            <h3><span class="chip tint-peach" aria-hidden="true">⚡️</span> Move fast</h3>
+            <ul>
+              <li><b>Command Bar</b> for search, tabs, history and commands</li>
+              <li><b>Split View</b> for up to four tabs at once</li>
+              <li><b>Peek</b> previews links in a floating card</li>
+              <li><b>Little window</b> for quick lookups</li>
+              <li><b>⌃Tab</b> to flip between recent tabs</li>
+              <li><b>Mini Player</b> keeps your video or call in reach</li>
+            </ul>
+          </div>
+          <div class="group">
+            <h3><span class="chip tint-mint" aria-hidden="true">🎨</span> Make it yours</h3>
+            <ul>
+              <li><b>Pastel themes</b> with intensity and tone sliders</li>
+              <li><b>Boosts</b> to restyle any website, or zap things away</li>
+              <li><b>Notes &amp; Easels</b> for thoughts and moodboards</li>
+              <li><b>Capture</b> any part of a page with <kbd>⌘</kbd><kbd>⇧</kbd><kbd>2</kbd></li>
+              <li><b>Rename</b> any tab, and put the sidebar on either side</li>
+              <li><b>Chrome extensions</b> from the Chrome Web Store</li>
+            </ul>
+          </div>
+          <div class="group">
+            <h3><span class="chip tint-sky" aria-hidden="true">🔒</span> Private by default</h3>
+            <ul>
+              <li><b>No account, no server</b>. Your data stays on your Mac</li>
+              <li><b>Built-in ad &amp; tracker blocker</b></li>
+              <li><b>Password manager</b> locked with Touch ID</li>
+              <li><b>Asks first</b> before sites use your camera or location</li>
+              <li><b>Private windows</b> that forget everything</li>
+              <li><b>Open source</b>, so anyone can read the code</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="keys" aria-label="Favorite shortcuts">
+          <div><span><kbd>⌘</kbd><kbd>T</kbd></span> Command Bar</div>
+          <div><span><kbd>⌘</kbd><kbd>S</kbd></span> Hide sidebar</div>
+          <div><span><kbd>⌃</kbd><kbd>1</kbd></span> Switch Space</div>
+          <div><span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>L</kbd></span> Library</div>
+          <div><span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>T</kbd></span> Reopen tab</div>
+          <div><span><kbd>⌘</kbd><kbd>⇧</kbd><kbd>C</kbd></span> Copy URL</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install -->
+    <section class="section" id="install">
+      <div class="wrap narrow">
+        <p class="eyebrow">Install</p>
+        <h2>Up and running in a minute.</h2>
+        <ol class="steps">
+          <li><b>Download</b> the <code>.dmg</code> with the button above. Choose the Intel version if your Mac isn't Apple silicon (Apple menu → About This Mac → <i>Chip</i>).</li>
+          <li><b>Open it</b> and drag <b>VAIA</b> into your <b>Applications</b> folder.</li>
+          <li><b>Open VAIA.</b> macOS will say it can't check it, because VAIA isn't signed by a paid Apple developer account yet.</li>
+          <li>Go to <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. You only do this once per version.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section section-soft" id="faq">
+      <div class="wrap narrow">
+        <p class="eyebrow">FAQ</p>
+        <h2>Good questions.</h2>
+        <details>
+          <summary>Is VAIA free?</summary>
+          <p>Yes. It's free and open source under the GPL-3.0 licence. There are no ads, no accounts and no subscriptions.</p>
+        </details>
+        <details>
+          <summary>Why does macOS warn me when I open it?</summary>
+          <p>Apple shows that warning for apps that aren't signed with a paid Apple Developer account. VAIA's code is public on GitHub, so you can see exactly what it does. Use <b>Open Anyway</b> in Privacy &amp; Security to continue.</p>
+        </details>
+        <details>
+          <summary>Where is my data stored?</summary>
+          <p>Only on your Mac. Tabs, Spaces and settings are saved locally, and passwords are encrypted with your Mac's Keychain. VAIA has no server.</p>
+        </details>
+        <details>
+          <summary>Does it work with Netflix and other streaming sites?</summary>
+          <p>Most sites work, including YouTube. Some protected streaming services (like Netflix) need an extra signing step that isn't finished yet. It's on the list below.</p>
+        </details>
+        <details>
+          <summary>Can I use Chrome extensions?</summary>
+          <p>Many of them, yes. You can install from the Chrome Web Store. A few extensions rely on Chrome-only features and won't work fully.</p>
+        </details>
+        <details>
+          <summary>Is there a Windows or iPhone version?</summary>
+          <p>Not right now. VAIA is made for the Mac.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- Ideas -->
+    <section class="section" id="ideas">
+      <div class="wrap">
+        <div class="ideas">
+          <div>
+            <p class="eyebrow">Your turn</p>
+            <h2>Got an idea? Found a bug?</h2>
+            <p class="lede small">VAIA is a work in progress, and I read every message. Tell me what you'd love to see, what feels off, or how you use it.</p>
+            <div class="cta-row">
+              <!-- TODO(Vanessa): replace href with your Tally form link, e.g. https://tally.so/r/XXXXXX -->
+              <a class="btn" id="tally" href="#ideas" data-tally-placeholder>Share an idea</a>
+              <a class="btn btn-ghost" href="https://github.com/vxplim/vaia/issues">Developers: GitHub</a>
+            </div>
+          </div>
+          <div class="next">
+            <h3>Coming up next</h3>
+            <ul>
+              <li><span class="tag tint-butter">Planned</span> Signed &amp; notarized app, with no "Open Anyway" step</li>
+              <li><span class="tag tint-butter">Planned</span> Automatic updates</li>
+              <li><span class="tag tint-butter">Planned</span> Netflix &amp; streaming support</li>
+              <li><span class="tag tint-rose">You decide</span> Whatever you suggest above</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Maker -->
+    <section class="section maker">
+      <div class="wrap narrow center">
+        <p class="eyebrow">Made by</p>
+        <!-- TODO(Vanessa): edit this in your own words -->
+        <h2>Vanessa Minerva Lim</h2>
+        <p class="lede small">I'd never written code before VAIA. I wanted a browser that felt calm, so I built one, phase by phase, learning as I went.</p>
+        <div class="cta-row center">
+          <a class="btn btn-ghost" href="https://www.linkedin.com/in/vanessa-m-lim/">LinkedIn</a>
+          <a class="btn btn-ghost" href="https://github.com/vxplim/vaia">Source code</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand small"><img src="assets/icon.svg" alt="" width="20" height="20" /> VAIA</span>
+      <span>Free &amp; open source · GPL-3.0 · An independent project</span>
+      <a href="https://github.com/vxplim/vaia/releases">All releases</a>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
