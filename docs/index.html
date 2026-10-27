@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VAIA · A calm browser for Mac</title>
+  <meta name="description" content="VAIA is a free, open-source, sidebar-first web browser for Mac, with Spaces, a Command Bar, Split View and a sidebar that tidies itself." />
+  <meta property="og:title" content="VAIA · A calm browser for Mac" />
+  <meta property="og:description" content="A free, open-source, sidebar-first browser for Mac." />
+  <meta property="og:image" content="https://raw.githubusercontent.com/vxplim/vaia/main/docs/assets/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" href="/vaia/assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/vaia/assets/apple-touch-icon.png" />
+  <link rel="stylesheet" href="/vaia/styles.css" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="VAIA, back to top">
+        <img src="/vaia/assets/icon.svg" alt="" width="30" height="30" />
+        <span>VAIA</span>
+      </a>
+      <nav aria-label="Main">
+        <ul>
+          <li><a href="#tour">Tour</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#ideas">Ideas</a></li>
+        </ul>
+      </nav>
+      <a class="btn btn-small" id="dl-nav" href="https://github.com/vxplim/vaia/releases/latest">Download</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="wrap hero-inner">
+        <p class="pill"><span class="dot" aria-hidden="true"></span> Free &amp; open source · for Mac</p>
+        <h1>A calm, sidebar&#8209;first<br />browser for Mac.</h1>
+        <p class="lede">
+          Your tabs in a tidy sidebar. A Space for every part of your life.
+          Everything one keystroke away.
+        </p>
+        <div class="cta">
+          <a class="btn btn-big" id="dl-arm" href="https://github.com/vxplim/vaia/releases/latest">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8-.7 0-1.9-.8-3-.8-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.6zM14.2 5.6c.6-.8 1.1-1.8 1-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1 .1 2-.5 2.7-1.3z"/></svg>
+            Download for Mac
+          </a>
+          <p class="cta-note">
+            <span id="dl-version">Latest version</span> · Apple silicon ·
+            <a id="dl-intel" href="https://github.com/vxplim/vaia/releases/latest">Intel Mac</a>
+          </p>
+        </div>
+      </div>
+      <div class="wrap">
+        <figure class="window hero-shot">
+          <img src="/vaia/assets/main.webp" width="1600" height="1000"
+               alt="VAIA with a soft pink Stanford Space: favorite tiles, a Classes folder, Stanford tabs in the sidebar, and a web page floating in a rounded card." />
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="tour">
+      <div class="wrap">
+        <p class="eyebrow">Take a tour</p>
+        <h2>Click around.</h2>
+        <div class="tour">
+          <div class="tour-tabs" role="tablist" aria-label="VAIA features">
+            <button role="tab" id="t-command" aria-controls="p-command" aria-selected="true" class="tint-peach">
+              <strong>Command Bar</strong><span>Press ⌘T and just type</span>
+            </button>
+            <button role="tab" id="t-split" aria-controls="p-split" aria-selected="false" tabindex="-1" class="tint-mint">
+              <strong>Split View &amp; Notes</strong><span>Two things at once</span>
+            </button>
+            <button role="tab" id="t-library" aria-controls="p-library" aria-selected="false" tabindex="-1" class="tint-sky">
+              <strong>Spaces &amp; Library</strong><span>School, work, life, all apart</span>
+            </button>
+            <button role="tab" id="t-theme" aria-controls="p-theme" aria-selected="false" tabindex="-1" class="tint-rose">
+              <strong>Themes</strong><span>A soft color for every Space</span>
+            </button>
+          </div>
+
+          <div class="tour-panels">
+            <div role="tabpanel" id="p-command" aria-labelledby="t-command">
+              <figure class="window"><img src="/vaia/assets/command.webp" width="1600" height="1000" loading="lazy"
+                alt="The VAIA Command Bar over a blurred page. Typing 'stanford' shows a search plus open tabs: Stanford University, The Stanford Daily and ExploreCourses." /></figure>
+              <p>One box for everything. Search the web, jump to an open tab, find something from yesterday, or run a command, without touching the mouse.</p>
+            </div>
+            <div role="tabpanel" id="p-split" aria-labelledby="t-split" hidden>
+              <figure class="window"><img src="/vaia/assets/split.webp" width="1600" height="1000" loading="lazy"
+                alt="VAIA Split View: a web page on the left and a note titled 'Fall quarter plan' on the right." /></figure>
+              <p>Drag a tab onto the page to see up to four side by side. Keep a note open next to your reading, then pick a layout or drag the divider yourself.</p>
+            </div>
+            <div role="tabpanel" id="p-library" aria-labelledby="t-library" hidden>
+              <figure class="window"><img src="/vaia/assets/library.webp" width="1600" height="1000" loading="lazy"
+                alt="The VAIA Library showing three Spaces side by side, Stanford, Work and Personal, each with its own pinned and Today tabs." /></figure>
+              <p>Every Space keeps its own tabs, so school never spills into work. The Library holds everything else: archived tabs, downloads, media and boosts.</p>
+            </div>
+            <div role="tabpanel" id="p-theme" aria-labelledby="t-theme" hidden>
+              <figure class="window"><img src="/vaia/assets/theme.webp" width="1600" height="1000" loading="lazy"
+                alt="VAIA's Space theme editor with pastel presets, a color wheel, and Intensity and Tone sliders." /></figure>
+              <p>Pick a pastel, then tune it from a whisper to a soft wash. Light, dark or automatic. Each Space can even keep its own logins.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="features">
+      <div class="wrap">
+        <p class="eyebrow">Everything inside</p>
+        <h2>Small details, everywhere.</h2>
+        <div class="grid">
+          <div class="card"><span class="chip tint-lilac" aria-hidden="true">🗂</span><h3>Spaces</h3><p>Separate tabs, colors and logins for school, work and life.</p></div>
+          <div class="card"><span class="chip tint-peach" aria-hidden="true">🧹</span><h3>Tidy &amp; auto-archive</h3><p>Group tabs in one click. Old tabs quietly archive themselves.</p></div>
+          <div class="card"><span class="chip tint-mint" aria-hidden="true">⌘</span><h3>Command Bar</h3><p>Search, switch tabs and run commands from the keyboard.</p></div>
+          <div class="card"><span class="chip tint-sky" aria-hidden="true">◫</span><h3>Split View</h3><p>Up to four tabs side by side, in any layout.</p></div>
+          <div class="card"><span class="chip tint-butter" aria-hidden="true">👀</span><h3>Peek &amp; Mini Player</h3><p>Preview links in a floating card. Keep videos and calls in reach.</p></div>
+          <div class="card"><span class="chip tint-rose" aria-hidden="true">✎</span><h3>Notes, Easels &amp; Capture</h3><p>Write, collect and screenshot without leaving the browser.</p></div>
+          <div class="card"><span class="chip tint-lilac" aria-hidden="true">⚡️</span><h3>Boosts</h3><p>Restyle any website, or click to zap the parts you don't want.</p></div>
+          <div class="card"><span class="chip tint-mint" aria-hidden="true">🔒</span><h3>Private by default</h3><p>Ad blocker, Touch ID passwords, no account. Your data stays on your Mac.</p></div>
+          <div class="card"><span class="chip tint-sky" aria-hidden="true">🧩</span><h3>Chrome extensions</h3><p>Install from the Chrome Web Store.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="wrap narrow">
+        <p class="eyebrow">Install</p>
+        <h2>Up and running in a minute.</h2>
+        <ol class="steps">
+          <li><b>Download</b> VAIA with the button at the top.</li>
+          <li><b>Open</b> the file and drag <b>VAIA</b> into <b>Applications</b>.</li>
+          <li><b>Open VAIA.</b> The first time, macOS asks you to confirm: go to <b>System Settings → Privacy &amp; Security</b> and click <b>Open Anyway</b>.</li>
+        </ol>
+        <details>
+          <summary>Why does macOS ask?</summary>
+          <p>Apple shows that message for apps that aren't registered with a paid Apple Developer account yet. VAIA's code is public on GitHub, so anyone can see exactly what it does.</p>
+        </details>
+        <details>
+          <summary>Is it free? Where is my data?</summary>
+          <p>Free and open source, with no ads, accounts or subscriptions. Tabs, Spaces and settings stay on your Mac, and passwords are locked in your Mac's Keychain.</p>
+        </details>
+        <details>
+          <summary>Does Netflix work?</summary>
+          <p>YouTube and most sites work. Netflix and a few other protected streaming services are coming in a future version.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="section" id="ideas">
+      <div class="wrap">
+        <div class="ideas">
+          <div>
+            <p class="eyebrow">Your turn</p>
+            <h2>Got an idea?</h2>
+            <p class="lede small">VAIA keeps growing. Tell me what you'd love to see, what feels off, or how you use it. I read every message.</p>
+            <ul class="next" aria-label="Coming next">
+              <li><span class="tag tint-butter">Next</span> Opens without the "Open Anyway" step</li>
+              <li><span class="tag tint-butter">Next</span> Automatic updates</li>
+              <li><span class="tag tint-butter">Next</span> Netflix &amp; streaming</li>
+            </ul>
+          </div>
+          <form class="form" id="idea-form" novalidate>
+            <fieldset class="kinds">
+              <legend>This is…</legend>
+              <label><input type="radio" name="kind" value="Idea" checked /> <span>💡 An idea</span></label>
+              <label><input type="radio" name="kind" value="Bug" /> <span>🐞 A bug</span></label>
+              <label><input type="radio" name="kind" value="Love note" /> <span>💌 Love</span></label>
+            </fieldset>
+            <label class="field">
+              <span>Your message</span>
+              <textarea name="message" rows="5" required maxlength="4000" placeholder="I wish VAIA could…"></textarea>
+            </label>
+            <label class="field">
+              <span>Email <em>(optional, if you'd like a reply)</em></span>
+              <input type="email" name="email" autocomplete="email" placeholder="you@example.com" />
+            </label>
+            <input class="hp" type="text" name="_honey" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <button class="btn" type="submit">Send</button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <span class="brand small"><img src="/vaia/assets/icon.svg" alt="" width="20" height="20" /> VAIA</span>
+      <span>Designed &amp; built by <a href="https://www.linkedin.com/in/vanessa-m-lim/">Vanessa Minerva Lim</a></span>
+      <span><a href="https://github.com/vxplim/vaia">Source code</a> · GPL-3.0</span>
+    </div>
+  </footer>
+
+  <script src="/vaia/script.js" defer></script>
+</body>
+</html>
