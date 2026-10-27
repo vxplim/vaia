@@ -1,4 +1,4 @@
-// VAIA website: download links, feature tour tabs, gentle scroll reveals.
+// VAIA website: download links, feature tour tabs, idea form, gentle scroll reveals.
 document.documentElement.classList.add('js');
 
 // Point the download buttons straight at the newest .dmg files.
@@ -11,7 +11,10 @@ document.documentElement.classList.add('js');
     const dmg = (arch) => release.assets.find((a) => a.name.endsWith(`${arch}.dmg`));
     const arm = dmg('arm64');
     const intel = dmg('x64');
-    if (arm) document.getElementById('dl-arm').href = arm.browser_download_url;
+    if (arm) {
+      document.getElementById('dl-arm').href = arm.browser_download_url;
+      document.getElementById('dl-nav').href = arm.browser_download_url;
+    }
     if (intel) document.getElementById('dl-intel').href = intel.browser_download_url;
     if (release.tag_name) document.getElementById('dl-version').textContent = `Version ${release.tag_name.replace(/^v/, '')}`;
   } catch {
@@ -41,17 +44,53 @@ for (const tab of tabs) {
   });
 }
 
-// The idea form isn't connected until there's a Tally link.
-const tally = document.getElementById('tally');
-if (tally?.hasAttribute('data-tally-placeholder')) {
-  tally.addEventListener('click', (e) => {
-    e.preventDefault();
-    tally.textContent = 'Form coming soon ✿';
-  });
-}
+// Idea form: sent by email through FormSubmit (no account or server needed).
+// The address is put together here so it isn't sitting in the page for spam bots.
+const inbox = ['itsvanessa.lim', 'gmail.com'].join('@');
+const form = document.getElementById('idea-form');
+const status = document.getElementById('form-status');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = new FormData(form);
+  const message = String(data.get('message') || '').trim();
+  if (!message) {
+    status.textContent = 'Write a few words first ✿';
+    form.message.focus();
+    return;
+  }
+  if (data.get('_honey')) return;
+  const kind = data.get('kind');
+  const email = String(data.get('email') || '').trim();
+  const button = form.querySelector('button');
+  button.disabled = true;
+  status.textContent = 'Sending…';
+  try {
+    const res = await fetch(`https://formsubmit.co/ajax/${inbox}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        _subject: `VAIA: new ${String(kind).toLowerCase()}`,
+        _template: 'table',
+        _captcha: 'false',
+        type: kind,
+        message,
+        ...(email ? { email, _replyto: email } : {}),
+      }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok || String(result.success) === 'false') throw new Error(result.message || 'failed');
+    form.reset();
+    status.textContent = 'Thank you! Your message is on its way 💌';
+  } catch {
+    const body = encodeURIComponent(`${kind}:\n\n${message}`);
+    status.innerHTML = `Hmm, that didn't send. <a href="mailto:${inbox}?subject=VAIA%20${encodeURIComponent(kind)}&body=${body}">Email it instead</a>.`;
+  } finally {
+    button.disabled = false;
+  }
+});
 
 // Fade sections in as they scroll into view.
-const revealables = document.querySelectorAll('.section h2, .group, .section .window, .steps li, details, .ideas, .keys');
+const revealables = document.querySelectorAll('.section h2, .card, .section .window, .steps li, details, .ideas');
 if ('IntersectionObserver' in window) {
   const io = new IntersectionObserver(
     (entries) => {
